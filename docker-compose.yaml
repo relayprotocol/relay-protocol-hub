@@ -1,0 +1,36 @@
+services:
+  postgres:
+    image: postgres:latest
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=password
+    networks:
+      - local
+    ports:
+      - 5432:5432
+    dns:
+      - 8.8.8.8
+
+  redis:
+    image: redis:latest
+    command: sh -c "redis-server --requirepass password"
+    networks:
+      - local
+    ports:
+      - 6379:6379
+    dns:
+      - 8.8.8.8
+
+  rabbitmq:
+    image: rabbitmq:management
+    networks:
+      - local
+    ports:
+      - 5672:5672
+      - 15672:15672
+    dns:
+      - 8.8.8.8
+
+networks:
+  local:
+    driver: bridge
