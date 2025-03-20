@@ -6,12 +6,14 @@ import {
 } from "../../src/models/transaction-entries";
 import { getBalance } from "../../src/models/balances";
 
-import { fillArray, iter, randomHex, randomNumber } from "../common//utils";
+import { chains } from "../common/chains";
+import { fillArray, iter, randomHex, randomNumber } from "../common/utils";
 
 describe("save-transaction-entry-with-balance-update", () => {
   it("random runs", async () => {
-    const chainId = 1;
+    const chainId = chains[randomNumber(chains.length)].id;
 
+    const ownerChainId = chainId;
     const ownerAddresses = fillArray(3, () => randomHex(20));
     const currencyAddresses = fillArray(3, () => randomHex(20));
 
@@ -33,6 +35,7 @@ describe("save-transaction-entry-with-balance-update", () => {
         chainId,
         transactionId: randomHex(32),
         entryId: "0",
+        ownerChainId,
         ownerAddress,
         currencyAddress,
         balanceDiff: balanceDiff.toString(),

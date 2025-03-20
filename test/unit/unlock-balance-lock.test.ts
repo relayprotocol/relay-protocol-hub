@@ -11,12 +11,14 @@ import {
   unlockBalanceLock,
 } from "../../src/models/balances";
 
+import { chains } from "../common/chains";
 import { fillArray, iter, randomHex, randomNumber } from "../common/utils";
 
 describe("unlock-balance-lock", () => {
   it("random runs", async () => {
-    const chainId = 1;
+    const chainId = chains[randomNumber(chains.length)].id;
 
+    const ownerChainId = chainId;
     const ownerAddresses = fillArray(20, () => randomHex(20));
     const currencyAddresses = fillArray(20, () => randomHex(20));
 
@@ -50,6 +52,7 @@ describe("unlock-balance-lock", () => {
         chainId,
         transactionId: randomHex(32),
         entryId: "0",
+        ownerChainId,
         ownerAddress,
         currencyAddress,
         balanceDiff: balanceDiff.toString(),

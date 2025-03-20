@@ -1,3 +1,5 @@
+import { ITask } from "pg-promise";
+
 import { DbEntry } from "./utils";
 import { db } from "../common/db";
 
@@ -25,9 +27,10 @@ export const getBalance = async (
   ownerChainId: number,
   ownerAddress: string,
   currencyChainId: number,
-  currencyAddress: string
+  currencyAddress: string,
+  tx?: ITask<any>
 ): Promise<DbEntry<Balance> | undefined> => {
-  const result = await db.oneOrNone(
+  const result = await (tx ?? db).oneOrNone(
     `
       SELECT
         balances.owner_chain_id,
@@ -68,9 +71,10 @@ export const getBalance = async (
 };
 
 export const getBalanceLock = async (
-  balanceLockId: string
+  balanceLockId: string,
+  tx?: ITask<any>
 ): Promise<DbEntry<BalanceLock> | undefined> => {
-  const result = await db.oneOrNone(
+  const result = await (tx ?? db).oneOrNone(
     `
       SELECT
         balance_locks.id,
@@ -108,9 +112,10 @@ export const getBalanceLock = async (
 };
 
 export const saveBalanceLock = async (
-  balanceLock: BalanceLock
+  balanceLock: BalanceLock,
+  tx?: ITask<any>
 ): Promise<DbEntry<Balance> | undefined> => {
-  const result = await db.oneOrNone(
+  const result = await (tx ?? db).oneOrNone(
     `
       WITH x AS (
         INSERT INTO balance_locks (
@@ -172,11 +177,15 @@ export const saveBalanceLock = async (
 export const unlockBalanceLock = async (
   balanceLockId: string,
   recipientChainId: number,
-  recipientAddress: string
+  recipientAddress: string,
+  tx?: ITask<any>
 ): Promise<DbEntry<Balance>[]> => {
-  const balanceLock = await getBalanceLock(balanceLockId);
+  const balanceLock = await getBalanceLock(balanceLockId, tx);
   if (!balanceLock) {
     throw new Error("Balance lock does not exist");
+  }
+  if (balanceLock.executed) {
+    throw new Error("Balance lock already executed");
   }
 
   let results: any[];
@@ -186,7 +195,7 @@ export const unlockBalanceLock = async (
     balanceLock.ownerChainId === recipientChainId &&
     balanceLock.ownerAddress === recipientAddress
   ) {
-    results = await db.manyOrNone(
+    results = await (tx ?? db).manyOrNone(
       `
         WITH
           x AS (
@@ -223,7 +232,7 @@ export const unlockBalanceLock = async (
       }
     );
   } else {
-    results = await db.manyOrNone(
+    results = await (tx ?? db).manyOrNone(
       `
         WITH
           x AS (

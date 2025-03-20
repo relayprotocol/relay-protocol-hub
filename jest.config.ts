@@ -11,6 +11,8 @@ const config: Config = {
   transform: {
     "^.+\\.ts?$": "ts-jest",
   },
+
+  globalSetup: "./test/setup.ts",
 };
 
 export default config;

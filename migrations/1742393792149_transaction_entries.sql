@@ -4,6 +4,7 @@ CREATE TABLE "transaction_entries" (
   "chain_id" BIGINT NOT NULL,
   "transaction_id" TEXT NOT NULL,
   "entry_id" TEXT NOT NULL,
+  "owner_chain_id" BIGINT NOT NULL,
   "owner_address" TEXT NOT NULL,
   "currency_address" TEXT NOT NULL,
   "balance_diff" NUMERIC(78, 0) NOT NULL,

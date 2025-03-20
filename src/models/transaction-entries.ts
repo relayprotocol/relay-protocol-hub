@@ -1,3 +1,5 @@
+import { ITask } from "pg-promise";
+
 import { Balance } from "./balances";
 import { DbEntry } from "./utils";
 import { db } from "../common/db";
@@ -6,6 +8,7 @@ export type TransactionEntry = {
   chainId: number;
   transactionId: string;
   entryId: string;
+  ownerChainId: number;
   ownerAddress: string;
   currencyAddress: string;
   balanceDiff: string;
@@ -14,14 +17,16 @@ export type TransactionEntry = {
 export const getTransactionEntry = async (
   chainId: number,
   transactionId: string,
-  entryId: string
+  entryId: string,
+  tx?: ITask<any>
 ): Promise<DbEntry<TransactionEntry> | undefined> => {
-  const result = await db.oneOrNone(
+  const result = await (tx ?? db).oneOrNone(
     `
       SELECT
         transaction_entries.chain_id,
         transaction_entries.transaction_id,
         transaction_entries.entry_id,
+        transaction_entries.owner_chain_id,
         transaction_entries.owner_address,
         transaction_entries.currency_address,
         transaction_entries.balance_diff,
@@ -46,6 +51,7 @@ export const getTransactionEntry = async (
     chainId: result.chain_id,
     transactionId: result.transaction_id,
     entryId: result.entry_id,
+    ownerChainId: result.owner_chain_id,
     ownerAddress: result.owner_address,
     currencyAddress: result.currency_address,
     balanceDiff: result.balance_diff,
@@ -55,15 +61,17 @@ export const getTransactionEntry = async (
 };
 
 export const saveTransactionEntryWithBalanceUpdate = async (
-  transactionEntry: TransactionEntry
+  transactionEntry: TransactionEntry,
+  tx?: ITask<any>
 ): Promise<DbEntry<Balance> | undefined> => {
-  const result = await db.oneOrNone(
+  const result = await (tx ?? db).oneOrNone(
     `
       WITH x AS (
         INSERT INTO transaction_entries (
           chain_id,
           transaction_id,
           entry_id,
+          owner_chain_id,
           owner_address,
           currency_address,
           balance_diff
@@ -71,6 +79,7 @@ export const saveTransactionEntryWithBalanceUpdate = async (
           $/chainId/,
           $/transactionId/,
           $/entryId/,
+          $/ownerChainId/,
           $/ownerAddress/,
           $/currencyAddress/,
           $/balanceDiff/
@@ -85,7 +94,7 @@ export const saveTransactionEntryWithBalanceUpdate = async (
         available_amount
       ) (
         SELECT
-          x.chain_id,
+          x.owner_chain_id,
           x.owner_address,
           x.chain_id,
           x.currency_address,
@@ -102,6 +111,7 @@ export const saveTransactionEntryWithBalanceUpdate = async (
       chainId: transactionEntry.chainId,
       transactionId: transactionEntry.transactionId,
       entryId: transactionEntry.entryId,
+      ownerChainId: transactionEntry.ownerChainId,
       ownerAddress: transactionEntry.ownerAddress,
       currencyAddress: transactionEntry.currencyAddress,
       balanceDiff: transactionEntry.balanceDiff,

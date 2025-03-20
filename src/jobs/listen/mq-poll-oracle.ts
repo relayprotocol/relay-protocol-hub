@@ -1,14 +1,9 @@
 import axios from "axios";
 
-import { getChain } from "../../common/chains";
 import { setupQueue } from "../../common/mq";
 import { config } from "../../config";
-import {
-  getTransactionEntry,
-  saveTransactionEntryWithBalanceUpdate,
-  TransactionEntry,
-} from "../../models/transaction-entries";
-import { saveBalanceLock } from "../../models/balances";
+import { mqProcessOracleEntry } from "../../jobs/index";
+import { getTransactionEntry } from "../../models/transaction-entries";
 
 const COMPONENT = "mq-poll-oracle";
 
@@ -24,36 +19,41 @@ const handler = async (data: Data) => {
       `${config.oracleHttpUrl}/transaction-entries/v1` +
         (continuation ? `?continuation=${continuation}` : "")
     )
-    .then((response) => response.data);
+    .then(
+      (response) =>
+        response.data as {
+          entries: {
+            chainId: number;
+            transactionId: string;
+            entryId: string;
+            escrow: string;
+            data:
+              | {
+                  type: "deposit";
+                  data: {
+                    depositorAddress: string;
+                    currencyAddress: string;
+                    amount: string;
+                    depositId?: string;
+                  };
+                }
+              | {
+                  type: "withdrawal";
+                  data: {
+                    currencyAddress: string;
+                    amount: string;
+                    withdrawalId: string;
+                  };
+                };
+          }[];
+          continuation?: string;
+        }
+    );
 
-  let hasAlreadyProcessedEntries = false;
+  let includesAlreadyProcessedEntry = false;
   await Promise.all(
-    response.entries.map(async (entry: any) => {
-      // Ensure the entry references a known chain and escrow
-      const chain = await getChain(entry.chainId);
-      if (!chain || chain.metadata.escrow !== entry.escrow) {
-        return;
-      }
-
-      let te: TransactionEntry | undefined;
-
-      let depositId: string | undefined;
-      if (entry.data.type === "deposit") {
-        te = {
-          chainId: entry.chainId,
-          transactionId: entry.transactionId,
-          entryId: entry.entryId,
-          ownerAddress: entry.data.data.depositorAddress,
-          currencyAddress: entry.data.data.currencyAddress,
-          balanceDiff: entry.data.data.amount,
-        };
-
-        depositId = entry.data.data.depositId;
-      } else {
-        // TODO: First fetch the withdrawal by id in order to get the relevant depositor, then construct `te`
-      }
-
-      // Ensure we stop once we see an entry we already processed
+    response.entries.map(async (entry) => {
+      // Keep track of whether we already processed this entry
       if (
         await getTransactionEntry(
           entry.chainId,
@@ -61,28 +61,15 @@ const handler = async (data: Data) => {
           entry.entryId
         )
       ) {
-        hasAlreadyProcessedEntries = true;
+        includesAlreadyProcessedEntry = true;
       }
 
-      if (te) {
-        await saveTransactionEntryWithBalanceUpdate(te);
-
-        if (depositId) {
-          await saveBalanceLock({
-            id: depositId,
-            ownerChainId: te.chainId,
-            ownerAddress: te.ownerAddress,
-            currencyChainId: te.chainId,
-            currencyAddress: te.currencyAddress,
-            amount: te.balanceDiff,
-          });
-        }
-      }
+      await mqProcessOracleEntry.send(entry);
     })
   );
 
   // Put a new job on the queue with the next continuation
-  if (!hasAlreadyProcessedEntries && response.continuation) {
+  if (!includesAlreadyProcessedEntry && response.continuation) {
     await send({ continuation: response.continuation });
   }
 };
