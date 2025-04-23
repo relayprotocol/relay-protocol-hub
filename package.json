@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@fastify/type-provider-typebox": "^5.1.0",
+    "@reservoir0x/relay-protocol-sdk": "^0.0.12",
     "@sinclair/typebox": "^0.34.14",
     "amqp-connection-manager": "^4.1.14",
     "amqplib": "^0.10.5",

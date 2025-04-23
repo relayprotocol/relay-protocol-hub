@@ -1,8 +1,6 @@
-import { db } from "./db";
+import { VmType } from "@reservoir0x/relay-protocol-sdk";
 
-export enum ChainVmType {
-  EthereumVM = "ethereum-vm",
-}
+import { db } from "./db";
 
 type CommonMetadata = {
   escrow: string;
@@ -11,7 +9,7 @@ type CommonMetadata = {
 export type Chain = {
   id: number;
   name: string;
-  vmType: ChainVmType;
+  vmType: VmType;
   metadata: CommonMetadata;
 };
 
@@ -43,4 +41,10 @@ export const getChain = async (chainId: number) => {
   }
 
   return chains[chainId];
+};
+
+export const getSdkChainsConfig = async () => {
+  return Object.fromEntries(
+    Object.values(await getChains()).map((c) => [c.id, c.vmType])
+  );
 };

@@ -1,4 +1,9 @@
-import { Type, type TypeBoxTypeProvider } from "@fastify/type-provider-typebox";
+import {
+  TLiteral,
+  TUnion,
+  Type,
+  type TypeBoxTypeProvider,
+} from "@fastify/type-provider-typebox";
 import type {
   ContextConfigDefault,
   FastifyReply,
@@ -32,11 +37,12 @@ export type FastifyReplyTypeBox<TSchema extends FastifySchema> = FastifyReply<
   TypeBoxTypeProvider
 >;
 
-export const ErrorResponses = {
+export const ErrorResponse = (codes: TUnion<TLiteral[]>) => ({
   400: Type.Object({
     message: Type.String({ description: "Error message" }),
+    code: codes,
   }),
-};
+});
 
 export type Endpoint = {
   url: string;

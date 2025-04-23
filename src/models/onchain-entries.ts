@@ -1,46 +1,45 @@
 import { ITask } from "pg-promise";
 
 import { Balance } from "./balances";
-import { DbEntry } from "./utils";
+import {
+  DbEntry,
+  nvAddress,
+  nvBytes,
+  nvCurrency,
+  nvTransactionId,
+} from "./utils";
+import { getChain } from "../common/chains";
 import { db } from "../common/db";
 
-export type TransactionEntry = {
+export type OnchainEntry = {
+  id: string;
   chainId: number;
   transactionId: string;
-  entryId: string;
-  ownerChainId: number;
   ownerAddress: string;
   currencyAddress: string;
   balanceDiff: string;
 };
 
-export const getTransactionEntry = async (
-  chainId: number,
-  transactionId: string,
-  entryId: string,
+export const getOnchainEntry = async (
+  id: string,
   tx?: ITask<any>
-): Promise<DbEntry<TransactionEntry> | undefined> => {
+): Promise<DbEntry<OnchainEntry> | undefined> => {
   const result = await (tx ?? db).oneOrNone(
     `
       SELECT
-        transaction_entries.chain_id,
-        transaction_entries.transaction_id,
-        transaction_entries.entry_id,
-        transaction_entries.owner_chain_id,
-        transaction_entries.owner_address,
-        transaction_entries.currency_address,
-        transaction_entries.balance_diff,
-        transaction_entries.created_at,
-        transaction_entries.updated_at
-      FROM transaction_entries
-      WHERE transaction_entries.chain_id = $/chainId/
-        AND transaction_entries.transaction_id = $/transactionId/
-        AND transaction_entries.entry_id = $/entryId/
+        onchain_entries.id,
+        onchain_entries.chain_id,
+        onchain_entries.transaction_id,
+        onchain_entries.owner_address,
+        onchain_entries.currency_address,
+        onchain_entries.balance_diff,
+        onchain_entries.created_at,
+        onchain_entries.updated_at
+      FROM onchain_entries
+      WHERE onchain_entries.id = $/id/
     `,
     {
-      chainId,
-      transactionId,
-      entryId,
+      id,
     }
   );
   if (!result) {
@@ -48,10 +47,9 @@ export const getTransactionEntry = async (
   }
 
   return {
+    id: result.id,
     chainId: result.chain_id,
     transactionId: result.transaction_id,
-    entryId: result.entry_id,
-    ownerChainId: result.owner_chain_id,
     ownerAddress: result.owner_address,
     currencyAddress: result.currency_address,
     balanceDiff: result.balance_diff,
@@ -60,26 +58,28 @@ export const getTransactionEntry = async (
   };
 };
 
-export const saveTransactionEntryWithBalanceUpdate = async (
-  transactionEntry: TransactionEntry,
+export const saveOnchainEntryWithBalanceUpdate = async (
+  onchainEntry: OnchainEntry,
   tx?: ITask<any>
 ): Promise<DbEntry<Balance> | undefined> => {
+  const vmType = await getChain(onchainEntry.chainId).then(
+    (chain) => chain.vmType
+  );
+
   const result = await (tx ?? db).oneOrNone(
     `
       WITH x AS (
-        INSERT INTO transaction_entries (
+        INSERT INTO onchain_entries (
+          id,
           chain_id,
           transaction_id,
-          entry_id,
-          owner_chain_id,
           owner_address,
           currency_address,
           balance_diff
         ) VALUES (
+          $/id/,
           $/chainId/,
           $/transactionId/,
-          $/entryId/,
-          $/ownerChainId/,
           $/ownerAddress/,
           $/currencyAddress/,
           $/balanceDiff/
@@ -94,7 +94,7 @@ export const saveTransactionEntryWithBalanceUpdate = async (
         available_amount
       ) (
         SELECT
-          x.owner_chain_id,
+          x.chain_id,
           x.owner_address,
           x.chain_id,
           x.currency_address,
@@ -108,13 +108,12 @@ export const saveTransactionEntryWithBalanceUpdate = async (
       RETURNING *
     `,
     {
-      chainId: transactionEntry.chainId,
-      transactionId: transactionEntry.transactionId,
-      entryId: transactionEntry.entryId,
-      ownerChainId: transactionEntry.ownerChainId,
-      ownerAddress: transactionEntry.ownerAddress,
-      currencyAddress: transactionEntry.currencyAddress,
-      balanceDiff: transactionEntry.balanceDiff,
+      id: nvBytes(onchainEntry.id),
+      chainId: onchainEntry.chainId,
+      transactionId: nvTransactionId(onchainEntry.transactionId, vmType),
+      ownerAddress: nvAddress(onchainEntry.ownerAddress, vmType),
+      currencyAddress: nvCurrency(onchainEntry.currencyAddress, vmType),
+      balanceDiff: onchainEntry.balanceDiff,
     }
   );
   if (!result) {

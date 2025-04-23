@@ -1,6 +1,7 @@
 import { ITask } from "pg-promise";
 
-import { DbEntry } from "./utils";
+import { DbEntry, nvAddress, nvBytes, nvCurrency } from "./utils";
+import { getChain } from "../common/chains";
 import { db } from "../common/db";
 
 export type Balance = {
@@ -115,6 +116,13 @@ export const saveBalanceLock = async (
   balanceLock: BalanceLock,
   tx?: ITask<any>
 ): Promise<DbEntry<Balance> | undefined> => {
+  const ownerVmType = await getChain(balanceLock.ownerChainId).then(
+    (chain) => chain.vmType
+  );
+  const currenyVmType = await getChain(balanceLock.currencyChainId).then(
+    (chain) => chain.vmType
+  );
+
   const result = await (tx ?? db).oneOrNone(
     `
       WITH x AS (
@@ -149,11 +157,11 @@ export const saveBalanceLock = async (
       RETURNING *
     `,
     {
-      id: balanceLock.id,
+      id: nvBytes(balanceLock.id),
       ownerChainId: balanceLock.ownerChainId,
-      ownerAddress: balanceLock.ownerAddress,
+      ownerAddress: nvAddress(balanceLock.ownerAddress, ownerVmType),
       currencyChainId: balanceLock.currencyChainId,
-      currencyAddress: balanceLock.currencyAddress,
+      currencyAddress: nvCurrency(balanceLock.currencyAddress, currenyVmType),
       amount: balanceLock.amount,
       expiration: balanceLock.expiration ?? null,
     }
@@ -176,158 +184,123 @@ export const saveBalanceLock = async (
 
 export const unlockBalanceLock = async (
   balanceLockId: string,
-  recipientChainId: number,
-  recipientAddress: string,
+  tx?: ITask<any>
+): Promise<DbEntry<Balance> | undefined> => {
+  const result = await (tx ?? db).oneOrNone(
+    `
+      WITH
+        x AS (
+          UPDATE balance_locks SET
+            executed = TRUE,
+            updated_at = now()
+          WHERE balance_locks.id = $/balanceLockId/
+            AND NOT balance_locks.executed
+          RETURNING
+            balance_locks.owner_chain_id,
+            balance_locks.owner_address,
+            balance_locks.currency_chain_id,
+            balance_locks.currency_address,
+            balance_locks.amount
+        )
+        UPDATE balances SET
+          available_amount = balances.available_amount + x.amount,
+          locked_amount = balances.locked_amount - x.amount,
+          updated_at = now()
+        FROM x
+        WHERE balances.owner_chain_id = x.owner_chain_id
+          AND balances.owner_address = x.owner_address
+          AND balances.currency_chain_id = x.currency_chain_id
+          AND balances.currency_address = x.currency_address
+        RETURNING *
+    `,
+    {
+      balanceLockId,
+    }
+  );
+  if (!result) {
+    return undefined;
+  }
+
+  return {
+    ownerChainId: result.owner_chain_id,
+    ownerAddress: result.owner_address,
+    currencyChainId: result.currency_chain_id,
+    currencyAddress: result.currency_address,
+    availableAmount: result.available_amount,
+    lockedAmount: result.locked_amount,
+    createdAt: result.created_at,
+    updatedAt: result.updated_at,
+  };
+};
+
+export const reallocateBalance = async (
+  from: Pick<
+    Balance,
+    "ownerChainId" | "ownerAddress" | "currencyChainId" | "currencyAddress"
+  >,
+  to: Pick<Balance, "ownerChainId" | "ownerAddress">,
+  amount: string,
   tx?: ITask<any>
 ): Promise<DbEntry<Balance>[]> => {
-  const balanceLock = await getBalanceLock(balanceLockId, tx);
-  if (!balanceLock) {
-    throw new Error("Balance lock does not exist");
-  }
-  if (balanceLock.executed) {
-    throw new Error("Balance lock already executed");
-  }
+  const fromOwnerVmType = await getChain(from.ownerChainId).then(
+    (chain) => chain.vmType
+  );
+  const fromCurrencyVmType = await getChain(from.currencyChainId).then(
+    (chain) => chain.vmType
+  );
+  const toOwnerVmType = await getChain(to.ownerChainId).then(
+    (chain) => chain.vmType
+  );
 
-  let results: any[];
-
-  // We have different logic depending on whether the recipient is the owner of the lock
-  if (
-    balanceLock.ownerChainId === recipientChainId &&
-    balanceLock.ownerAddress === recipientAddress
-  ) {
-    results = await (tx ?? db).manyOrNone(
-      `
-        WITH
-          x AS (
-            UPDATE balance_locks SET
-              executed = TRUE,
-              updated_at = now()
-            WHERE balance_locks.id = $/balanceLockId/
-              AND NOT balance_locks.executed
-            RETURNING
-              balance_locks.owner_chain_id,
-              balance_locks.owner_address,
-              balance_locks.currency_chain_id,
-              balance_locks.currency_address,
-              balance_locks.amount
-          )
-          UPDATE balances SET
-            available_amount = balances.available_amount + x.amount,
-            locked_amount = balances.locked_amount - x.amount,
-            updated_at = now()
-          FROM x
-          WHERE balances.owner_chain_id = x.owner_chain_id
-            AND balances.owner_address = x.owner_address
-            AND balances.currency_chain_id = x.currency_chain_id
-            AND balances.currency_address = x.currency_address
-          RETURNING
-            x.owner_chain_id,
-            x.owner_address,
-            x.currency_chain_id,
-            x.currency_address,
-            x.amount
-      `,
-      {
-        balanceLockId,
-      }
-    );
-  } else {
-    results = await (tx ?? db).manyOrNone(
-      `
-        WITH
-          x AS (
-            UPDATE balance_locks SET
-              executed = TRUE,
-              updated_at = now()
-            WHERE balance_locks.id = $/balanceLockId/
-              AND NOT balance_locks.executed
-            RETURNING
-              balance_locks.owner_chain_id,
-              balance_locks.owner_address,
-              balance_locks.currency_chain_id,
-              balance_locks.currency_address,
-              balance_locks.amount
-          ),
-          y AS (
-            UPDATE balances SET
-              locked_amount = balances.locked_amount - x.amount,
-              updated_at = now()
-            FROM x
-            WHERE balances.owner_chain_id = x.owner_chain_id
-              AND balances.owner_address = x.owner_address
-              AND balances.currency_chain_id = x.currency_chain_id
-              AND balances.currency_address = x.currency_address
-            RETURNING
-              x.owner_chain_id,
-              x.owner_address,
-              x.currency_chain_id,
-              x.currency_address,
-              x.amount
-          ),
-          z AS (
-            INSERT INTO balances (
-              owner_chain_id,
-              owner_address,
-              currency_chain_id,
-              currency_address,
-              available_amount
-            ) (
-              SELECT
-                $/recipientChainId/,
-                $/recipientAddress/,
-                x.currency_chain_id,
-                x.currency_address,
-                x.amount
-              FROM x
+  const results = await (tx ?? db).manyOrNone(
+    `
+      WITH
+        x(owner_chain_id, owner_address, currency_chain_id, currency_address, balance_diff) AS (
+          VALUES
+            (
+              $/fromOwnerChainId/::BIGINT,
+              $/fromOwnerAddress/::TEXT,
+              $/fromCurrencyChainId/::BIGINT,
+              $/fromCurrencyAddress/::TEXT,
+              -$/amount/::NUMERIC(78, 0)
+            ),
+            (
+              $/toOwnerChainId/,
+              $/toOwnerAddress/,
+              $/fromCurrencyChainId/,
+              $/fromCurrencyAddress/,
+              $/amount/
             )
-            ON CONFLICT (owner_chain_id, owner_address, currency_chain_id, currency_address)
-            DO UPDATE SET
-              available_amount = balances.available_amount + EXCLUDED.available_amount,
-              updated_at = now()
-            RETURNING
-              balances.owner_chain_id,
-              balances.owner_address,
-              balances.currency_chain_id,
-              balances.currency_address
-          )
-        SELECT
-          balances.owner_chain_id,
-          balances.owner_address,
-          balances.currency_chain_id,
-          balances.currency_address,
-          balances.available_amount,
-          balances.locked_amount,
-          balances.created_at,
-          balances.updated_at
-        FROM balances
-        WHERE (
-          balances.owner_chain_id,
-          balances.owner_address,
-          balances.currency_chain_id,
-          balances.currency_address
-        ) IN
-          (
-            SELECT y.owner_chain_id, y.owner_address, y.currency_chain_id, y.currency_address FROM y
-            UNION ALL
-            SELECT z.owner_chain_id, z.owner_address, z.currency_chain_id, z.currency_address FROM z
-          )
-      `,
-      {
-        balanceLockId,
-        recipientChainId,
-        recipientAddress,
-      }
-    );
-  }
+        )
+        UPDATE balances SET
+          available_amount = balances.available_amount + x.balance_diff,
+          updated_at = now()
+        FROM x
+        WHERE balances.owner_chain_id = x.owner_chain_id
+          AND balances.owner_address = x.owner_address
+          AND balances.currency_chain_id = x.currency_chain_id
+          AND balances.currency_address = x.currency_address
+        RETURNING *
+    `,
+    {
+      fromOwnerChainId: from.ownerChainId,
+      fromOwnerAddress: nvAddress(from.ownerAddress, fromOwnerVmType),
+      fromCurrencyChainId: from.currencyChainId,
+      fromCurrencyAddress: nvCurrency(from.currencyAddress, fromCurrencyVmType),
+      toOwnerChainId: to.ownerChainId,
+      toOwnerAddress: nvAddress(to.ownerAddress, toOwnerVmType),
+      amount,
+    }
+  );
 
-  return results.map((r) => ({
-    ownerChainId: r.owner_chain_id,
-    ownerAddress: r.owner_address,
-    currencyChainId: r.currency_chain_id,
-    currencyAddress: r.currency_address,
-    availableAmount: r.available_amount,
-    lockedAmount: r.locked_amount,
-    createdAt: r.created_at,
-    updatedAt: r.updated_at,
+  return results.map((result) => ({
+    ownerChainId: result.owner_chain_id,
+    ownerAddress: result.owner_address,
+    currencyChainId: result.currency_chain_id,
+    currencyAddress: result.currency_address,
+    availableAmount: result.available_amount,
+    lockedAmount: result.locked_amount,
+    createdAt: result.created_at,
+    updatedAt: result.updated_at,
   }));
 };

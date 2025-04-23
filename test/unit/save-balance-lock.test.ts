@@ -1,9 +1,9 @@
 import { describe, expect, it } from "@jest/globals";
 
 import {
-  saveTransactionEntryWithBalanceUpdate,
-  TransactionEntry,
-} from "../../src/models/transaction-entries";
+  saveOnchainEntryWithBalanceUpdate,
+  OnchainEntry,
+} from "../../src/models/onchain-entries";
 import {
   BalanceLock,
   getBalance,
@@ -17,7 +17,6 @@ describe("save-balance-lock", () => {
   it("random runs", async () => {
     const chainId = chains[randomNumber(chains.length)].id;
 
-    const ownerChainId = chainId;
     const ownerAddresses = fillArray(20, () => randomHex(20));
     const currencyAddresses = fillArray(20, () => randomHex(20));
 
@@ -44,16 +43,15 @@ describe("save-balance-lock", () => {
       }
       inMemoryBalances[key].availableAmount += balanceDiff;
 
-      const transactionEntry: TransactionEntry = {
+      const onchainEntry: OnchainEntry = {
+        id: randomHex(32),
         chainId,
         transactionId: randomHex(32),
-        entryId: "0",
-        ownerChainId,
         ownerAddress,
         currencyAddress,
         balanceDiff: balanceDiff.toString(),
       };
-      await saveTransactionEntryWithBalanceUpdate(transactionEntry);
+      await saveOnchainEntryWithBalanceUpdate(onchainEntry);
     });
 
     // Lock balances both in the database and in-memory
