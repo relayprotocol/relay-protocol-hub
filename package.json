@@ -4,7 +4,7 @@
   "license": "MIT",
   "scripts": {
     "build": "tsc -b",
-    "migrate": "POSTGRES_URL=postgres://postgres:password@localhost:5432/postgres node-pg-migrate -m ./migrations -d POSTGRES_URL --no-check-order",
+    "migrate": "node-pg-migrate -m ./migrations -d POSTGRES_URL --no-check-order",
     "start": "node ./dist/index.js",
     "test": "yarn migrate up && jest"
   },
