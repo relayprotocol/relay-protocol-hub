@@ -54,7 +54,7 @@ jobs:
         run: docker compose pull -q
 
       - name: Start Docker Compose
-        run: docker compose up
+        run: docker compose up -d
         env:
           COMPOSE_DOCKER_CLI_BUILD: 1
           DOCKER_BUILDKIT: 1
