@@ -1,5 +1,5 @@
 import { Type } from "@fastify/type-provider-typebox";
-import { getSolverFillMessageHash } from "@reservoir0x/relay-protocol-sdk";
+import { getSolverRefundMessageHash } from "@reservoir0x/relay-protocol-sdk";
 import { Address, Hex, verifyMessage } from "viem";
 
 import {
@@ -82,15 +82,23 @@ const Schema = {
               description: "The onchain id of the deposit",
             }),
             inputIndex: Type.Number({
-              description: "The index of the order input the deposit refers to",
+              description: "The index of the order input",
             }),
           })
         ),
-        fill: Type.Object({
-          transactionId: Type.String({
-            description: "The fill transaction",
-          }),
-        }),
+        refunds: Type.Array(
+          Type.Object({
+            transactionId: Type.String({
+              description: "The refund transaction",
+            }),
+            inputIndex: Type.Number({
+              description: "The index of the order input",
+            }),
+            refundIndex: Type.Number({
+              description: "The index of the order input refund",
+            }),
+          })
+        ),
       }),
       result: Type.Object({
         validated: Type.Boolean({
@@ -130,7 +138,7 @@ const Schema = {
       code: Type.Union([
         Type.Literal("INSUFFICIENT_SIGNATURES"),
         Type.Literal("INVALID_SIGNATURE"),
-        Type.Literal("INVALID_FILL"),
+        Type.Literal("INVALID_REFUND"),
         Type.Literal("ALREADY_UNLOCKED"),
         Type.Literal("REALLOCATION_FAILED"),
         Type.Literal("UNKNOWN"),
@@ -141,7 +149,7 @@ const Schema = {
 
 export default {
   method: "POST",
-  url: "/actions/solver-fill/v1",
+  url: "/actions/solver-refund/v1",
   schema: Schema,
   handler: async (
     req: FastifyRequestTypeBox<typeof Schema>,
@@ -156,7 +164,7 @@ export default {
     }
 
     const message = req.body.message;
-    const messageHash = getSolverFillMessageHash(
+    const messageHash = getSolverRefundMessageHash(
       message,
       await getSdkChainsConfig()
     );
@@ -181,13 +189,13 @@ export default {
 
     if (!message.result.validated) {
       return reply.status(400).send({
-        message: "Invalid fill",
-        code: "INVALID_FILL",
+        message: "Invalid refund",
+        code: "INVALID_REFUND",
       });
     }
 
     const actionExecutor = new ActionExecutorService();
-    const result = await actionExecutor.executeSolverFill(message);
+    const result = await actionExecutor.executeSolverRefund(message);
     if (result.status === "success") {
       return reply.status(200).send({
         message: "Success",

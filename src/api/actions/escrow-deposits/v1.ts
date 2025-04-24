@@ -1,6 +1,6 @@
 import { Type } from "@fastify/type-provider-typebox";
 import { getEscrowDepositMessageHash } from "@reservoir0x/relay-protocol-sdk";
-import { Address, Hex, verifyMessage, zeroHash } from "viem";
+import { Address, Hex, verifyMessage } from "viem";
 
 import {
   Endpoint,
@@ -8,9 +8,7 @@ import {
   FastifyRequestTypeBox,
 } from "../../utils";
 import { getSdkChainsConfig } from "../../../common/chains";
-import { db } from "../../../common/db";
-import { saveBalanceLock } from "../../../models/balances";
-import { saveOnchainEntryWithBalanceUpdate } from "../../../models/onchain-entries";
+import { ActionExecutorService } from "../../../services/action-executor";
 
 const Schema = {
   body: Type.Object({
@@ -70,6 +68,7 @@ const Schema = {
       code: Type.Union([
         Type.Literal("INSUFFICIENT_SIGNATURES"),
         Type.Literal("INVALID_SIGNATURE"),
+        Type.Literal("UNKNOWN"),
       ]),
     }),
   },
@@ -115,51 +114,30 @@ export default {
       }
     }
 
-    await db.tx(async (tx) => {
-      // Save the deposit
-      const saveResult = await saveOnchainEntryWithBalanceUpdate(
-        {
-          id: message.onchainId,
-          chainId: message.data.chainId,
-          transactionId: message.data.transactionId,
-          ownerAddress: message.result.depositor,
-          currencyAddress: message.result.currency,
-          balanceDiff: message.result.amount,
-        },
-        tx
-      );
-      if (!saveResult) {
+    const actionExecutor = new ActionExecutorService();
+    const result = await actionExecutor.executeEscrowDeposit(message);
+    if (result.status === "success") {
+      if (result.details === "already-locked") {
+        return reply.status(200).send({
+          message: "Deposit already locked",
+          code: "ALREADY_LOCKED",
+        });
+      } else if (result.details === "already-saved") {
         return reply.status(200).send({
           message: "Deposit already saved",
           code: "ALREADY_SAVED",
         });
+      } else {
+        return reply.status(200).send({
+          message: "Success",
+          code: "SUCCESS",
+        });
       }
-
-      // Lock the balance
-      if (message.result.depositId !== zeroHash) {
-        const lockResult = await saveBalanceLock(
-          {
-            id: message.onchainId,
-            ownerChainId: message.data.chainId,
-            ownerAddress: message.result.depositor,
-            currencyChainId: message.data.chainId,
-            currencyAddress: message.result.currency,
-            amount: message.result.amount,
-          },
-          tx
-        );
-        if (!lockResult) {
-          return reply.status(200).send({
-            message: "Deposit already locked",
-            code: "ALREADY_LOCKED",
-          });
-        }
-      }
-
-      return reply.status(200).send({
-        message: "Success",
-        code: "SUCCESS",
+    } else {
+      return reply.status(400).send({
+        message: "Unknown error",
+        code: "UNKNOWN",
       });
-    });
+    }
   },
 } as Endpoint;

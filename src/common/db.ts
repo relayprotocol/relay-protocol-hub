@@ -12,7 +12,7 @@ pgp.pg.types.setTypeParser(20, function (value) {
 export const db = pgp({
   connectionString: config.postgresUrl,
   keepAlive: true,
-  max: 10,
+  max: 100,
   connectionTimeoutMillis: 10 * 1000,
   query_timeout: 10 * 1000,
   statement_timeout: 10 * 1000,

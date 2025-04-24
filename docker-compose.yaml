@@ -21,16 +21,6 @@ services:
     dns:
       - 8.8.8.8
 
-  rabbitmq:
-    image: rabbitmq:management
-    networks:
-      - local
-    ports:
-      - 5672:5672
-      - 15672:15672
-    dns:
-      - 8.8.8.8
-
 networks:
   local:
     driver: bridge

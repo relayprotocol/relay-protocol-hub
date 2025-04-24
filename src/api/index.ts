@@ -2,10 +2,15 @@ import { FastifyInstance } from "fastify";
 
 import { Endpoint, errorWrapper } from "./utils";
 
-import escrowDepositsV1 from "./actions/escrow-deposits/v1";
-import solverFillV1 from "./actions/solver-fill/v1";
+import actionsEscrowDepositsV1 from "./actions/escrow-deposits/v1";
+import actionsSolverFillV1 from "./actions/solver-fill/v1";
+import actionsSolverRefundV1 from "./actions/solver-refund/v1";
 
-const endpoints = [escrowDepositsV1, solverFillV1] as Endpoint[];
+const endpoints = [
+  actionsEscrowDepositsV1,
+  actionsSolverFillV1,
+  actionsSolverRefundV1,
+] as Endpoint[];
 
 export const setupEndpoints = (app: FastifyInstance) => {
   endpoints.forEach((endpoint) =>
