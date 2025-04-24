@@ -11,16 +11,6 @@ services:
     dns:
       - 8.8.8.8
 
-  redis:
-    image: redis:latest
-    command: sh -c "redis-server --requirepass password"
-    networks:
-      - local
-    ports:
-      - 6379:6379
-    dns:
-      - 8.8.8.8
-
 networks:
   local:
     driver: bridge

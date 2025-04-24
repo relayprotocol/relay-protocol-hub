@@ -1,5 +1,6 @@
 import { describe, expect, it } from "@jest/globals";
 import { EscrowDepositMessage } from "@reservoir0x/relay-protocol-sdk";
+import { zeroHash } from "viem";
 
 import { ActionExecutorService } from "../../src/services/action-executor";
 
@@ -12,7 +13,6 @@ import {
   wait,
 } from "../common/utils";
 import { getBalance } from "../../src/models/balances";
-import { zeroHash } from "viem";
 
 describe("execute-escrow-deposit", () => {
   it("execute the same deposit multiple times", async () => {
