@@ -54,7 +54,7 @@ jobs:
         run: docker compose pull -q
 
       - name: Start Docker Compose
-        run: docker compose up -d
+        run: docker compose up
         env:
           COMPOSE_DOCKER_CLI_BUILD: 1
           DOCKER_BUILDKIT: 1
@@ -63,7 +63,7 @@ jobs:
         run: node ./test/scripts/wait-for-it.js
 
       - name: Check Docker logs
-        run: docker logs $(docker ps -q)
+        run: docker logs relay-protocol-hub-postgres
 
       - name: Run tests
         env:
