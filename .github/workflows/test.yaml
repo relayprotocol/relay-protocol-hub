@@ -65,5 +65,4 @@ jobs:
       - name: Run tests
         env:
           POSTGRES_URL: postgresql://postgres:password@127.0.0.1:5432/postgres?schema=public
-        run: env
-        run: yarn test
+        run: env && yarn test
