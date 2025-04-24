@@ -16,11 +16,14 @@ jobs:
     services:
       postgres:
         image: postgres:latest
-        environment:
-          - POSTGRES_USER=postgres
-          - POSTGRES_PASSWORD=password
-        ports:
-          - 5432:5432
+        env: |
+          POSTGRES_USER=postgres
+          POSTGRES_PASSWORD=password
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
 
     steps:
       - name: Checkout code
@@ -31,8 +34,7 @@ jobs:
         with:
           path: ~/.cache/yarn
           key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-yarn-
+          restore-keys: ${{ runner.os }}-yarn-
         timeout-minutes: 0.5
         continue-on-error: true
 
