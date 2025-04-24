@@ -56,7 +56,7 @@ jobs:
           DOCKER_BUILDKIT: 1
 
       - name: Wait for services
-        run: node run ./test/scripts/wait-for-it.js
+        run: node ./test/scripts/wait-for-it.js
 
       - name: Run tests
         run: yarn test
