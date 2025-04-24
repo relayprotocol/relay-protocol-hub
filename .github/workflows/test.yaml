@@ -59,9 +59,6 @@ jobs:
           COMPOSE_DOCKER_CLI_BUILD: 1
           DOCKER_BUILDKIT: 1
 
-      - name: Wait for services
-        run: node ./test/scripts/wait-for-it.js
-
       - name: Run tests
         env:
           POSTGRES_URL: "postgres://postgres:password@127.0.0.1:5432/postgres?schema=public"
