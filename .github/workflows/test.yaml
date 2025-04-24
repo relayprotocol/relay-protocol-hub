@@ -55,5 +55,8 @@ jobs:
           COMPOSE_DOCKER_CLI_BUILD: 1
           DOCKER_BUILDKIT: 1
 
+      - name: Wait for services
+        run: node run ./scripts/wait-for-it.js
+
       - name: Run tests
         run: yarn test
