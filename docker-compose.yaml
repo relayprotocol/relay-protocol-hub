@@ -4,13 +4,5 @@ services:
     environment:
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=password
-    networks:
-      - local
     ports:
       - 5432:5432
-    dns:
-      - 8.8.8.8
-
-networks:
-  local:
-    driver: bridge
