@@ -1,6 +1,7 @@
 services:
   postgres:
     image: postgres:latest
+    command: -c "max_connections=500"
     environment:
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=password
