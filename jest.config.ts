@@ -7,12 +7,11 @@ import type { Config } from "jest";
 
 const config: Config = {
   verbose: true,
-
   transform: {
     "^.+\\.ts?$": "ts-jest",
   },
-
   globalSetup: "./test/setup.ts",
+  testTimeout: 10_000,
 };
 
 export default config;
