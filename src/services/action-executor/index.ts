@@ -10,6 +10,7 @@ import { internalError } from "../../common/error";
 import {
   Balance,
   getBalanceLock,
+  initializeBalance,
   reallocateBalance,
   saveBalanceLock,
   unlockBalanceLock,
@@ -79,8 +80,7 @@ export class ActionExecutorService {
           }
         }
       })
-      .catch((error) => {
-        console.log("hereeeee", error);
+      .catch(() => {
         if (!result) {
           result = {
             status: "failure",
@@ -136,6 +136,15 @@ export class ActionExecutorService {
           unlockResult
             .map((d) => d.balanceLock!)
             .map(async (balanceLock) => {
+              // Ensure the solver's balance is initialized before reallocating
+              await initializeBalance(
+                message.data.order.solver.chainId,
+                message.data.order.solver.address,
+                balanceLock.currencyChainId,
+                balanceLock.currencyAddress,
+                tx
+              );
+
               const newBalances = await reallocateBalance(
                 {
                   ownerChainId: balanceLock.ownerChainId,
@@ -147,7 +156,8 @@ export class ActionExecutorService {
                   ownerChainId: message.data.order.solver.chainId,
                   ownerAddress: message.data.order.solver.address,
                 },
-                balanceLock.amount
+                balanceLock.amount,
+                tx
               );
 
               return { balanceLock, newBalances };
@@ -176,6 +186,15 @@ export class ActionExecutorService {
         // Reallocate the fees to the recipients
         const reallocateFeesResult = await Promise.all(
           message.data.order.fees.map(async (fee) => {
+            // Ensure the recipient's balance is initialized before reallocating
+            await initializeBalance(
+              fee.recipientChainId,
+              fee.recipientAddress,
+              fee.currencyChainId,
+              fee.currencyAddress,
+              tx
+            );
+
             const newBalances = await reallocateBalance(
               {
                 ownerChainId: message.data.order.solver.chainId,
@@ -192,7 +211,8 @@ export class ActionExecutorService {
                   (BigInt(fee.amount) *
                     BigInt(message.result.totalWeightedInputPaymentBpsDiff)) /
                     10n ** 18n
-              )
+              ),
+              tx
             );
 
             return { fee, newBalances };
@@ -286,7 +306,8 @@ export class ActionExecutorService {
                   ownerChainId: message.data.order.solver.chainId,
                   ownerAddress: message.data.order.solver.address,
                 },
-                balanceLock.amount
+                balanceLock.amount,
+                tx
               );
 
               return { balanceLock, newBalances };

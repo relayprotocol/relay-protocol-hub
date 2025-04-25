@@ -1,5 +1,7 @@
 import { randomBytes } from "crypto";
 
+export const ONE_BILLION = 1_000_000_000;
+
 export const fillArray = <T>(count: number, fn: () => T) =>
   [...new Array(count)].map(fn);
 
@@ -14,3 +16,5 @@ export const randomNumber = (max: number) =>
 
 export const wait = async (ms: number) =>
   new Promise((resolve) => setTimeout(resolve, ms));
+
+export const now = () => Math.floor(Date.now() / 1000);

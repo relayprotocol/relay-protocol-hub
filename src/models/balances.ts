@@ -71,6 +71,61 @@ export const getBalance = async (
   };
 };
 
+export const initializeBalance = async (
+  ownerChainId: number,
+  ownerAddress: string,
+  currencyChainId: number,
+  currencyAddress: string,
+  tx?: ITask<any>
+): Promise<DbEntry<Balance> | undefined> => {
+  const ownerVmType = await getChain(ownerChainId).then(
+    (chain) => chain.vmType
+  );
+  const currencyVmType = await getChain(currencyChainId).then(
+    (chain) => chain.vmType
+  );
+
+  const result = await (tx ?? db).oneOrNone(
+    `
+      INSERT INTO balances (
+        owner_chain_id,
+        owner_address,
+        currency_chain_id,
+        currency_address,
+        available_amount,
+        locked_amount
+      ) VALUES (
+        $/ownerChainId/,
+        $/ownerAddress/,
+        $/currencyChainId/,
+        $/currencyAddress/,
+        0,
+        0
+      ) ON CONFLICT DO NOTHING
+    `,
+    {
+      ownerChainId,
+      ownerAddress: nvAddress(ownerAddress, ownerVmType),
+      currencyChainId,
+      currencyAddress: nvCurrency(currencyAddress, currencyVmType),
+    }
+  );
+  if (!result) {
+    return undefined;
+  }
+
+  return {
+    ownerChainId: result.owner_chain_id,
+    ownerAddress: result.owner_address,
+    currencyChainId: result.currency_chain_id,
+    currencyAddress: result.currency_address,
+    availableAmount: result.available_amount,
+    lockedAmount: result.locked_amount,
+    createdAt: result.created_at,
+    updatedAt: result.updated_at,
+  };
+};
+
 export const getBalanceLock = async (
   balanceLockId: string,
   tx?: ITask<any>
@@ -119,7 +174,7 @@ export const saveBalanceLock = async (
   const ownerVmType = await getChain(balanceLock.ownerChainId).then(
     (chain) => chain.vmType
   );
-  const currenyVmType = await getChain(balanceLock.currencyChainId).then(
+  const currencyVmType = await getChain(balanceLock.currencyChainId).then(
     (chain) => chain.vmType
   );
 
@@ -157,11 +212,11 @@ export const saveBalanceLock = async (
       RETURNING *
     `,
     {
-      id: nvBytes(balanceLock.id),
+      id: nvBytes(balanceLock.id, 32),
       ownerChainId: balanceLock.ownerChainId,
       ownerAddress: nvAddress(balanceLock.ownerAddress, ownerVmType),
       currencyChainId: balanceLock.currencyChainId,
-      currencyAddress: nvCurrency(balanceLock.currencyAddress, currenyVmType),
+      currencyAddress: nvCurrency(balanceLock.currencyAddress, currencyVmType),
       amount: balanceLock.amount,
       expiration: balanceLock.expiration ?? null,
     }

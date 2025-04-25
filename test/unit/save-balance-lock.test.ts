@@ -1,17 +1,23 @@
 import { describe, expect, it } from "@jest/globals";
 
 import {
-  saveOnchainEntryWithBalanceUpdate,
-  OnchainEntry,
-} from "../../src/models/onchain-entries";
-import {
   BalanceLock,
   getBalance,
   saveBalanceLock,
 } from "../../src/models/balances";
+import {
+  saveOnchainEntryWithBalanceUpdate,
+  OnchainEntry,
+} from "../../src/models/onchain-entries";
 
 import { chains } from "../common/chains";
-import { fillArray, iter, randomHex, randomNumber } from "../common/utils";
+import {
+  fillArray,
+  iter,
+  ONE_BILLION,
+  randomHex,
+  randomNumber,
+} from "../common/utils";
 
 describe("save-balance-lock", () => {
   it("random runs", async () => {
@@ -32,16 +38,19 @@ describe("save-balance-lock", () => {
       const ownerAddress = ownerAddresses[randomNumber(ownerAddresses.length)];
       const currencyAddress =
         currencyAddresses[randomNumber(currencyAddresses.length)];
-      const balanceDiff = randomNumber(1e10);
+      const balanceDiff = randomNumber(ONE_BILLION);
 
-      const key = `${chainId}-${ownerAddress}-${currencyAddress}`;
-      if (!inMemoryBalances[key]) {
-        inMemoryBalances[key] = {
-          availableAmount: 0,
-          lockedAmount: 0,
-        };
+      // Update in-memory balances
+      {
+        const key = `${chainId}-${ownerAddress}-${currencyAddress}`;
+        if (!inMemoryBalances[key]) {
+          inMemoryBalances[key] = {
+            availableAmount: 0,
+            lockedAmount: 0,
+          };
+        }
+        inMemoryBalances[key].availableAmount += balanceDiff;
       }
-      inMemoryBalances[key].availableAmount += balanceDiff;
 
       const onchainEntry: OnchainEntry = {
         id: randomHex(32),
@@ -63,8 +72,12 @@ describe("save-balance-lock", () => {
           const lockedAmount = Math.floor(
             inMemoryBalances[key].availableAmount / (1 + randomNumber(3))
           );
-          inMemoryBalances[key].availableAmount -= lockedAmount;
-          inMemoryBalances[key].lockedAmount += lockedAmount;
+
+          // Update in-memory balances
+          {
+            inMemoryBalances[key].availableAmount -= lockedAmount;
+            inMemoryBalances[key].lockedAmount += lockedAmount;
+          }
 
           const balanceLock: BalanceLock = {
             id: randomHex(32),
@@ -81,7 +94,7 @@ describe("save-balance-lock", () => {
       })
     );
 
-    // Ensure the database balances match the in-memory balances
+    // Ensure database balances match in-memory balances
     await Promise.all(
       Object.keys(inMemoryBalances).map(async (key) => {
         const [chainId, ownerAddress, currencyAddress] = key.split("-");

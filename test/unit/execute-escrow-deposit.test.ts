@@ -2,17 +2,17 @@ import { describe, expect, it } from "@jest/globals";
 import { EscrowDepositMessage } from "@reservoir0x/relay-protocol-sdk";
 import { zeroHash } from "viem";
 
+import { getBalance } from "../../src/models/balances";
 import { ActionExecutorService } from "../../src/services/action-executor";
 
 import { chains } from "../common/chains";
 import {
   fillArray,
   iter,
+  ONE_BILLION,
   randomHex,
   randomNumber,
-  wait,
 } from "../common/utils";
-import { getBalance } from "../../src/models/balances";
 
 describe("execute-escrow-deposit", () => {
   it("execute the same deposit multiple times", async () => {
@@ -27,14 +27,11 @@ describe("execute-escrow-deposit", () => {
         escrow: randomHex(20),
         depositor: randomHex(20),
         currency: randomHex(20),
-        amount: randomNumber(1000000).toString(),
+        amount: randomNumber(ONE_BILLION).toString(),
       },
     };
 
     const results = await iter(100, async () => {
-      // Random delay to avoid overloading the database
-      await wait(randomNumber(1000));
-
       const actionExecutor = new ActionExecutorService();
       return actionExecutor.executeEscrowDeposit(message);
     });
@@ -68,10 +65,7 @@ describe("execute-escrow-deposit", () => {
         lockedAmount: number;
       }
     > = {};
-    await iter(200, async () => {
-      // Random delay to avoid overloading the database
-      await wait(randomNumber(1000));
-
+    await iter(500, async () => {
       const message: EscrowDepositMessage = {
         onchainId: randomHex(32),
         data: {
@@ -83,7 +77,7 @@ describe("execute-escrow-deposit", () => {
           escrow: randomHex(20),
           depositor: ownerAddresses[randomNumber(ownerAddresses.length)],
           currency: currencyAddresses[randomNumber(currencyAddresses.length)],
-          amount: randomNumber(1000000).toString(),
+          amount: randomNumber(ONE_BILLION).toString(),
         },
       };
 
@@ -91,21 +85,24 @@ describe("execute-escrow-deposit", () => {
       const result = await actionExecutor.executeEscrowDeposit(message);
       expect(result.status).toEqual("success");
 
-      const key = `${chainId}-${message.result.depositor}-${message.result.currency}`;
-      if (!inMemoryBalances[key]) {
-        inMemoryBalances[key] = {
-          availableAmount: 0,
-          lockedAmount: 0,
-        };
+      // Update in-memory balances
+      {
+        const key = `${chainId}-${message.result.depositor}-${message.result.currency}`;
+        if (!inMemoryBalances[key]) {
+          inMemoryBalances[key] = {
+            availableAmount: 0,
+            lockedAmount: 0,
+          };
+        }
+        inMemoryBalances[key][
+          message.result.depositId === zeroHash
+            ? "availableAmount"
+            : "lockedAmount"
+        ] += Number(message.result.amount);
       }
-      inMemoryBalances[key][
-        message.result.depositId === zeroHash
-          ? "availableAmount"
-          : "lockedAmount"
-      ] += Number(message.result.amount);
     });
 
-    // Ensure the database balances match the in-memory balances
+    // Ensure database balances match in-memory balances
     await Promise.all(
       Object.keys(inMemoryBalances).map(async (key) => {
         const [chainId, ownerAddress, currencyAddress] = key.split("-");

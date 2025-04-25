@@ -1,13 +1,19 @@
 import { describe, expect, it } from "@jest/globals";
 
+import { getBalance } from "../../src/models/balances";
 import {
   saveOnchainEntryWithBalanceUpdate,
   OnchainEntry,
 } from "../../src/models/onchain-entries";
-import { getBalance } from "../../src/models/balances";
 
 import { chains } from "../common/chains";
-import { fillArray, iter, randomHex, randomNumber } from "../common/utils";
+import {
+  fillArray,
+  iter,
+  ONE_BILLION,
+  randomHex,
+  randomNumber,
+} from "../common/utils";
 
 describe("save-onchain-entry-with-balance-update", () => {
   it("random runs", async () => {
@@ -22,13 +28,16 @@ describe("save-onchain-entry-with-balance-update", () => {
       const ownerAddress = ownerAddresses[randomNumber(ownerAddresses.length)];
       const currencyAddress =
         currencyAddresses[randomNumber(currencyAddresses.length)];
-      const balanceDiff = randomNumber(1e10);
+      const balanceDiff = randomNumber(ONE_BILLION);
 
-      const key = `${chainId}-${ownerAddress}-${currencyAddress}`;
-      if (!inMemoryBalances[key]) {
-        inMemoryBalances[key] = 0;
+      // Update in-memory balances
+      {
+        const key = `${chainId}-${ownerAddress}-${currencyAddress}`;
+        if (!inMemoryBalances[key]) {
+          inMemoryBalances[key] = 0;
+        }
+        inMemoryBalances[key] = inMemoryBalances[key] + balanceDiff;
       }
-      inMemoryBalances[key] = inMemoryBalances[key] + balanceDiff;
 
       const onchainEntry: OnchainEntry = {
         id: randomHex(32),
@@ -45,7 +54,7 @@ describe("save-onchain-entry-with-balance-update", () => {
       );
     });
 
-    // Ensure the database balances match the in-memory balances
+    // Ensure database balances match in-memory balances
     await Promise.all(
       Object.keys(inMemoryBalances).map(async (key) => {
         const [chainId, ownerAddress, currencyAddress] = key.split("-");
