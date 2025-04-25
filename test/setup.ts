@@ -1,6 +1,3 @@
-// Initialize environment variables
-import "./env";
-
 import { db } from "../src/common/db";
 
 import { chains } from "./common/chains";

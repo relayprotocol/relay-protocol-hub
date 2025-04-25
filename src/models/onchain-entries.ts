@@ -108,7 +108,7 @@ export const saveOnchainEntryWithBalanceUpdate = async (
       RETURNING *
     `,
     {
-      id: nvBytes(onchainEntry.id),
+      id: nvBytes(onchainEntry.id, 32),
       chainId: onchainEntry.chainId,
       transactionId: nvTransactionId(onchainEntry.transactionId, vmType),
       ownerAddress: nvAddress(onchainEntry.ownerAddress, vmType),

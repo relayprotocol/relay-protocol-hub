@@ -8,20 +8,15 @@ export type DbEntry<T> = T & {
 };
 
 // Normalize and validate bytes
-export const nvBytes = (bytes: string, requiredLengthInBytes?: number) => {
-  if (requiredLengthInBytes && requiredLengthInBytes % 2 !== 0) {
+export const nvBytes = (bytes: string, requiredLengthInBytes: number) => {
+  if (requiredLengthInBytes % 2 !== 0) {
     throw internalError("The required length must be an even number");
   }
 
   let result = BigInt(bytes).toString(16).toLowerCase();
 
-  // Byte values should have an even length
-  if (result.length % 2 !== 0) {
-    result = "0" + result;
-  }
-
   // Enforce the required length
-  if (requiredLengthInBytes && result.length < requiredLengthInBytes * 2) {
+  if (result.length < requiredLengthInBytes * 2) {
     result = "0".repeat(requiredLengthInBytes * 2 - result.length) + result;
   }
 
