@@ -1,26 +1,14 @@
 services:
   postgres:
     image: postgres:latest
+    command: -c "max_connections=500"
     environment:
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=password
-    networks:
-      - local
+    healthcheck:
+      test: ["CMD", "pg_isready"]
+      interval: 3s
+      timeout: 5s
+      retries: 5
     ports:
       - 5432:5432
-    dns:
-      - 8.8.8.8
-
-  redis:
-    image: redis:latest
-    command: sh -c "redis-server --requirepass password"
-    networks:
-      - local
-    ports:
-      - 6379:6379
-    dns:
-      - 8.8.8.8
-
-networks:
-  local:
-    driver: bridge

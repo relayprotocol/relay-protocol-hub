@@ -1,22 +1,19 @@
 {
-  "name": "relay-protocol-allocator",
+  "name": "relay-protocol-hub",
   "author": "Uneven Labs",
   "license": "MIT",
   "scripts": {
     "build": "tsc -b",
     "migrate": "node-pg-migrate -m ./migrations -d POSTGRES_URL --no-check-order",
     "start": "node ./dist/index.js",
-    "test": "POSTGRES_URL=postgresql://postgres:password@127.0.0.1:5432/postgres?schema=public yarn migrate up && jest"
+    "test": "yarn migrate up && jest"
   },
   "dependencies": {
     "@fastify/type-provider-typebox": "^5.1.0",
     "@reservoir0x/relay-protocol-sdk": "^0.0.12",
     "@sinclair/typebox": "^0.34.14",
-    "amqp-connection-manager": "^4.1.14",
-    "amqplib": "^0.10.5",
     "axios": "^1.8.3",
     "fastify": "^5.2.1",
-    "ioredis": "^5.4.2",
     "node-cron": "^3.0.3",
     "node-pg-migrate": "^7.9.0",
     "pg": "^8.13.1",
@@ -28,7 +25,6 @@
   },
   "devDependencies": {
     "@jest/globals": "^29.7.0",
-    "@types/amqplib": "^0.10.6",
     "@types/node": "^22.10.6",
     "@types/node-cron": "^3.0.11",
     "@types/ws": "^8.18.0",
