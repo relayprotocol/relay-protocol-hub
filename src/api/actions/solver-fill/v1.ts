@@ -62,7 +62,6 @@ const Schema = {
                 currencyChainId: Type.Number(),
                 currencyAddress: Type.String(),
                 amount: Type.String(),
-                weight: Type.String(),
               })
             ),
           },
