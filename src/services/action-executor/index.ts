@@ -38,7 +38,7 @@ export class ActionExecutorService {
         // Save the deposit
         const saveResult = await saveOnchainEntryWithBalanceUpdate(
           {
-            id: message.onchainId,
+            id: message.result.onchainId,
             chainId: message.data.chainId,
             transactionId: message.data.transactionId,
             ownerAddress: message.result.depositor,
@@ -61,7 +61,7 @@ export class ActionExecutorService {
           // Lock the balance
           const lockResult = await saveBalanceLock(
             {
-              id: message.onchainId,
+              id: message.result.onchainId,
               ownerChainId: message.data.chainId,
               ownerAddress: message.result.depositor,
               currencyChainId: message.data.chainId,

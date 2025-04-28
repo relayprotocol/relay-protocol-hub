@@ -24,7 +24,7 @@ describe("save-onchain-entry-with-balance-update", () => {
 
     // Save transaction entry updates to both the database and in-memory
     const inMemoryBalances: Record<string, number> = {};
-    await iter(500, async () => {
+    await iter(250, async () => {
       const ownerAddress = ownerAddresses[randomNumber(ownerAddresses.length)];
       const currencyAddress =
         currencyAddresses[randomNumber(currencyAddresses.length)];

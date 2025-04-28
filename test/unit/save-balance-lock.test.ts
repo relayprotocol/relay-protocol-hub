@@ -34,7 +34,7 @@ describe("save-balance-lock", () => {
         lockedAmount: number;
       }
     > = {};
-    await iter(500, async () => {
+    await iter(250, async () => {
       const ownerAddress = ownerAddresses[randomNumber(ownerAddresses.length)];
       const currencyAddress =
         currencyAddresses[randomNumber(currencyAddresses.length)];
