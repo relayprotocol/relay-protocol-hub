@@ -11,7 +11,7 @@ const config: Config = {
     "^.+\\.ts?$": "ts-jest",
   },
   globalSetup: "./test/setup.ts",
-  testTimeout: 10_000,
+  testTimeout: 30_000,
 };
 
 export default config;

@@ -1,5 +1,8 @@
 import { Type } from "@fastify/type-provider-typebox";
-import { getSolverRefundMessageHash } from "@reservoir0x/relay-protocol-sdk";
+import {
+  getSolverRefundMessageId,
+  SolverRefundStatus,
+} from "@reservoir0x/relay-protocol-sdk";
 import { Address, Hex, verifyMessage } from "viem";
 
 import {
@@ -100,8 +103,11 @@ const Schema = {
         ),
       }),
       result: Type.Object({
-        validated: Type.Boolean({
-          description: "The result of the fill verification",
+        orderId: Type.String({
+          description: "The id of the attested order",
+        }),
+        status: Type.Number({
+          description: "The status of the solver refund",
         }),
         totalWeightedInputPaymentBpsDiff: Type.String({
           description:
@@ -163,7 +169,7 @@ export default {
     }
 
     const message = req.body.message;
-    const messageHash = getSolverRefundMessageHash(
+    const messageId = getSolverRefundMessageId(
       message,
       await getSdkChainsConfig()
     );
@@ -174,7 +180,7 @@ export default {
       const isSignatureValid = await verifyMessage({
         address: oracleAddress as Address,
         message: {
-          raw: messageHash,
+          raw: messageId,
         },
         signature: signature as Hex,
       });
@@ -186,7 +192,7 @@ export default {
       }
     }
 
-    if (!message.result.validated) {
+    if (message.result.status !== SolverRefundStatus.SUCCESSFUL) {
       return reply.status(400).send({
         message: "Invalid refund",
         code: "INVALID_REFUND",

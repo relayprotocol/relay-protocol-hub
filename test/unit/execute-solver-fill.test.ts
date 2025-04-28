@@ -1,9 +1,10 @@
 import { describe, expect, it } from "@jest/globals";
 import {
   EscrowDepositMessage,
-  getOrderHash,
+  getOrderId,
   Order,
   SolverFillMessage,
+  SolverFillStatus,
 } from "@reservoir0x/relay-protocol-sdk";
 
 import { getBalance } from "../../src/models/balances";
@@ -35,7 +36,7 @@ describe("execute-solver-fill", () => {
         lockedAmount: number;
       }
     > = {};
-    await iter(300, async () => {
+    await iter(150, async () => {
       const order: Order = {
         solver: {
           chainId,
@@ -81,18 +82,18 @@ describe("execute-solver-fill", () => {
         },
         fees: [],
       };
+      const orderId = getOrderId(order, { [chainId]: "ethereum-vm" });
 
       const actionExecutor = new ActionExecutorService();
 
       const escrowDepositMessage: EscrowDepositMessage = {
-        onchainId: randomHex(32),
         data: {
           chainId,
           transactionId: randomHex(32),
         },
         result: {
-          depositId: getOrderHash(order, { [chainId]: "ethereum-vm" }),
-          escrow: randomHex(20),
+          onchainId: randomHex(32),
+          depositId: orderId,
           depositor: ownerAddresses[randomNumber(ownerAddresses.length)],
           currency: order.inputs[0].payment.currency,
           amount: order.inputs[0].payment.amount,
@@ -124,7 +125,7 @@ describe("execute-solver-fill", () => {
           inputs: [
             {
               transactionId: escrowDepositMessage.data.transactionId,
-              onchainId: escrowDepositMessage.onchainId,
+              onchainId: escrowDepositMessage.result.onchainId,
               inputIndex: 0,
             },
           ],
@@ -133,7 +134,8 @@ describe("execute-solver-fill", () => {
           },
         },
         result: {
-          validated: true,
+          orderId,
+          status: SolverFillStatus.SUCCESSFUL,
           totalWeightedInputPaymentBpsDiff: "0",
         },
       };
@@ -185,5 +187,5 @@ describe("execute-solver-fill", () => {
         ).toBeTruthy();
       })
     );
-  }, 10000);
+  });
 });

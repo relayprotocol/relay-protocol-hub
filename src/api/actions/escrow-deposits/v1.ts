@@ -1,5 +1,5 @@
 import { Type } from "@fastify/type-provider-typebox";
-import { getEscrowDepositMessageHash } from "@reservoir0x/relay-protocol-sdk";
+import { getEscrowDepositMessageId } from "@reservoir0x/relay-protocol-sdk";
 import { Address, Hex, verifyMessage } from "viem";
 
 import {
@@ -13,9 +13,6 @@ import { ActionExecutorService } from "../../../services/action-executor";
 const Schema = {
   body: Type.Object({
     message: Type.Object({
-      onchainId: Type.String({
-        description: "The onchain id of the deposit",
-      }),
       data: Type.Object({
         chainId: Type.Number({
           description: "The chain id of the attested transaction",
@@ -25,11 +22,11 @@ const Schema = {
         }),
       }),
       result: Type.Object({
+        onchainId: Type.String({
+          description: "The onchain id of the deposit",
+        }),
         depositId: Type.String({
           description: "The id associated to the deposit",
-        }),
-        escrow: Type.String({
-          description: "The escrow address the deposit occured on",
         }),
         depositor: Type.String({
           description: "The address of the depositor",
@@ -91,7 +88,7 @@ export default {
     }
 
     const message = req.body.message;
-    const messageHash = getEscrowDepositMessageHash(
+    const messageId = getEscrowDepositMessageId(
       message,
       await getSdkChainsConfig()
     );
@@ -102,7 +99,7 @@ export default {
       const isSignatureValid = await verifyMessage({
         address: oracleAddress as Address,
         message: {
-          raw: messageHash,
+          raw: messageId,
         },
         signature: signature as Hex,
       });

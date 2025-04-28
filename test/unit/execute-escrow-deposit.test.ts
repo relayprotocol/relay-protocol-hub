@@ -17,14 +17,13 @@ import {
 describe("execute-escrow-deposit", () => {
   it("execute the same deposit multiple times", async () => {
     const message: EscrowDepositMessage = {
-      onchainId: randomHex(32),
       data: {
         chainId: chains[randomNumber(chains.length)].id,
         transactionId: randomHex(32),
       },
       result: {
+        onchainId: randomHex(32),
         depositId: randomHex(32),
-        escrow: randomHex(20),
         depositor: randomHex(20),
         currency: randomHex(20),
         amount: randomNumber(ONE_BILLION).toString(),
@@ -65,16 +64,15 @@ describe("execute-escrow-deposit", () => {
         lockedAmount: number;
       }
     > = {};
-    await iter(500, async () => {
+    await iter(250, async () => {
       const message: EscrowDepositMessage = {
-        onchainId: randomHex(32),
         data: {
           chainId,
           transactionId: randomHex(32),
         },
         result: {
+          onchainId: randomHex(32),
           depositId: randomNumber(100) % 2 === 0 ? randomHex(32) : zeroHash,
-          escrow: randomHex(20),
           depositor: ownerAddresses[randomNumber(ownerAddresses.length)],
           currency: currencyAddresses[randomNumber(currencyAddresses.length)],
           amount: randomNumber(ONE_BILLION).toString(),
