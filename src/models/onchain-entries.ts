@@ -22,9 +22,11 @@ export type OnchainEntry = {
 
 export const getOnchainEntry = async (
   id: string,
-  tx?: ITask<any>
+  options?: {
+    tx?: ITask<any>;
+  }
 ): Promise<DbEntry<OnchainEntry> | undefined> => {
-  const result = await (tx ?? db).oneOrNone(
+  const result = await (options?.tx ?? db).oneOrNone(
     `
       SELECT
         onchain_entries.id,
@@ -60,13 +62,15 @@ export const getOnchainEntry = async (
 
 export const saveOnchainEntryWithBalanceUpdate = async (
   onchainEntry: OnchainEntry,
-  tx?: ITask<any>
+  options?: {
+    tx?: ITask<any>;
+  }
 ): Promise<DbEntry<Balance> | undefined> => {
   const vmType = await getChain(onchainEntry.chainId).then(
     (chain) => chain.vmType
   );
 
-  const result = await (tx ?? db).oneOrNone(
+  const result = await (options?.tx ?? db).oneOrNone(
     `
       WITH x AS (
         INSERT INTO onchain_entries (

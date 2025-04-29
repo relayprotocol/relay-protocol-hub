@@ -1,5 +1,6 @@
 import {
   EscrowDepositMessage,
+  EscrowWithdrawalMessage,
   SolverFillMessage,
   SolverRefundMessage,
 } from "@reservoir0x/relay-protocol-sdk";
@@ -45,7 +46,7 @@ export class ActionExecutorService {
             currencyAddress: message.result.currency,
             balanceDiff: message.result.amount,
           },
-          tx
+          { tx }
         );
         // Verify the save result
         if (!saveResult) {
@@ -68,7 +69,7 @@ export class ActionExecutorService {
               currencyAddress: message.result.currency,
               amount: message.result.amount,
             },
-            tx
+            { tx }
           );
           // Verify the lock result
           if (!lockResult) {
@@ -78,6 +79,57 @@ export class ActionExecutorService {
             };
             return;
           }
+        }
+      })
+      .catch(() => {
+        if (!result) {
+          result = {
+            status: "failure",
+            details: "unknown",
+          };
+        }
+      });
+
+    if (result) {
+      return result;
+    }
+
+    return {
+      status: "success",
+      details: "success",
+    };
+  }
+
+  public async executeEscrowWithdrawal(
+    message: EscrowWithdrawalMessage
+  ): Promise<ExecutionResult<"success", "already-unlocked" | "unknown">> {
+    let result:
+      | Awaited<ReturnType<typeof this.executeEscrowWithdrawal>>
+      | undefined;
+
+    // Very important to guarantee atomic execution
+    await db
+      .tx(async (tx) => {
+        // Step 1:
+        // Unlock and reduce the balance
+        const unlockResult = await (async () => {
+          const balanceLock = await getBalanceLock(
+            message.result.withdrawalId,
+            { tx }
+          );
+          const newBalance = await unlockBalanceLock(
+            message.result.withdrawalId,
+            { tx, skipAvailableBalanceAdjustment: true }
+          );
+          return { balanceLock, newBalance };
+        })();
+        // Verify the unlock result
+        if (!unlockResult.balanceLock || !unlockResult.newBalance) {
+          result = {
+            status: "failure",
+            details: "already-unlocked",
+          };
+          throw internalError(result.details);
         }
       })
       .catch(() => {
@@ -116,8 +168,8 @@ export class ActionExecutorService {
         // Unlock all relevant balance locks
         const unlockResult = await Promise.all(
           message.data.inputs.map(async ({ onchainId }) => {
-            const balanceLock = await getBalanceLock(onchainId, tx);
-            const newBalance = await unlockBalanceLock(onchainId, tx);
+            const balanceLock = await getBalanceLock(onchainId, { tx });
+            const newBalance = await unlockBalanceLock(onchainId, { tx });
             return { balanceLock, newBalance };
           })
         );
@@ -142,7 +194,7 @@ export class ActionExecutorService {
                 message.data.order.solver.address,
                 balanceLock.currencyChainId,
                 balanceLock.currencyAddress,
-                tx
+                { tx }
               );
 
               const newBalances = await reallocateBalance(
@@ -157,7 +209,7 @@ export class ActionExecutorService {
                   ownerAddress: message.data.order.solver.address,
                 },
                 balanceLock.amount,
-                tx
+                { tx }
               );
 
               return { balanceLock, newBalances };
@@ -192,7 +244,7 @@ export class ActionExecutorService {
               fee.recipientAddress,
               fee.currencyChainId,
               fee.currencyAddress,
-              tx
+              { tx }
             );
 
             const newBalances = await reallocateBalance(
@@ -212,7 +264,7 @@ export class ActionExecutorService {
                     BigInt(message.result.totalWeightedInputPaymentBpsDiff)) /
                     10n ** 18n
               ),
-              tx
+              { tx }
             );
 
             return { fee, newBalances };
@@ -275,8 +327,8 @@ export class ActionExecutorService {
         // Unlock all relevant balance locks
         const unlockResult = await Promise.all(
           message.data.inputs.map(async ({ onchainId }) => {
-            const balanceLock = await getBalanceLock(onchainId, tx);
-            const newBalance = await unlockBalanceLock(onchainId, tx);
+            const balanceLock = await getBalanceLock(onchainId, { tx });
+            const newBalance = await unlockBalanceLock(onchainId, { tx });
             return { balanceLock, newBalance };
           })
         );
@@ -295,6 +347,15 @@ export class ActionExecutorService {
           unlockResult
             .map((d) => d.balanceLock!)
             .map(async (balanceLock) => {
+              // Ensure the solver's balance is initialized before reallocating
+              await initializeBalance(
+                message.data.order.solver.chainId,
+                message.data.order.solver.address,
+                balanceLock.currencyChainId,
+                balanceLock.currencyAddress,
+                { tx }
+              );
+
               const newBalances = await reallocateBalance(
                 {
                   ownerChainId: balanceLock.ownerChainId,
@@ -307,7 +368,7 @@ export class ActionExecutorService {
                   ownerAddress: message.data.order.solver.address,
                 },
                 balanceLock.amount,
-                tx
+                { tx }
               );
 
               return { balanceLock, newBalances };

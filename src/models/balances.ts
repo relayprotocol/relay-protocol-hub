@@ -29,9 +29,11 @@ export const getBalance = async (
   ownerAddress: string,
   currencyChainId: number,
   currencyAddress: string,
-  tx?: ITask<any>
+  options?: {
+    tx?: ITask<any>;
+  }
 ): Promise<DbEntry<Balance> | undefined> => {
-  const result = await (tx ?? db).oneOrNone(
+  const result = await (options?.tx ?? db).oneOrNone(
     `
       SELECT
         balances.owner_chain_id,
@@ -76,7 +78,9 @@ export const initializeBalance = async (
   ownerAddress: string,
   currencyChainId: number,
   currencyAddress: string,
-  tx?: ITask<any>
+  options?: {
+    tx?: ITask<any>;
+  }
 ): Promise<DbEntry<Balance> | undefined> => {
   const ownerVmType = await getChain(ownerChainId).then(
     (chain) => chain.vmType
@@ -85,7 +89,7 @@ export const initializeBalance = async (
     (chain) => chain.vmType
   );
 
-  const result = await (tx ?? db).oneOrNone(
+  const result = await (options?.tx ?? db).oneOrNone(
     `
       INSERT INTO balances (
         owner_chain_id,
@@ -128,9 +132,11 @@ export const initializeBalance = async (
 
 export const getBalanceLock = async (
   balanceLockId: string,
-  tx?: ITask<any>
+  options?: {
+    tx?: ITask<any>;
+  }
 ): Promise<DbEntry<BalanceLock> | undefined> => {
-  const result = await (tx ?? db).oneOrNone(
+  const result = await (options?.tx ?? db).oneOrNone(
     `
       SELECT
         balance_locks.id,
@@ -169,7 +175,9 @@ export const getBalanceLock = async (
 
 export const saveBalanceLock = async (
   balanceLock: BalanceLock,
-  tx?: ITask<any>
+  options?: {
+    tx?: ITask<any>;
+  }
 ): Promise<DbEntry<Balance> | undefined> => {
   const ownerVmType = await getChain(balanceLock.ownerChainId).then(
     (chain) => chain.vmType
@@ -178,7 +186,7 @@ export const saveBalanceLock = async (
     (chain) => chain.vmType
   );
 
-  const result = await (tx ?? db).oneOrNone(
+  const result = await (options?.tx ?? db).oneOrNone(
     `
       WITH x AS (
         INSERT INTO balance_locks (
@@ -239,9 +247,15 @@ export const saveBalanceLock = async (
 
 export const unlockBalanceLock = async (
   balanceLockId: string,
-  tx?: ITask<any>
+  options?: {
+    // When set, this results in the total balance being reduced,
+    // otherwise the total balance stays the same, while only the
+    // available / locked ratio changes.
+    skipAvailableBalanceAdjustment?: boolean;
+    tx?: ITask<any>;
+  }
 ): Promise<DbEntry<Balance> | undefined> => {
-  const result = await (tx ?? db).oneOrNone(
+  const result = await (options?.tx ?? db).oneOrNone(
     `
       WITH
         x AS (
@@ -258,7 +272,11 @@ export const unlockBalanceLock = async (
             balance_locks.amount
         )
         UPDATE balances SET
-          available_amount = balances.available_amount + x.amount,
+          ${
+            options?.skipAvailableBalanceAdjustment
+              ? ""
+              : "available_amount = balances.available_amount + x.amount,"
+          }
           locked_amount = balances.locked_amount - x.amount,
           updated_at = now()
         FROM x
@@ -295,7 +313,9 @@ export const reallocateBalance = async (
   >,
   to: Pick<Balance, "ownerChainId" | "ownerAddress">,
   amount: string,
-  tx?: ITask<any>
+  options?: {
+    tx?: ITask<any>;
+  }
 ): Promise<DbEntry<Balance>[]> => {
   const fromOwnerVmType = await getChain(from.ownerChainId).then(
     (chain) => chain.vmType
@@ -307,7 +327,7 @@ export const reallocateBalance = async (
     (chain) => chain.vmType
   );
 
-  const results = await (tx ?? db).manyOrNone(
+  const results = await (options?.tx ?? db).manyOrNone(
     `
       WITH
         x(owner_chain_id, owner_address, currency_chain_id, currency_address, balance_diff) AS (
