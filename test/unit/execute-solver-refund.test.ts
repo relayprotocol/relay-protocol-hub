@@ -3,8 +3,8 @@ import {
   EscrowDepositMessage,
   getOrderId,
   Order,
-  SolverFillMessage,
-  SolverFillStatus,
+  SolverRefundMessage,
+  SolverRefundStatus,
 } from "@reservoir0x/relay-protocol-sdk";
 
 import { getBalance } from "../../src/models/balances";
@@ -20,7 +20,7 @@ import {
   randomNumber,
 } from "../common/utils";
 
-describe("execute-solver-fill", () => {
+describe("execute-solver-refund", () => {
   it("random runs with single input order", async () => {
     const chainId = chains[randomNumber(chains.length)].id;
 
@@ -37,10 +37,6 @@ describe("execute-solver-fill", () => {
       }
     > = {};
     await iterNoConcurrency(150, async () => {
-      const inputPaymentCurrency =
-        currencyAddresses[randomNumber(currencyAddresses.length)];
-      const inputPaymentAmount = randomNumber(ONE_BILLION).toString();
-
       const order: Order = {
         solver: {
           chainId,
@@ -51,8 +47,9 @@ describe("execute-solver-fill", () => {
           {
             payment: {
               chainId,
-              currency: inputPaymentCurrency,
-              amount: inputPaymentAmount,
+              currency:
+                currencyAddresses[randomNumber(currencyAddresses.length)],
+              amount: randomNumber(ONE_BILLION).toString(),
               weight: "1",
             },
             refunds: [
@@ -92,10 +89,9 @@ describe("execute-solver-fill", () => {
                   recipientAddress:
                     ownerAddresses[randomNumber(ownerAddresses.length)],
                   currencyChainId: chainId,
-                  currencyAddress: inputPaymentCurrency,
-                  amount: (
-                    1 + randomNumber(Number(inputPaymentAmount) / 2)
-                  ).toString(),
+                  currencyAddress:
+                    currencyAddresses[randomNumber(currencyAddresses.length)],
+                  amount: randomNumber(ONE_BILLION).toString(),
                 },
               ],
       };
@@ -135,7 +131,7 @@ describe("execute-solver-fill", () => {
         );
       }
 
-      const solverFillMessage: SolverFillMessage = {
+      const solverRefundMessage: SolverRefundMessage = {
         data: {
           order,
           orderSignature: randomHex(64),
@@ -146,20 +142,24 @@ describe("execute-solver-fill", () => {
               inputIndex: 0,
             },
           ],
-          fill: {
-            transactionId: randomHex(32),
-          },
+          refunds: [
+            {
+              transactionId: randomHex(32),
+              inputIndex: 0,
+              refundIndex: 0,
+            },
+          ],
         },
         result: {
           orderId,
-          status: SolverFillStatus.SUCCESSFUL,
+          status: SolverRefundStatus.SUCCESSFUL,
           totalWeightedInputPaymentBpsDiff: "0",
         },
       };
-      const solverFillResult = await actionExecutor.executeSolverFill(
-        solverFillMessage
+      const solverRefundResult = await actionExecutor.executeSolverRefund(
+        solverRefundMessage
       );
-      expect(solverFillResult.status).toEqual("success");
+      expect(solverRefundResult.status).toEqual("success");
 
       // Update in-memory balances
       {
@@ -176,19 +176,9 @@ describe("execute-solver-fill", () => {
             lockedAmount: 0,
           };
         }
-        inMemoryBalances[key].availableAmount +=
-          Number(escrowDepositMessage.result.amount) -
-          Number(order.fees[0]?.amount ?? 0);
-      }
-      if (order.fees.length) {
-        const key = `${chainId}-${order.fees[0].recipientAddress}-${escrowDepositMessage.result.currency}`;
-        if (!inMemoryBalances[key]) {
-          inMemoryBalances[key] = {
-            availableAmount: 0,
-            lockedAmount: 0,
-          };
-        }
-        inMemoryBalances[key].availableAmount += Number(order.fees[0].amount);
+        inMemoryBalances[key].availableAmount += Number(
+          escrowDepositMessage.result.amount
+        );
       }
     });
 
