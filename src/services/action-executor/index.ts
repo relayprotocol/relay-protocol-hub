@@ -260,9 +260,9 @@ export class ActionExecutorService {
             // Ensure the recipient's balance is initialized before reallocating
             await initializeBalance(
               fee.recipientChainId,
-              fee.recipientAddress,
+              fee.recipient,
               fee.currencyChainId,
-              fee.currencyAddress,
+              fee.currency,
               { tx }
             );
 
@@ -271,11 +271,11 @@ export class ActionExecutorService {
                 ownerChainId: message.data.order.solver.chainId,
                 ownerAddress: message.data.order.solver.address,
                 currencyChainId: fee.currencyChainId,
-                currencyAddress: fee.currencyAddress,
+                currencyAddress: fee.currency,
               },
               {
                 ownerChainId: fee.recipientChainId,
-                ownerAddress: fee.recipientAddress,
+                ownerAddress: fee.recipient,
               },
               String(
                 BigInt(fee.amount) +
@@ -297,7 +297,7 @@ export class ActionExecutorService {
               message.data.order.solver.chainId,
               message.data.order.solver.address,
               r.fee.recipientChainId,
-              r.fee.recipientAddress
+              r.fee.recipient
             )
           )
         ) {

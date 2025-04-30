@@ -89,10 +89,10 @@ describe("execute-solver-fill", () => {
             : [
                 {
                   recipientChainId: chainId,
-                  recipientAddress:
+                  recipient:
                     ownerAddresses[randomNumber(ownerAddresses.length)],
                   currencyChainId: chainId,
-                  currencyAddress: inputPaymentCurrency,
+                  currency: inputPaymentCurrency,
                   amount: (
                     1 + randomNumber(Number(inputPaymentAmount) / 2)
                   ).toString(),
@@ -181,7 +181,7 @@ describe("execute-solver-fill", () => {
           Number(order.fees[0]?.amount ?? 0);
       }
       if (order.fees.length) {
-        const key = `${chainId}-${order.fees[0].recipientAddress}-${escrowDepositMessage.result.currency}`;
+        const key = `${chainId}-${order.fees[0].recipient}-${escrowDepositMessage.result.currency}`;
         if (!inMemoryBalances[key]) {
           inMemoryBalances[key] = {
             availableAmount: 0,

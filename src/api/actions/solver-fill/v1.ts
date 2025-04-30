@@ -58,9 +58,9 @@ const Schema = {
             fees: Type.Array(
               Type.Object({
                 recipientChainId: Type.Number(),
-                recipientAddress: Type.String(),
+                recipient: Type.String(),
                 currencyChainId: Type.Number(),
-                currencyAddress: Type.String(),
+                currency: Type.String(),
                 amount: Type.String(),
               })
             ),
