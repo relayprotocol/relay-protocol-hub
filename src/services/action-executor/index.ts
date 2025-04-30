@@ -1,8 +1,11 @@
 import {
   EscrowDepositMessage,
   EscrowWithdrawalMessage,
+  EscrowWithdrawalStatus,
   SolverFillMessage,
+  SolverFillStatus,
   SolverRefundMessage,
+  SolverRefundStatus,
 } from "@reservoir0x/relay-protocol-sdk";
 import { zeroHash } from "viem";
 
@@ -102,7 +105,16 @@ export class ActionExecutorService {
 
   public async executeEscrowWithdrawal(
     message: EscrowWithdrawalMessage
-  ): Promise<ExecutionResult<"success", "already-unlocked" | "unknown">> {
+  ): Promise<
+    ExecutionResult<"success", "already-unlocked" | "not-executed" | "unknown">
+  > {
+    if (message.result.status !== EscrowWithdrawalStatus.EXECUTED) {
+      return {
+        status: "failure",
+        details: "not-executed",
+      };
+    }
+
     let result:
       | Awaited<ReturnType<typeof this.executeEscrowWithdrawal>>
       | undefined;
@@ -156,9 +168,16 @@ export class ActionExecutorService {
   ): Promise<
     ExecutionResult<
       "success",
-      "already-unlocked" | "reallocation-failed" | "unknown"
+      "already-unlocked" | "reallocation-failed" | "unsuccessful" | "unknown"
     >
   > {
+    if (message.result.status !== SolverFillStatus.SUCCESSFUL) {
+      return {
+        status: "failure",
+        details: "unsuccessful",
+      };
+    }
+
     let result: Awaited<ReturnType<typeof this.executeSolverFill>> | undefined;
 
     // Very important to guarantee atomic execution
@@ -313,9 +332,16 @@ export class ActionExecutorService {
   ): Promise<
     ExecutionResult<
       "success",
-      "already-unlocked" | "reallocation-failed" | "unknown"
+      "already-unlocked" | "reallocation-failed" | "unsuccessful" | "unknown"
     >
   > {
+    if (message.result.status !== SolverRefundStatus.SUCCESSFUL) {
+      return {
+        status: "failure",
+        details: "unsuccessful",
+      };
+    }
+
     let result:
       | Awaited<ReturnType<typeof this.executeSolverRefund>>
       | undefined;
