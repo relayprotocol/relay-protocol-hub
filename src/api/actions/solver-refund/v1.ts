@@ -1,8 +1,5 @@
 import { Type } from "@fastify/type-provider-typebox";
-import {
-  getSolverRefundMessageId,
-  SolverRefundStatus,
-} from "@reservoir0x/relay-protocol-sdk";
+import { getSolverRefundMessageId } from "@reservoir0x/relay-protocol-sdk";
 import { Address, Hex, verifyMessage } from "viem";
 
 import {
@@ -143,9 +140,9 @@ const Schema = {
       code: Type.Union([
         Type.Literal("INSUFFICIENT_SIGNATURES"),
         Type.Literal("INVALID_SIGNATURE"),
-        Type.Literal("INVALID_REFUND"),
         Type.Literal("ALREADY_UNLOCKED"),
         Type.Literal("REALLOCATION_FAILED"),
+        Type.Literal("UNSUCCESSFUL_REFUND"),
         Type.Literal("UNKNOWN"),
       ]),
     }),
@@ -192,37 +189,41 @@ export default {
       }
     }
 
-    if (message.result.status !== SolverRefundStatus.SUCCESSFUL) {
-      return reply.status(400).send({
-        message: "Invalid refund",
-        code: "INVALID_REFUND",
-      });
-    }
-
     const actionExecutor = new ActionExecutorService();
     const result = await actionExecutor.executeSolverRefund(message);
     if (result.status === "success") {
+      const resultToExternalResponse = {
+        success: { message: "Success", code: "SUCCESS" },
+      } as const;
+
       return reply.status(200).send({
-        message: "Success",
-        code: "SUCCESS",
+        message: resultToExternalResponse[result.details].message,
+        code: resultToExternalResponse[result.details].code,
       });
     } else {
-      if (result.details === "already-unlocked") {
-        return reply.status(400).send({
+      const resultToExternalResponse = {
+        "already-unlocked": {
           message: "Part of the balance locks already unlocked",
           code: "ALREADY_UNLOCKED",
-        });
-      } else if (result.details === "reallocation-failed") {
-        return reply.status(400).send({
+        },
+        "reallocation-failed": {
           message: "Failed to reallocate balances",
           code: "REALLOCATION_FAILED",
-        });
-      } else {
-        return reply.status(400).send({
+        },
+        unsuccessful: {
+          message: "Solver refund is unsuccessful",
+          code: "UNSUCCESSFUL_REFUND",
+        },
+        unknown: {
           message: "Unknown error",
           code: "UNKNOWN",
-        });
-      }
+        },
+      } as const;
+
+      return reply.status(400).send({
+        message: resultToExternalResponse[result.details].message,
+        code: resultToExternalResponse[result.details].code,
+      });
     }
   },
 } as Endpoint;

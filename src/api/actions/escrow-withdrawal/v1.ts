@@ -1,5 +1,5 @@
 import { Type } from "@fastify/type-provider-typebox";
-import { getEscrowDepositMessageId } from "@reservoir0x/relay-protocol-sdk";
+import { getEscrowWithdrawalMessageId } from "@reservoir0x/relay-protocol-sdk";
 import { Address, Hex, verifyMessage } from "viem";
 
 import {
@@ -7,7 +7,6 @@ import {
   FastifyReplyTypeBox,
   FastifyRequestTypeBox,
 } from "../../utils";
-import { getSdkChainsConfig } from "../../../common/chains";
 import { ActionExecutorService } from "../../../services/action-executor";
 
 const Schema = {
@@ -17,24 +16,17 @@ const Schema = {
         chainId: Type.Number({
           description: "The chain id of the attested transaction",
         }),
-        transactionId: Type.String({
-          description: "The id of the attested transaction",
+        withdrawal: Type.String({
+          description: "The encoded withdrawal data",
         }),
       }),
       result: Type.Object({
-        onchainId: Type.String({
-          description: "The onchain id of the deposit",
+        withdrawalId: Type.String({
+          description: "The id of the attested withdrawal",
         }),
-        depositId: Type.String({
-          description: "The id associated to the deposit",
+        status: Type.Number({
+          description: "The status of the withdrawal",
         }),
-        depositor: Type.String({
-          description: "The address of the depositor",
-        }),
-        currency: Type.String({
-          description: "The address of the deposited currency",
-        }),
-        amount: Type.String({ description: "The deposited amount" }),
       }),
     }),
     signatures: Type.Array(
@@ -54,17 +46,15 @@ const Schema = {
   response: {
     200: Type.Object({
       message: Type.String({ description: "Success message" }),
-      code: Type.Union([
-        Type.Literal("ALREADY_SAVED"),
-        Type.Literal("ALREADY_LOCKED"),
-        Type.Literal("SUCCESS"),
-      ]),
+      code: Type.Union([Type.Literal("SUCCESS")]),
     }),
     400: Type.Object({
       message: Type.String({ description: "Error message" }),
       code: Type.Union([
         Type.Literal("INSUFFICIENT_SIGNATURES"),
         Type.Literal("INVALID_SIGNATURE"),
+        Type.Literal("ALREADY_UNLOCKED"),
+        Type.Literal("WITHDRAWAL_NOT_EXECUTED"),
         Type.Literal("UNKNOWN"),
       ]),
     }),
@@ -73,7 +63,7 @@ const Schema = {
 
 export default {
   method: "POST",
-  url: "/actions/escrow-deposits/v1",
+  url: "/actions/escrow-withdrawal/v1",
   schema: Schema,
   handler: async (
     req: FastifyRequestTypeBox<typeof Schema>,
@@ -88,10 +78,7 @@ export default {
     }
 
     const message = req.body.message;
-    const messageId = getEscrowDepositMessageId(
-      message,
-      await getSdkChainsConfig()
-    );
+    const messageId = getEscrowWithdrawalMessageId(message);
 
     // TODO: Keep track of allowed oracles for every chain
 
@@ -112,17 +99,9 @@ export default {
     }
 
     const actionExecutor = new ActionExecutorService();
-    const result = await actionExecutor.executeEscrowDeposit(message);
+    const result = await actionExecutor.executeEscrowWithdrawal(message);
     if (result.status === "success") {
       const resultToExternalResponse = {
-        "already-locked": {
-          message: "Deposit already locked",
-          code: "ALREADY_LOCKED",
-        },
-        "already-saved": {
-          message: "Deposit already saved",
-          code: "ALREADY_SAVED",
-        },
         success: { message: "Success", code: "SUCCESS" },
       } as const;
 
@@ -132,6 +111,14 @@ export default {
       });
     } else {
       const resultToExternalResponse = {
+        "already-unlocked": {
+          message: "Withdrawal already unlocked",
+          code: "ALREADY_UNLOCKED",
+        },
+        "not-executed": {
+          message: "Withdrawal not executed",
+          code: "WITHDRAWAL_NOT_EXECUTED",
+        },
         unknown: {
           message: "Unknown error",
           code: "UNKNOWN",
