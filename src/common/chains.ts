@@ -2,15 +2,10 @@ import { VmType } from "@reservoir0x/relay-protocol-sdk";
 
 import { db } from "./db";
 
-type CommonMetadata = {
-  escrow: string;
-};
-
 export type Chain = {
   id: number;
   name: string;
   vmType: VmType;
-  metadata: CommonMetadata;
 };
 
 let _chains: { [id: number]: Chain } | undefined;
@@ -24,7 +19,6 @@ export const getChains = async () => {
         id: Number(chain.id),
         name: chain.name,
         vmType: chain.vm_type,
-        metadata: chain.metadata,
       };
     }
 
