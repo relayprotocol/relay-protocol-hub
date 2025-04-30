@@ -86,10 +86,10 @@ describe("execute-solver-refund", () => {
             : [
                 {
                   recipientChainId: chainId,
-                  recipientAddress:
+                  recipient:
                     ownerAddresses[randomNumber(ownerAddresses.length)],
                   currencyChainId: chainId,
-                  currencyAddress:
+                  currency:
                     currencyAddresses[randomNumber(currencyAddresses.length)],
                   amount: randomNumber(ONE_BILLION).toString(),
                 },
