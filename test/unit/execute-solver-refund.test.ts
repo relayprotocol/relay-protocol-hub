@@ -38,10 +38,8 @@ describe("execute-solver-refund", () => {
     > = {};
     await iterNoConcurrency(150, async () => {
       const order: Order = {
-        solver: {
-          chainId,
-          address: solverAddress,
-        },
+        solverChainId: chainId,
+        solver: solverAddress,
         salt: randomNumber(ONE_BILLION).toString(),
         inputs: [
           {
@@ -167,7 +165,7 @@ describe("execute-solver-refund", () => {
         );
       }
       {
-        const key = `${chainId}-${order.solver.address}-${escrowDepositMessage.result.currency}`;
+        const key = `${chainId}-${order.solver}-${escrowDepositMessage.result.currency}`;
         if (!inMemoryBalances[key]) {
           inMemoryBalances[key] = {
             availableAmount: 0,

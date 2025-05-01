@@ -17,10 +17,8 @@ const Schema = {
       data: Type.Object({
         order: Type.Object(
           {
-            solver: Type.Object({
-              chainId: Type.Number(),
-              address: Type.String(),
-            }),
+            solverChainId: Type.Number(),
+            solver: Type.String(),
             salt: Type.String(),
             inputs: Type.Array(
               Type.Object({

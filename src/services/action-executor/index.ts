@@ -124,8 +124,8 @@ export class ActionExecutorService {
           .map(async (balanceLock) => {
             // Ensure the solver's balance is initialized before reallocating
             await initializeBalance(
-              message.data.order.solver.chainId,
-              message.data.order.solver.address,
+              message.data.order.solverChainId,
+              message.data.order.solver,
               balanceLock.currencyChainId,
               balanceLock.currencyAddress,
               { tx }
@@ -139,8 +139,8 @@ export class ActionExecutorService {
                 currencyAddress: balanceLock.currencyAddress,
               },
               {
-                ownerChainId: message.data.order.solver.chainId,
-                ownerAddress: message.data.order.solver.address,
+                ownerChainId: message.data.order.solverChainId,
+                ownerAddress: message.data.order.solver,
               },
               balanceLock.amount,
               { tx }
@@ -156,8 +156,8 @@ export class ActionExecutorService {
             r.newBalances,
             r.balanceLock.ownerChainId,
             r.balanceLock.ownerAddress,
-            message.data.order.solver.chainId,
-            message.data.order.solver.address
+            message.data.order.solverChainId,
+            message.data.order.solver
           )
         )
       ) {
@@ -179,8 +179,8 @@ export class ActionExecutorService {
 
           const newBalances = await reallocateBalance(
             {
-              ownerChainId: message.data.order.solver.chainId,
-              ownerAddress: message.data.order.solver.address,
+              ownerChainId: message.data.order.solverChainId,
+              ownerAddress: message.data.order.solver,
               currencyChainId: fee.currencyChainId,
               currencyAddress: fee.currency,
             },
@@ -205,8 +205,8 @@ export class ActionExecutorService {
         !reallocateFeesResult.every((r) =>
           this._verifyReallocationResult(
             r.newBalances,
-            message.data.order.solver.chainId,
-            message.data.order.solver.address,
+            message.data.order.solverChainId,
+            message.data.order.solver,
             r.fee.recipientChainId,
             r.fee.recipient
           )
@@ -248,8 +248,8 @@ export class ActionExecutorService {
           .map(async (balanceLock) => {
             // Ensure the solver's balance is initialized before reallocating
             await initializeBalance(
-              message.data.order.solver.chainId,
-              message.data.order.solver.address,
+              message.data.order.solverChainId,
+              message.data.order.solver,
               balanceLock.currencyChainId,
               balanceLock.currencyAddress,
               { tx }
@@ -263,8 +263,8 @@ export class ActionExecutorService {
                 currencyAddress: balanceLock.currencyAddress,
               },
               {
-                ownerChainId: message.data.order.solver.chainId,
-                ownerAddress: message.data.order.solver.address,
+                ownerChainId: message.data.order.solverChainId,
+                ownerAddress: message.data.order.solver,
               },
               balanceLock.amount,
               { tx }
@@ -280,8 +280,8 @@ export class ActionExecutorService {
             r.newBalances,
             r.balanceLock.ownerChainId,
             r.balanceLock.ownerAddress,
-            message.data.order.solver.chainId,
-            message.data.order.solver.address
+            message.data.order.solverChainId,
+            message.data.order.solver
           )
         )
       ) {
