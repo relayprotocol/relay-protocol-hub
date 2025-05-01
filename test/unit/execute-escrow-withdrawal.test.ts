@@ -49,10 +49,9 @@ describe("execute-escrow-withdrawal", () => {
       };
 
       const actionExecutor = new ActionExecutorService();
-      const depositResult = await actionExecutor.executeEscrowDeposit(
-        depositMessage
-      );
-      expect(depositResult.status).toEqual("success");
+      await expect(
+        actionExecutor.executeEscrowDeposit(depositMessage)
+      ).resolves.not.toThrowError();
 
       // Update in-memory balances
       {
@@ -105,10 +104,9 @@ describe("execute-escrow-withdrawal", () => {
         inMemoryBalances[key].lockedAmount += Number(amount);
       }
 
-      const result = await actionExecutor.executeEscrowWithdrawal(
-        withdrawalMessage
-      );
-      expect(result.status).toEqual("success");
+      await expect(
+        actionExecutor.executeEscrowWithdrawal(withdrawalMessage)
+      ).resolves.not.toThrowError();
 
       // Update in-memory balances
       {

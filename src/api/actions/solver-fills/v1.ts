@@ -4,6 +4,7 @@ import { Address, Hex, verifyMessage } from "viem";
 
 import {
   Endpoint,
+  ErrorResponse,
   FastifyReplyTypeBox,
   FastifyRequestTypeBox,
 } from "../../utils";
@@ -121,29 +122,14 @@ const Schema = {
   response: {
     200: Type.Object({
       message: Type.String({ description: "Success message" }),
-      code: Type.Union([
-        Type.Literal("ALREADY_SAVED"),
-        Type.Literal("ALREADY_LOCKED"),
-        Type.Literal("SUCCESS"),
-      ]),
     }),
-    400: Type.Object({
-      message: Type.String({ description: "Error message" }),
-      code: Type.Union([
-        Type.Literal("INSUFFICIENT_SIGNATURES"),
-        Type.Literal("INVALID_SIGNATURE"),
-        Type.Literal("ALREADY_UNLOCKED"),
-        Type.Literal("REALLOCATION_FAILED"),
-        Type.Literal("UNSUCCESSFUL_FILL"),
-        Type.Literal("UNKNOWN"),
-      ]),
-    }),
+    ...ErrorResponse,
   },
 };
 
 export default {
   method: "POST",
-  url: "/actions/solver-fill/v1",
+  url: "/actions/solver-fills/v1",
   schema: Schema,
   handler: async (
     req: FastifyRequestTypeBox<typeof Schema>,
@@ -182,40 +168,8 @@ export default {
     }
 
     const actionExecutor = new ActionExecutorService();
-    const result = await actionExecutor.executeSolverFill(message);
-    if (result.status === "success") {
-      const resultToExternalResponse = {
-        success: { message: "Success", code: "SUCCESS" },
-      } as const;
+    await actionExecutor.executeSolverFill(message);
 
-      return reply.status(200).send({
-        message: resultToExternalResponse[result.details].message,
-        code: resultToExternalResponse[result.details].code,
-      });
-    } else {
-      const resultToExternalResponse = {
-        "already-unlocked": {
-          message: "Part of the balance locks already unlocked",
-          code: "ALREADY_UNLOCKED",
-        },
-        "reallocation-failed": {
-          message: "Failed to reallocate balances",
-          code: "REALLOCATION_FAILED",
-        },
-        unsuccessful: {
-          message: "Solver fill is unsuccessful",
-          code: "UNSUCCESSFUL_FILL",
-        },
-        unknown: {
-          message: "Unknown error",
-          code: "UNKNOWN",
-        },
-      } as const;
-
-      return reply.status(400).send({
-        message: resultToExternalResponse[result.details].message,
-        code: resultToExternalResponse[result.details].code,
-      });
-    }
+    return reply.status(200).send({ message: "Success" });
   },
 } as Endpoint;

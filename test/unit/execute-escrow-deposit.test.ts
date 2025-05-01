@@ -30,15 +30,12 @@ describe("execute-escrow-deposit", () => {
       },
     };
 
-    const results = await iter(100, async () => {
+    await iter(100, async () => {
       const actionExecutor = new ActionExecutorService();
-      return actionExecutor.executeEscrowDeposit(message);
+      await expect(
+        actionExecutor.executeEscrowDeposit(message)
+      ).resolves.not.toThrowError();
     });
-    expect(results.every((r) => r.status === "success")).toBeTruthy();
-    expect(
-      results.filter((r) => r.status === "success" && r.details === "success")
-        .length
-    ).toEqual(1);
 
     const balance = await getBalance(
       message.data.chainId,
@@ -80,8 +77,9 @@ describe("execute-escrow-deposit", () => {
       };
 
       const actionExecutor = new ActionExecutorService();
-      const result = await actionExecutor.executeEscrowDeposit(message);
-      expect(result.status).toEqual("success");
+      await expect(
+        actionExecutor.executeEscrowDeposit(message)
+      ).resolves.not.toThrowError();
 
       // Update in-memory balances
       {

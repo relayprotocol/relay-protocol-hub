@@ -1,4 +1,4 @@
-import type { TypeBoxTypeProvider } from "@fastify/type-provider-typebox";
+import { Type, type TypeBoxTypeProvider } from "@fastify/type-provider-typebox";
 import type {
   ContextConfigDefault,
   FastifyReply,
@@ -12,6 +12,7 @@ import type { RouteGenericInterface } from "fastify/types/route";
 import type { FastifySchema } from "fastify/types/schema";
 
 import { logger } from "../common/logger";
+import { isExternalError } from "../common/error";
 
 export type FastifyRequestTypeBox<TSchema extends FastifySchema> =
   FastifyRequest<
@@ -39,6 +40,15 @@ export type Endpoint = {
   handler: (req: FastifyRequest, reply: FastifyReply) => Promise<void>;
 };
 
+export const ErrorResponse = {
+  400: Type.Object({
+    message: Type.String({ description: "Error message" }),
+    code: Type.Optional(
+      Type.String({ description: "Standardized error code" })
+    ),
+  }),
+};
+
 export const errorWrapper = (
   url: string,
   handler: (req: FastifyRequest, reply: FastifyReply) => Promise<void>
@@ -57,6 +67,13 @@ export const errorWrapper = (
           errorStack: error.stack,
         })
       );
+
+      if (isExternalError(error)) {
+        return reply.status(400).send({
+          message: error.message,
+          code: error.externalErrorCode,
+        });
+      }
 
       return reply.status(400).send({
         message: "An unknown error occured",
