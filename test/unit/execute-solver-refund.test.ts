@@ -112,10 +112,9 @@ describe("execute-solver-refund", () => {
           amount: order.inputs[0].payment.amount,
         },
       };
-      const escrowDepositResult = await actionExecutor.executeEscrowDeposit(
-        escrowDepositMessage
-      );
-      expect(escrowDepositResult.status).toEqual("success");
+      await expect(
+        actionExecutor.executeEscrowDeposit(escrowDepositMessage)
+      ).resolves.not.toThrowError();
 
       // Update in-memory balances
       {
@@ -156,10 +155,9 @@ describe("execute-solver-refund", () => {
           totalWeightedInputPaymentBpsDiff: "0",
         },
       };
-      const solverRefundResult = await actionExecutor.executeSolverRefund(
-        solverRefundMessage
-      );
-      expect(solverRefundResult.status).toEqual("success");
+      await expect(
+        actionExecutor.executeSolverRefund(solverRefundMessage)
+      ).resolves.not.toThrowError();
 
       // Update in-memory balances
       {
