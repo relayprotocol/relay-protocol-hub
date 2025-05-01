@@ -42,10 +42,8 @@ describe("execute-solver-fill", () => {
       const inputPaymentAmount = randomNumber(ONE_BILLION).toString();
 
       const order: Order = {
-        solver: {
-          chainId,
-          address: solverAddress,
-        },
+        solverChainId: chainId,
+        solver: solverAddress,
         salt: randomNumber(ONE_BILLION).toString(),
         inputs: [
           {
@@ -167,7 +165,7 @@ describe("execute-solver-fill", () => {
         );
       }
       {
-        const key = `${chainId}-${order.solver.address}-${escrowDepositMessage.result.currency}`;
+        const key = `${chainId}-${order.solver}-${escrowDepositMessage.result.currency}`;
         if (!inMemoryBalances[key]) {
           inMemoryBalances[key] = {
             availableAmount: 0,
