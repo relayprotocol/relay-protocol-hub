@@ -2,16 +2,23 @@ import { FastifyInstance } from "fastify";
 
 import { Endpoint, errorWrapper } from "./utils";
 
+// Actions
 import actionsEscrowDepositsV1 from "./actions/escrow-deposits/v1";
-import actionsEscrowWithdrawalV1 from "./actions/escrow-withdrawal/v1";
-import actionsSolverFillV1 from "./actions/solver-fill/v1";
-import actionsSolverRefundV1 from "./actions/solver-refund/v1";
+import actionsEscrowWithdrawalsV1 from "./actions/escrow-withdrawals/v1";
+import actionsSolverFillsV1 from "./actions/solver-fills/v1";
+import actionsSolverRefundsV1 from "./actions/solver-refunds/v1";
+
+// Requests
+import requestsUnlocksV1 from "./requests/unlocks/v1";
+import requestsWithdrawalsV1 from "./requests/withdrawals/v1";
 
 const endpoints = [
   actionsEscrowDepositsV1,
-  actionsEscrowWithdrawalV1,
-  actionsSolverFillV1,
-  actionsSolverRefundV1,
+  actionsEscrowWithdrawalsV1,
+  actionsSolverFillsV1,
+  actionsSolverRefundsV1,
+  requestsUnlocksV1,
+  requestsWithdrawalsV1,
 ] as Endpoint[];
 
 export const setupEndpoints = (app: FastifyInstance) => {

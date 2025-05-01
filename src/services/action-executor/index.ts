@@ -10,7 +10,7 @@ import {
 import { zeroHash } from "viem";
 
 import { db } from "../../common/db";
-import { internalError } from "../../common/error";
+import { externalError } from "../../common/error";
 import {
   Balance,
   getBalanceLock,
@@ -21,421 +21,273 @@ import {
 } from "../../models/balances";
 import { saveOnchainEntryWithBalanceUpdate } from "../../models/onchain-entries";
 
-type ExecutionResult<TSuccess, TFailure> =
-  | { status: "success"; details: TSuccess }
-  | { status: "failure"; details: TFailure };
-
 export class ActionExecutorService {
   public async executeEscrowDeposit(
     message: EscrowDepositMessage
-  ): Promise<
-    ExecutionResult<"already-locked" | "already-saved" | "success", "unknown">
-  > {
-    let result:
-      | Awaited<ReturnType<typeof this.executeEscrowDeposit>>
-      | undefined;
-
+  ): Promise<void> {
     // Very important to guarantee atomic execution
-    await db
-      .tx(async (tx) => {
-        // Step 1:
-        // Save the deposit
-        const saveResult = await saveOnchainEntryWithBalanceUpdate(
+    await db.tx(async (tx) => {
+      // Step 1:
+      // Save the deposit
+      const saveResult = await saveOnchainEntryWithBalanceUpdate(
+        {
+          id: message.result.onchainId,
+          chainId: message.data.chainId,
+          transactionId: message.data.transactionId,
+          ownerAddress: message.result.depositor,
+          currencyAddress: message.result.currency,
+          balanceDiff: message.result.amount,
+        },
+        { tx }
+      );
+      // Verify the save result
+      if (!saveResult) {
+        return;
+      }
+
+      if (message.result.depositId !== zeroHash) {
+        // Step 2:
+        // Lock the balance
+        const lockResult = await saveBalanceLock(
           {
             id: message.result.onchainId,
-            chainId: message.data.chainId,
-            transactionId: message.data.transactionId,
+            ownerChainId: message.data.chainId,
             ownerAddress: message.result.depositor,
+            currencyChainId: message.data.chainId,
             currencyAddress: message.result.currency,
-            balanceDiff: message.result.amount,
+            amount: message.result.amount,
           },
           { tx }
         );
-        // Verify the save result
-        if (!saveResult) {
-          result = {
-            status: "success",
-            details: "already-saved",
-          };
+        // Verify the lock result
+        if (!lockResult) {
           return;
         }
-
-        if (message.result.depositId !== zeroHash) {
-          // Step 2:
-          // Lock the balance
-          const lockResult = await saveBalanceLock(
-            {
-              id: message.result.onchainId,
-              ownerChainId: message.data.chainId,
-              ownerAddress: message.result.depositor,
-              currencyChainId: message.data.chainId,
-              currencyAddress: message.result.currency,
-              amount: message.result.amount,
-            },
-            { tx }
-          );
-          // Verify the lock result
-          if (!lockResult) {
-            result = {
-              status: "success",
-              details: "already-locked",
-            };
-            return;
-          }
-        }
-      })
-      .catch(() => {
-        if (!result) {
-          result = {
-            status: "failure",
-            details: "unknown",
-          };
-        }
-      });
-
-    if (result) {
-      return result;
-    }
-
-    return {
-      status: "success",
-      details: "success",
-    };
+      }
+    });
   }
 
   public async executeEscrowWithdrawal(
     message: EscrowWithdrawalMessage
-  ): Promise<
-    ExecutionResult<"success", "already-unlocked" | "not-executed" | "unknown">
-  > {
+  ): Promise<void> {
     if (message.result.status !== EscrowWithdrawalStatus.EXECUTED) {
-      return {
-        status: "failure",
-        details: "not-executed",
-      };
+      throw externalError("Escrow withdrawal is not executed");
     }
-
-    let result:
-      | Awaited<ReturnType<typeof this.executeEscrowWithdrawal>>
-      | undefined;
 
     // Very important to guarantee atomic execution
-    await db
-      .tx(async (tx) => {
-        // Step 1:
-        // Unlock and reduce the balance
-        const unlockResult = await (async () => {
-          const balanceLock = await getBalanceLock(
-            message.result.withdrawalId,
-            { tx }
-          );
-          const newBalance = await unlockBalanceLock(
-            message.result.withdrawalId,
-            { tx, skipAvailableBalanceAdjustment: true }
-          );
-          return { balanceLock, newBalance };
-        })();
-        // Verify the unlock result
-        if (!unlockResult.balanceLock || !unlockResult.newBalance) {
-          result = {
-            status: "failure",
-            details: "already-unlocked",
-          };
-          throw internalError(result.details);
-        }
-      })
-      .catch(() => {
-        if (!result) {
-          result = {
-            status: "failure",
-            details: "unknown",
-          };
-        }
-      });
-
-    if (result) {
-      return result;
-    }
-
-    return {
-      status: "success",
-      details: "success",
-    };
+    await db.tx(async (tx) => {
+      // Step 1:
+      // Unlock and reduce the balance
+      const unlockResult = await (async () => {
+        const balanceLock = await getBalanceLock(message.result.withdrawalId, {
+          tx,
+        });
+        const newBalance = await unlockBalanceLock(
+          message.result.withdrawalId,
+          { tx, skipAvailableBalanceAdjustment: true }
+        );
+        return { balanceLock, newBalance };
+      })();
+      // Verify the unlock result
+      if (!unlockResult.balanceLock || !unlockResult.newBalance) {
+        throw externalError("Corresponding balance lock already unlocked");
+      }
+    });
   }
 
-  public async executeSolverFill(
-    message: SolverFillMessage
-  ): Promise<
-    ExecutionResult<
-      "success",
-      "already-unlocked" | "reallocation-failed" | "unsuccessful" | "unknown"
-    >
-  > {
+  public async executeSolverFill(message: SolverFillMessage): Promise<void> {
     if (message.result.status !== SolverFillStatus.SUCCESSFUL) {
-      return {
-        status: "failure",
-        details: "unsuccessful",
-      };
+      throw externalError("Solver fill is not successful");
     }
 
-    let result: Awaited<ReturnType<typeof this.executeSolverFill>> | undefined;
-
     // Very important to guarantee atomic execution
-    await db
-      .tx(async (tx) => {
-        // Step 1:
-        // Unlock all relevant balance locks
-        const unlockResult = await Promise.all(
-          message.data.inputs.map(async ({ onchainId }) => {
-            const balanceLock = await getBalanceLock(onchainId, { tx });
-            const newBalance = await unlockBalanceLock(onchainId, { tx });
-            return { balanceLock, newBalance };
-          })
-        );
-        // Verify the unlock result
-        if (unlockResult.some((r) => !r.balanceLock || !r.newBalance)) {
-          result = {
-            status: "failure",
-            details: "already-unlocked",
-          };
-          throw internalError(result.details);
-        }
+    await db.tx(async (tx) => {
+      // Step 1:
+      // Unlock all relevant balance locks
+      const unlockResult = await Promise.all(
+        message.data.inputs.map(async ({ onchainId }) => {
+          const balanceLock = await getBalanceLock(onchainId, { tx });
+          const newBalance = await unlockBalanceLock(onchainId, { tx });
+          return { balanceLock, newBalance };
+        })
+      );
+      // Verify the unlock result
+      if (unlockResult.some((r) => !r.balanceLock || !r.newBalance)) {
+        throw externalError("Corresponding balance lock(s) already unlocked");
+      }
 
-        // Step 2:
-        // Reallocate the payments to the solver
-        const reallocatePaymentsResult = await Promise.all(
-          unlockResult
-            .map((d) => d.balanceLock!)
-            .map(async (balanceLock) => {
-              // Ensure the solver's balance is initialized before reallocating
-              await initializeBalance(
-                message.data.order.solver.chainId,
-                message.data.order.solver.address,
-                balanceLock.currencyChainId,
-                balanceLock.currencyAddress,
-                { tx }
-              );
-
-              const newBalances = await reallocateBalance(
-                {
-                  ownerChainId: balanceLock.ownerChainId,
-                  ownerAddress: balanceLock.ownerAddress,
-                  currencyChainId: balanceLock.currencyChainId,
-                  currencyAddress: balanceLock.currencyAddress,
-                },
-                {
-                  ownerChainId: message.data.order.solver.chainId,
-                  ownerAddress: message.data.order.solver.address,
-                },
-                balanceLock.amount,
-                { tx }
-              );
-
-              return { balanceLock, newBalances };
-            })
-        );
-        // Verify the reallocation result
-        if (
-          !reallocatePaymentsResult.every((r) =>
-            this._verifyReallocationResult(
-              r.newBalances,
-              r.balanceLock.ownerChainId,
-              r.balanceLock.ownerAddress,
-              message.data.order.solver.chainId,
-              message.data.order.solver.address
-            )
-          )
-        ) {
-          result = {
-            status: "failure",
-            details: "reallocation-failed",
-          };
-          throw internalError(result.details);
-        }
-
-        // Step 3:
-        // Reallocate the fees to the recipients
-        const reallocateFeesResult = await Promise.all(
-          message.data.order.fees.map(async (fee) => {
-            // Ensure the recipient's balance is initialized before reallocating
+      // Step 2:
+      // Reallocate the payments to the solver
+      const reallocatePaymentsResult = await Promise.all(
+        unlockResult
+          .map((d) => d.balanceLock!)
+          .map(async (balanceLock) => {
+            // Ensure the solver's balance is initialized before reallocating
             await initializeBalance(
-              fee.recipientChainId,
-              fee.recipient,
-              fee.currencyChainId,
-              fee.currency,
+              message.data.order.solver.chainId,
+              message.data.order.solver.address,
+              balanceLock.currencyChainId,
+              balanceLock.currencyAddress,
               { tx }
             );
 
             const newBalances = await reallocateBalance(
               {
-                ownerChainId: message.data.order.solver.chainId,
-                ownerAddress: message.data.order.solver.address,
-                currencyChainId: fee.currencyChainId,
-                currencyAddress: fee.currency,
+                ownerChainId: balanceLock.ownerChainId,
+                ownerAddress: balanceLock.ownerAddress,
+                currencyChainId: balanceLock.currencyChainId,
+                currencyAddress: balanceLock.currencyAddress,
               },
               {
-                ownerChainId: fee.recipientChainId,
-                ownerAddress: fee.recipient,
+                ownerChainId: message.data.order.solver.chainId,
+                ownerAddress: message.data.order.solver.address,
               },
-              String(
-                BigInt(fee.amount) +
-                  (BigInt(fee.amount) *
-                    BigInt(message.result.totalWeightedInputPaymentBpsDiff)) /
-                    10n ** 18n
-              ),
+              balanceLock.amount,
               { tx }
             );
 
-            return { fee, newBalances };
+            return { balanceLock, newBalances };
           })
-        );
-        // Verify the reallocation result
-        if (
-          !reallocateFeesResult.every((r) =>
-            this._verifyReallocationResult(
-              r.newBalances,
-              message.data.order.solver.chainId,
-              message.data.order.solver.address,
-              r.fee.recipientChainId,
-              r.fee.recipient
-            )
+      );
+      // Verify the reallocation result
+      if (
+        !reallocatePaymentsResult.every((r) =>
+          this._verifyReallocationResult(
+            r.newBalances,
+            r.balanceLock.ownerChainId,
+            r.balanceLock.ownerAddress,
+            message.data.order.solver.chainId,
+            message.data.order.solver.address
           )
-        ) {
-          result = {
-            status: "failure",
-            details: "reallocation-failed",
-          };
-          throw internalError(result.details);
-        }
-      })
-      .catch(() => {
-        if (!result) {
-          result = {
-            status: "failure",
-            details: "unknown",
-          };
-        }
-      });
+        )
+      ) {
+        throw externalError("Payment balance reallocation failed");
+      }
 
-    if (result) {
-      return result;
-    }
+      // Step 3:
+      // Reallocate the fees to the recipients
+      const reallocateFeesResult = await Promise.all(
+        message.data.order.fees.map(async (fee) => {
+          // Ensure the recipient's balance is initialized before reallocating
+          await initializeBalance(
+            fee.recipientChainId,
+            fee.recipient,
+            fee.currencyChainId,
+            fee.currency,
+            { tx }
+          );
 
-    return {
-      status: "success",
-      details: "success",
-    };
+          const newBalances = await reallocateBalance(
+            {
+              ownerChainId: message.data.order.solver.chainId,
+              ownerAddress: message.data.order.solver.address,
+              currencyChainId: fee.currencyChainId,
+              currencyAddress: fee.currency,
+            },
+            {
+              ownerChainId: fee.recipientChainId,
+              ownerAddress: fee.recipient,
+            },
+            String(
+              BigInt(fee.amount) +
+                (BigInt(fee.amount) *
+                  BigInt(message.result.totalWeightedInputPaymentBpsDiff)) /
+                  10n ** 18n
+            ),
+            { tx }
+          );
+
+          return { fee, newBalances };
+        })
+      );
+      // Verify the reallocation result
+      if (
+        !reallocateFeesResult.every((r) =>
+          this._verifyReallocationResult(
+            r.newBalances,
+            message.data.order.solver.chainId,
+            message.data.order.solver.address,
+            r.fee.recipientChainId,
+            r.fee.recipient
+          )
+        )
+      ) {
+        throw externalError("Fee balance reallocation failed");
+      }
+    });
   }
 
   public async executeSolverRefund(
     message: SolverRefundMessage
-  ): Promise<
-    ExecutionResult<
-      "success",
-      "already-unlocked" | "reallocation-failed" | "unsuccessful" | "unknown"
-    >
-  > {
+  ): Promise<void> {
     if (message.result.status !== SolverRefundStatus.SUCCESSFUL) {
-      return {
-        status: "failure",
-        details: "unsuccessful",
-      };
+      throw externalError("Solver refund is not successful");
     }
-
-    let result:
-      | Awaited<ReturnType<typeof this.executeSolverRefund>>
-      | undefined;
 
     // Very important to guarantee atomic execution
-    await db
-      .tx(async (tx) => {
-        // Step 1:
-        // Unlock all relevant balance locks
-        const unlockResult = await Promise.all(
-          message.data.inputs.map(async ({ onchainId }) => {
-            const balanceLock = await getBalanceLock(onchainId, { tx });
-            const newBalance = await unlockBalanceLock(onchainId, { tx });
-            return { balanceLock, newBalance };
-          })
-        );
-        // Verify the unlock result
-        if (unlockResult.some((r) => !r.balanceLock || !r.newBalance)) {
-          result = {
-            status: "failure",
-            details: "already-unlocked",
-          };
-          throw internalError(result.details);
-        }
+    await db.tx(async (tx) => {
+      // Step 1:
+      // Unlock all relevant balance locks
+      const unlockResult = await Promise.all(
+        message.data.inputs.map(async ({ onchainId }) => {
+          const balanceLock = await getBalanceLock(onchainId, { tx });
+          const newBalance = await unlockBalanceLock(onchainId, { tx });
+          return { balanceLock, newBalance };
+        })
+      );
+      // Verify the unlock result
+      if (unlockResult.some((r) => !r.balanceLock || !r.newBalance)) {
+        throw externalError("Corresponding balance lock(s) already unlocked");
+      }
 
-        // Step 2:
-        // Reallocate the payments to the solver
-        const reallocatePaymentsResult = await Promise.all(
-          unlockResult
-            .map((d) => d.balanceLock!)
-            .map(async (balanceLock) => {
-              // Ensure the solver's balance is initialized before reallocating
-              await initializeBalance(
-                message.data.order.solver.chainId,
-                message.data.order.solver.address,
-                balanceLock.currencyChainId,
-                balanceLock.currencyAddress,
-                { tx }
-              );
-
-              const newBalances = await reallocateBalance(
-                {
-                  ownerChainId: balanceLock.ownerChainId,
-                  ownerAddress: balanceLock.ownerAddress,
-                  currencyChainId: balanceLock.currencyChainId,
-                  currencyAddress: balanceLock.currencyAddress,
-                },
-                {
-                  ownerChainId: message.data.order.solver.chainId,
-                  ownerAddress: message.data.order.solver.address,
-                },
-                balanceLock.amount,
-                { tx }
-              );
-
-              return { balanceLock, newBalances };
-            })
-        );
-        // Verify the reallocation result
-        if (
-          !reallocatePaymentsResult.every((r) =>
-            this._verifyReallocationResult(
-              r.newBalances,
-              r.balanceLock.ownerChainId,
-              r.balanceLock.ownerAddress,
+      // Step 2:
+      // Reallocate the payments to the solver
+      const reallocatePaymentsResult = await Promise.all(
+        unlockResult
+          .map((d) => d.balanceLock!)
+          .map(async (balanceLock) => {
+            // Ensure the solver's balance is initialized before reallocating
+            await initializeBalance(
               message.data.order.solver.chainId,
-              message.data.order.solver.address
-            )
+              message.data.order.solver.address,
+              balanceLock.currencyChainId,
+              balanceLock.currencyAddress,
+              { tx }
+            );
+
+            const newBalances = await reallocateBalance(
+              {
+                ownerChainId: balanceLock.ownerChainId,
+                ownerAddress: balanceLock.ownerAddress,
+                currencyChainId: balanceLock.currencyChainId,
+                currencyAddress: balanceLock.currencyAddress,
+              },
+              {
+                ownerChainId: message.data.order.solver.chainId,
+                ownerAddress: message.data.order.solver.address,
+              },
+              balanceLock.amount,
+              { tx }
+            );
+
+            return { balanceLock, newBalances };
+          })
+      );
+      // Verify the reallocation result
+      if (
+        !reallocatePaymentsResult.every((r) =>
+          this._verifyReallocationResult(
+            r.newBalances,
+            r.balanceLock.ownerChainId,
+            r.balanceLock.ownerAddress,
+            message.data.order.solver.chainId,
+            message.data.order.solver.address
           )
-        ) {
-          result = {
-            status: "failure",
-            details: "reallocation-failed",
-          };
-          throw internalError(result.details);
-        }
-      })
-      .catch(() => {
-        if (!result) {
-          result = {
-            status: "failure",
-            details: "unknown",
-          };
-        }
-      });
-
-    if (result) {
-      return result;
-    }
-
-    return {
-      status: "success",
-      details: "success",
-    };
+        )
+      ) {
+        throw externalError("Payment balance reallocation failed");
+      }
+    });
   }
 
   // Get a unique id for a chain / address combination

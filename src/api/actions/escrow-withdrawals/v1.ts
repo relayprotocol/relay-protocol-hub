@@ -4,6 +4,7 @@ import { Address, Hex, verifyMessage } from "viem";
 
 import {
   Endpoint,
+  ErrorResponse,
   FastifyReplyTypeBox,
   FastifyRequestTypeBox,
 } from "../../utils";
@@ -46,24 +47,14 @@ const Schema = {
   response: {
     200: Type.Object({
       message: Type.String({ description: "Success message" }),
-      code: Type.Union([Type.Literal("SUCCESS")]),
     }),
-    400: Type.Object({
-      message: Type.String({ description: "Error message" }),
-      code: Type.Union([
-        Type.Literal("INSUFFICIENT_SIGNATURES"),
-        Type.Literal("INVALID_SIGNATURE"),
-        Type.Literal("ALREADY_UNLOCKED"),
-        Type.Literal("WITHDRAWAL_NOT_EXECUTED"),
-        Type.Literal("UNKNOWN"),
-      ]),
-    }),
+    ...ErrorResponse,
   },
 };
 
 export default {
   method: "POST",
-  url: "/actions/escrow-withdrawal/v1",
+  url: "/actions/escrow-withdrawals/v1",
   schema: Schema,
   handler: async (
     req: FastifyRequestTypeBox<typeof Schema>,
@@ -99,36 +90,8 @@ export default {
     }
 
     const actionExecutor = new ActionExecutorService();
-    const result = await actionExecutor.executeEscrowWithdrawal(message);
-    if (result.status === "success") {
-      const resultToExternalResponse = {
-        success: { message: "Success", code: "SUCCESS" },
-      } as const;
+    await actionExecutor.executeEscrowWithdrawal(message);
 
-      return reply.status(200).send({
-        message: resultToExternalResponse[result.details].message,
-        code: resultToExternalResponse[result.details].code,
-      });
-    } else {
-      const resultToExternalResponse = {
-        "already-unlocked": {
-          message: "Withdrawal already unlocked",
-          code: "ALREADY_UNLOCKED",
-        },
-        "not-executed": {
-          message: "Withdrawal not executed",
-          code: "WITHDRAWAL_NOT_EXECUTED",
-        },
-        unknown: {
-          message: "Unknown error",
-          code: "UNKNOWN",
-        },
-      } as const;
-
-      return reply.status(400).send({
-        message: resultToExternalResponse[result.details].message,
-        code: resultToExternalResponse[result.details].code,
-      });
-    }
+    return reply.status(200).send({ message: "Success" });
   },
 } as Endpoint;

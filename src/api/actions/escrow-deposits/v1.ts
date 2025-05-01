@@ -4,6 +4,7 @@ import { Address, Hex, verifyMessage } from "viem";
 
 import {
   Endpoint,
+  ErrorResponse,
   FastifyReplyTypeBox,
   FastifyRequestTypeBox,
 } from "../../utils";
@@ -54,20 +55,8 @@ const Schema = {
   response: {
     200: Type.Object({
       message: Type.String({ description: "Success message" }),
-      code: Type.Union([
-        Type.Literal("ALREADY_SAVED"),
-        Type.Literal("ALREADY_LOCKED"),
-        Type.Literal("SUCCESS"),
-      ]),
     }),
-    400: Type.Object({
-      message: Type.String({ description: "Error message" }),
-      code: Type.Union([
-        Type.Literal("INSUFFICIENT_SIGNATURES"),
-        Type.Literal("INVALID_SIGNATURE"),
-        Type.Literal("UNKNOWN"),
-      ]),
-    }),
+    ...ErrorResponse,
   },
 };
 
@@ -112,36 +101,8 @@ export default {
     }
 
     const actionExecutor = new ActionExecutorService();
-    const result = await actionExecutor.executeEscrowDeposit(message);
-    if (result.status === "success") {
-      const resultToExternalResponse = {
-        "already-locked": {
-          message: "Deposit already locked",
-          code: "ALREADY_LOCKED",
-        },
-        "already-saved": {
-          message: "Deposit already saved",
-          code: "ALREADY_SAVED",
-        },
-        success: { message: "Success", code: "SUCCESS" },
-      } as const;
+    await actionExecutor.executeEscrowDeposit(message);
 
-      return reply.status(200).send({
-        message: resultToExternalResponse[result.details].message,
-        code: resultToExternalResponse[result.details].code,
-      });
-    } else {
-      const resultToExternalResponse = {
-        unknown: {
-          message: "Unknown error",
-          code: "UNKNOWN",
-        },
-      } as const;
-
-      return reply.status(400).send({
-        message: resultToExternalResponse[result.details].message,
-        code: resultToExternalResponse[result.details].code,
-      });
-    }
+    return reply.status(200).send({ message: "Success" });
   },
 } as Endpoint;

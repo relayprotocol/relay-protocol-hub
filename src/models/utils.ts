@@ -1,6 +1,6 @@
 import { VmType } from "@reservoir0x/relay-protocol-sdk";
 
-import { externalError, internalError } from "../common/error";
+import { externalError } from "../common/error";
 
 export type DbEntry<T> = T & {
   createdAt: Date;
@@ -10,7 +10,7 @@ export type DbEntry<T> = T & {
 // Normalize and validate bytes
 export const nvBytes = (bytes: string, requiredLengthInBytes: number) => {
   if (requiredLengthInBytes % 2 !== 0) {
-    throw internalError("The required length must be an even number");
+    throw new Error("The required length must be an even number");
   }
 
   let result = BigInt(bytes).toString(16).toLowerCase();
