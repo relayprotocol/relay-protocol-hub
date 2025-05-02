@@ -17,20 +17,20 @@ const Schema = {
       data: Type.Object({
         order: Type.Object(
           {
-            solverChainId: Type.Number(),
+            solverChainId: Type.String(),
             solver: Type.String(),
             salt: Type.String(),
             inputs: Type.Array(
               Type.Object({
                 payment: Type.Object({
-                  chainId: Type.Number(),
+                  chainId: Type.String(),
                   currency: Type.String(),
                   amount: Type.String(),
                   weight: Type.String(),
                 }),
                 refunds: Type.Array(
                   Type.Object({
-                    chainId: Type.Number(),
+                    chainId: Type.String(),
                     recipient: Type.String(),
                     currency: Type.String(),
                     minimumAmount: Type.String(),
@@ -41,7 +41,7 @@ const Schema = {
               })
             ),
             output: Type.Object({
-              chainId: Type.Number(),
+              chainId: Type.String(),
               payments: Type.Array(
                 Type.Object({
                   recipient: Type.String(),
@@ -56,9 +56,9 @@ const Schema = {
             }),
             fees: Type.Array(
               Type.Object({
-                recipientChainId: Type.Number(),
+                recipientChainId: Type.String(),
                 recipient: Type.String(),
-                currencyChainId: Type.Number(),
+                currencyChainId: Type.String(),
                 currency: Type.String(),
                 amount: Type.String(),
               })

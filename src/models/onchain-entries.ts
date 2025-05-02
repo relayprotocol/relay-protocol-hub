@@ -13,7 +13,7 @@ import { db } from "../common/db";
 
 export type OnchainEntry = {
   id: string;
-  chainId: number;
+  chainId: string;
   transactionId: string;
   ownerAddress: string;
   currencyAddress: string;

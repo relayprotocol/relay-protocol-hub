@@ -12,15 +12,15 @@ import {
 } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 
-import { getChain } from "../../common/chains";
+import { ChainMetadataEthereumVm, getChain } from "../../common/chains";
 import { externalError } from "../../common/error";
 import { config } from "../../config";
 import { saveBalanceLock, unlockBalanceLock } from "../../models/balances";
 
 type WithdrawalRequest = {
-  ownerChainId: number;
+  ownerChainId: string;
   owner: string;
-  chainId: number;
+  chainId: string;
   currency: string;
   amount: string;
   recipient: string;
@@ -79,8 +79,8 @@ export class RequestHandlerService {
           domain: {
             name: "RelayEscrow",
             version: "1",
-            chainId: request.chainId,
-            verifyingContract: "" as Address,
+            chainId: (chain.metadata as ChainMetadataEthereumVm).chainId,
+            verifyingContract: chain.escrow as Address,
           },
           types: {
             CallRequest: [

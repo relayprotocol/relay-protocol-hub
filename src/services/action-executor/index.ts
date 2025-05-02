@@ -291,16 +291,16 @@ export class ActionExecutorService {
   }
 
   // Get a unique id for a chain / address combination
-  private _getId(chainId: number, address: string) {
+  private _getId(chainId: string, address: string) {
     return `${chainId}:${address}`.toLowerCase();
   }
 
   // Utility for verifying the result of a reallocation
   private _verifyReallocationResult(
     newBalances: Balance[],
-    fromChainId: number,
+    fromChainId: string,
     fromAddress: string,
-    toChainId: number,
+    toChainId: string,
     toAddress: string
   ) {
     const fromId = this._getId(fromChainId, fromAddress);

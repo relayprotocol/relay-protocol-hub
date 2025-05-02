@@ -81,9 +81,9 @@ describe("save-balance-lock", () => {
 
           const balanceLock: BalanceLock = {
             id: randomHex(32),
-            ownerChainId: Number(chainId),
+            ownerChainId: chainId,
             ownerAddress: ownerAddress,
-            currencyChainId: Number(chainId),
+            currencyChainId: chainId,
             currencyAddress,
             amount: lockedAmount.toString(),
           };
@@ -100,9 +100,9 @@ describe("save-balance-lock", () => {
         const [chainId, ownerAddress, currencyAddress] = key.split("-");
 
         const dbBalance = await getBalance(
-          Number(chainId),
+          chainId,
           ownerAddress,
-          Number(chainId),
+          chainId,
           currencyAddress
         );
         expect(dbBalance).toBeTruthy();

@@ -5,9 +5,9 @@ import { getChain } from "../common/chains";
 import { db } from "../common/db";
 
 export type Balance = {
-  ownerChainId: number;
+  ownerChainId: string;
   ownerAddress: string;
-  currencyChainId: number;
+  currencyChainId: string;
   currencyAddress: string;
   availableAmount: string;
   lockedAmount: string;
@@ -15,9 +15,9 @@ export type Balance = {
 
 export type BalanceLock = {
   id: string;
-  ownerChainId: number;
+  ownerChainId: string;
   ownerAddress: string;
-  currencyChainId: number;
+  currencyChainId: string;
   currencyAddress: string;
   amount: string;
   expiration?: number;
@@ -25,9 +25,9 @@ export type BalanceLock = {
 };
 
 export const getBalance = async (
-  ownerChainId: number,
+  ownerChainId: string,
   ownerAddress: string,
-  currencyChainId: number,
+  currencyChainId: string,
   currencyAddress: string,
   options?: {
     tx?: ITask<any>;
@@ -74,9 +74,9 @@ export const getBalance = async (
 };
 
 export const initializeBalance = async (
-  ownerChainId: number,
+  ownerChainId: string,
   ownerAddress: string,
-  currencyChainId: number,
+  currencyChainId: string,
   currencyAddress: string,
   options?: {
     tx?: ITask<any>;
@@ -333,9 +333,9 @@ export const reallocateBalance = async (
         x(owner_chain_id, owner_address, currency_chain_id, currency_address, balance_diff) AS (
           VALUES
             (
-              $/fromOwnerChainId/::BIGINT,
+              $/fromOwnerChainId/::TEXT,
               $/fromOwnerAddress/::TEXT,
-              $/fromCurrencyChainId/::BIGINT,
+              $/fromCurrencyChainId/::TEXT,
               $/fromCurrencyAddress/::TEXT,
               -$/amount/::NUMERIC(78, 0)
             ),

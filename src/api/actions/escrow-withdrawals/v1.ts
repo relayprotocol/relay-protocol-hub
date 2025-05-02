@@ -2,6 +2,7 @@ import { Type } from "@fastify/type-provider-typebox";
 import { getEscrowWithdrawalMessageId } from "@reservoir0x/relay-protocol-sdk";
 import { Address, Hex, verifyMessage } from "viem";
 
+import { getSdkChainsConfig } from "../../../common/chains";
 import {
   Endpoint,
   ErrorResponse,
@@ -14,7 +15,7 @@ const Schema = {
   body: Type.Object({
     message: Type.Object({
       data: Type.Object({
-        chainId: Type.Number({
+        chainId: Type.String({
           description: "The chain id of the attested transaction",
         }),
         withdrawal: Type.String({
@@ -24,6 +25,9 @@ const Schema = {
       result: Type.Object({
         withdrawalId: Type.String({
           description: "The id of the attested withdrawal",
+        }),
+        escrow: Type.String({
+          description: "The escrow address of the withdrawal",
         }),
         status: Type.Number({
           description: "The status of the withdrawal",
@@ -69,7 +73,10 @@ export default {
     }
 
     const message = req.body.message;
-    const messageId = getEscrowWithdrawalMessageId(message);
+    const messageId = getEscrowWithdrawalMessageId(
+      message,
+      await getSdkChainsConfig()
+    );
 
     // TODO: Keep track of allowed oracles for every chain
 
