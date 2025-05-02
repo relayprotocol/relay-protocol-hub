@@ -11,9 +11,9 @@ import { RequestHandlerService } from "../../../services/request-handler";
 
 const Schema = {
   body: Type.Object({
-    ownerChainId: Type.Number({ description: "The chain id of the owner" }),
+    ownerChainId: Type.String({ description: "The chain id of the owner" }),
     owner: Type.String({ description: "The address of the owner" }),
-    chainId: Type.Number({
+    chainId: Type.String({
       description: "The chain id to withdraw on",
     }),
     currency: Type.String({

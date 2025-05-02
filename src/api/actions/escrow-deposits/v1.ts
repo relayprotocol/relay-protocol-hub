@@ -15,7 +15,7 @@ const Schema = {
   body: Type.Object({
     message: Type.Object({
       data: Type.Object({
-        chainId: Type.Number({
+        chainId: Type.String({
           description: "The chain id of the attested transaction",
         }),
         transactionId: Type.String({
@@ -25,6 +25,9 @@ const Schema = {
       result: Type.Object({
         onchainId: Type.String({
           description: "The onchain id of the deposit",
+        }),
+        escrow: Type.String({
+          description: "The escrow address of the deposit",
         }),
         depositId: Type.String({
           description: "The id associated to the deposit",

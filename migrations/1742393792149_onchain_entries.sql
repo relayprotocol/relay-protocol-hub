@@ -2,7 +2,7 @@
 
 CREATE TABLE "onchain_entries" (
   "id" TEXT NOT NULL,
-  "chain_id" BIGINT NOT NULL,
+  "chain_id" TEXT NOT NULL,
   "transaction_id" TEXT NOT NULL,
   "owner_address" TEXT NOT NULL,
   "currency_address" TEXT NOT NULL,

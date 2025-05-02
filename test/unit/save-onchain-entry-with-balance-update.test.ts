@@ -60,9 +60,9 @@ describe("save-onchain-entry-with-balance-update", () => {
         const [chainId, ownerAddress, currencyAddress] = key.split("-");
 
         const dbBalance = await getBalance(
-          Number(chainId),
+          chainId,
           ownerAddress,
-          Number(chainId),
+          chainId,
           currencyAddress
         );
         expect(dbBalance).toBeTruthy();

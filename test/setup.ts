@@ -9,20 +9,20 @@ export default async () => {
       `
         INSERT INTO chains (
           id,
-          name,
           vm_type,
+          escrow,
           metadata
         ) VALUES (
           $/id/,
-          $/name/,
           $/vmType/,
+          $/escrow/,
           $/metadata:json/
         ) ON CONFLICT DO NOTHING
       `,
       {
         id: chain.id,
-        name: chain.name,
         vmType: chain.vmType,
+        escrow: chain.escrow,
         metadata: {},
       }
     );

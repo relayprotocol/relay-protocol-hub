@@ -20,7 +20,7 @@ import {
 
 describe("execute-escrow-withdrawal", () => {
   it("random runs", async () => {
-    const chainId = chains[randomNumber(chains.length)].id;
+    const chain = chains[randomNumber(chains.length)];
 
     const ownerAddresses = fillArray(10, () => randomHex(20));
     const currencyAddresses = fillArray(10, () => randomHex(20));
@@ -36,11 +36,12 @@ describe("execute-escrow-withdrawal", () => {
     await iter(250, async () => {
       const depositMessage: EscrowDepositMessage = {
         data: {
-          chainId,
+          chainId: chain.id,
           transactionId: randomHex(32),
         },
         result: {
           onchainId: randomHex(32),
+          escrow: chain.escrow,
           depositId: zeroHash,
           depositor: ownerAddresses[randomNumber(ownerAddresses.length)],
           currency: currencyAddresses[randomNumber(currencyAddresses.length)],
@@ -55,7 +56,7 @@ describe("execute-escrow-withdrawal", () => {
 
       // Update in-memory balances
       {
-        const key = `${chainId}-${depositMessage.result.depositor}-${depositMessage.result.currency}`;
+        const key = `${chain.id}-${depositMessage.result.depositor}-${depositMessage.result.currency}`;
         if (!inMemoryBalances[key]) {
           inMemoryBalances[key] = {
             availableAmount: 0,
@@ -69,11 +70,12 @@ describe("execute-escrow-withdrawal", () => {
 
       const withdrawalMessage: EscrowWithdrawalMessage = {
         data: {
-          chainId,
+          chainId: chain.id,
           withdrawal: randomHex(64),
         },
         result: {
           withdrawalId: randomHex(32),
+          escrow: chain.escrow,
           status: EscrowWithdrawalStatus.EXECUTED,
         },
       };
@@ -83,9 +85,9 @@ describe("execute-escrow-withdrawal", () => {
       ).toString();
       const saveResult = await saveBalanceLock({
         id: withdrawalMessage.result.withdrawalId,
-        ownerChainId: chainId,
+        ownerChainId: chain.id,
         ownerAddress: depositMessage.result.depositor,
-        currencyChainId: chainId,
+        currencyChainId: chain.id,
         currencyAddress: depositMessage.result.currency,
         amount,
       });
@@ -93,7 +95,7 @@ describe("execute-escrow-withdrawal", () => {
 
       // Update in-memory balances
       {
-        const key = `${chainId}-${depositMessage.result.depositor}-${depositMessage.result.currency}`;
+        const key = `${chain.id}-${depositMessage.result.depositor}-${depositMessage.result.currency}`;
         if (!inMemoryBalances[key]) {
           inMemoryBalances[key] = {
             availableAmount: 0,
@@ -110,7 +112,7 @@ describe("execute-escrow-withdrawal", () => {
 
       // Update in-memory balances
       {
-        const key = `${chainId}-${depositMessage.result.depositor}-${depositMessage.result.currency}`;
+        const key = `${chain.id}-${depositMessage.result.depositor}-${depositMessage.result.currency}`;
         if (!inMemoryBalances[key]) {
           inMemoryBalances[key] = {
             availableAmount: 0,
@@ -127,9 +129,9 @@ describe("execute-escrow-withdrawal", () => {
         const [chainId, ownerAddress, currencyAddress] = key.split("-");
 
         const dbBalance = await getBalance(
-          Number(chainId),
+          chainId,
           ownerAddress,
-          Number(chainId),
+          chainId,
           currencyAddress
         );
         expect(dbBalance).toBeTruthy();

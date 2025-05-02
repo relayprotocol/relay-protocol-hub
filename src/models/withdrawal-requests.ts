@@ -5,9 +5,9 @@ import { db } from "../common/db";
 
 export type WithdrawalRequest = {
   id: string;
-  ownerChainId: number;
+  ownerChainId: string;
   ownerAddress: string;
-  chainId: number;
+  chainId: string;
   currencyAddress: string;
   amount: string;
   recipientAddress: string;

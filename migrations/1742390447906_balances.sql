@@ -1,9 +1,9 @@
 -- Up Migration
 
 CREATE TABLE "balances" (
-  "owner_chain_id" BIGINT NOT NULL,
+  "owner_chain_id" TEXT NOT NULL,
   "owner_address" TEXT NOT NULL,
-  "currency_chain_id" BIGINT NOT NULL,
+  "currency_chain_id" TEXT NOT NULL,
   "currency_address" TEXT NOT NULL,
   "available_amount" NUMERIC(78, 0) NOT NULL DEFAULT 0 CHECK ("available_amount" >= 0),
   "locked_amount" NUMERIC(78, 0) NOT NULL DEFAULT 0 CHECK ("locked_amount" >= 0),
@@ -23,9 +23,9 @@ CREATE INDEX "balances_updated_at_index"
 
 CREATE TABLE "balance_locks" (
   "id" TEXT NOT NULL,
-  "owner_chain_id" BIGINT NOT NULL,
+  "owner_chain_id" TEXT NOT NULL,
   "owner_address" TEXT NOT NULL,
-  "currency_chain_id" BIGINT NOT NULL,
+  "currency_chain_id" TEXT NOT NULL,
   "currency_address" TEXT NOT NULL,
   "amount" NUMERIC(78, 0) NOT NULL CHECK ("amount" >= 0),
   "expiration" INT,

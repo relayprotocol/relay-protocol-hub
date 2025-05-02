@@ -22,7 +22,7 @@ import {
 
 describe("execute-solver-fill", () => {
   it("random runs with single input order", async () => {
-    const chainId = chains[randomNumber(chains.length)].id;
+    const chain = chains[randomNumber(chains.length)];
 
     const solverAddress = randomHex(20);
     const ownerAddresses = fillArray(10, () => randomHex(20));
@@ -42,20 +42,20 @@ describe("execute-solver-fill", () => {
       const inputPaymentAmount = randomNumber(ONE_BILLION).toString();
 
       const order: Order = {
-        solverChainId: chainId,
+        solverChainId: chain.id,
         solver: solverAddress,
         salt: randomNumber(ONE_BILLION).toString(),
         inputs: [
           {
             payment: {
-              chainId,
+              chainId: chain.id,
               currency: inputPaymentCurrency,
               amount: inputPaymentAmount,
               weight: "1",
             },
             refunds: [
               {
-                chainId,
+                chainId: chain.id,
                 recipient: ownerAddresses[randomNumber(ownerAddresses.length)],
                 currency:
                   currencyAddresses[randomNumber(currencyAddresses.length)],
@@ -67,7 +67,7 @@ describe("execute-solver-fill", () => {
           },
         ],
         output: {
-          chainId,
+          chainId: chain.id,
           payments: [
             {
               recipient: ownerAddresses[randomNumber(ownerAddresses.length)],
@@ -86,10 +86,10 @@ describe("execute-solver-fill", () => {
             ? []
             : [
                 {
-                  recipientChainId: chainId,
+                  recipientChainId: chain.id,
                   recipient:
                     ownerAddresses[randomNumber(ownerAddresses.length)],
-                  currencyChainId: chainId,
+                  currencyChainId: chain.id,
                   currency: inputPaymentCurrency,
                   amount: (
                     1 + randomNumber(Number(inputPaymentAmount) / 2)
@@ -97,17 +97,18 @@ describe("execute-solver-fill", () => {
                 },
               ],
       };
-      const orderId = getOrderId(order, { [chainId]: "ethereum-vm" });
+      const orderId = getOrderId(order, { [chain.id]: "ethereum-vm" });
 
       const actionExecutor = new ActionExecutorService();
 
       const escrowDepositMessage: EscrowDepositMessage = {
         data: {
-          chainId,
+          chainId: chain.id,
           transactionId: randomHex(32),
         },
         result: {
           onchainId: randomHex(32),
+          escrow: chain.escrow,
           depositId: orderId,
           depositor: ownerAddresses[randomNumber(ownerAddresses.length)],
           currency: order.inputs[0].payment.currency,
@@ -120,7 +121,7 @@ describe("execute-solver-fill", () => {
 
       // Update in-memory balances
       {
-        const key = `${chainId}-${escrowDepositMessage.result.depositor}-${escrowDepositMessage.result.currency}`;
+        const key = `${chain.id}-${escrowDepositMessage.result.depositor}-${escrowDepositMessage.result.currency}`;
         if (!inMemoryBalances[key]) {
           inMemoryBalances[key] = {
             availableAmount: 0,
@@ -159,13 +160,13 @@ describe("execute-solver-fill", () => {
 
       // Update in-memory balances
       {
-        const key = `${chainId}-${escrowDepositMessage.result.depositor}-${escrowDepositMessage.result.currency}`;
+        const key = `${chain.id}-${escrowDepositMessage.result.depositor}-${escrowDepositMessage.result.currency}`;
         inMemoryBalances[key].lockedAmount -= Number(
           escrowDepositMessage.result.amount
         );
       }
       {
-        const key = `${chainId}-${order.solver}-${escrowDepositMessage.result.currency}`;
+        const key = `${chain.id}-${order.solver}-${escrowDepositMessage.result.currency}`;
         if (!inMemoryBalances[key]) {
           inMemoryBalances[key] = {
             availableAmount: 0,
@@ -177,7 +178,7 @@ describe("execute-solver-fill", () => {
           Number(order.fees[0]?.amount ?? 0);
       }
       if (order.fees.length) {
-        const key = `${chainId}-${order.fees[0].recipient}-${escrowDepositMessage.result.currency}`;
+        const key = `${chain.id}-${order.fees[0].recipient}-${escrowDepositMessage.result.currency}`;
         if (!inMemoryBalances[key]) {
           inMemoryBalances[key] = {
             availableAmount: 0,
@@ -194,9 +195,9 @@ describe("execute-solver-fill", () => {
         const [chainId, ownerAddress, currencyAddress] = key.split("-");
 
         const dbBalance = await getBalance(
-          Number(chainId),
+          chainId,
           ownerAddress,
-          Number(chainId),
+          chainId,
           currencyAddress
         );
         expect(dbBalance).toBeTruthy();

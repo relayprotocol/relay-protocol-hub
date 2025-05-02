@@ -2,9 +2,9 @@
 
 CREATE TABLE "withdrawal_requests" (
   "id" TEXT NOT NULL,
-  "owner_chain_id" BIGINT NOT NULL,
+  "owner_chain_id" TEXT NOT NULL,
   "owner_address" TEXT NOT NULL,
-  "chain_id" BIGINT NOT NULL,
+  "chain_id" TEXT NOT NULL,
   "currency_address" TEXT NOT NULL,
   "amount" NUMERIC(78, 0) NOT NULL,
   "recipient_address" TEXT NOT NULL,
