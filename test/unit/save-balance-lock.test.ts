@@ -81,6 +81,7 @@ describe("save-balance-lock", () => {
 
           const balanceLock: BalanceLock = {
             id: randomHex(32),
+            source: "deposit",
             ownerChainId: chainId,
             ownerAddress: ownerAddress,
             currencyChainId: chainId,
