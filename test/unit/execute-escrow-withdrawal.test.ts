@@ -85,6 +85,7 @@ describe("execute-escrow-withdrawal", () => {
       ).toString();
       const saveResult = await saveBalanceLock({
         id: withdrawalMessage.result.withdrawalId,
+        source: "withdrawal",
         ownerChainId: chain.id,
         ownerAddress: depositMessage.result.depositor,
         currencyChainId: chain.id,

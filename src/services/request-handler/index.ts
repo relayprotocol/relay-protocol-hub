@@ -15,7 +15,11 @@ import { privateKeyToAccount } from "viem/accounts";
 import { ChainMetadataEthereumVm, getChain } from "../../common/chains";
 import { externalError } from "../../common/error";
 import { config } from "../../config";
-import { saveBalanceLock, unlockBalanceLock } from "../../models/balances";
+import {
+  getBalanceLock,
+  saveBalanceLock,
+  unlockBalanceLock,
+} from "../../models/balances";
 
 type WithdrawalRequest = {
   ownerChainId: string;
@@ -117,6 +121,7 @@ export class RequestHandlerService {
 
         const newBalance = await saveBalanceLock({
           id,
+          source: "withdrawal",
           ownerChainId: request.ownerChainId,
           ownerAddress: request.owner,
           currencyChainId: request.chainId,
@@ -141,6 +146,16 @@ export class RequestHandlerService {
   }
 
   public async handleUnlock(request: UnlockRequest) {
+    const balanceLock = await getBalanceLock(request.id);
+    if (!balanceLock) {
+      throw externalError("Balance lock does not exist");
+    }
+    if (balanceLock.source !== "deposit") {
+      throw externalError(
+        "Only 'deposit' balance locks can be unlocked via this flow"
+      );
+    }
+
     const newBalance = await unlockBalanceLock(request.id);
     if (!newBalance) {
       throw externalError("Failed to unlock balance");

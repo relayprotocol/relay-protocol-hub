@@ -13,8 +13,11 @@ export type Balance = {
   lockedAmount: string;
 };
 
+type BalanceLockSource = "deposit" | "withdrawal";
+
 export type BalanceLock = {
   id: string;
+  source: BalanceLockSource;
   ownerChainId: string;
   ownerAddress: string;
   currencyChainId: string;
@@ -140,6 +143,7 @@ export const getBalanceLock = async (
     `
       SELECT
         balance_locks.id,
+        balance_locks.source,
         balance_locks.owner_chain_id,
         balance_locks.owner_address,
         balance_locks.currency_chain_id,
@@ -161,6 +165,7 @@ export const getBalanceLock = async (
 
   return {
     id: result.id,
+    source: result.source,
     ownerChainId: result.owner_chain_id,
     ownerAddress: result.owner_address,
     currencyChainId: result.currency_chain_id,
@@ -191,6 +196,7 @@ export const saveBalanceLock = async (
       WITH x AS (
         INSERT INTO balance_locks (
           id,
+          source,
           owner_chain_id,
           owner_address,
           currency_chain_id,
@@ -199,6 +205,7 @@ export const saveBalanceLock = async (
           expiration
         ) VALUES (
           $/id/,
+          $/source/,
           $/ownerChainId/,
           $/ownerAddress/,
           $/currencyChainId/,
@@ -221,6 +228,7 @@ export const saveBalanceLock = async (
     `,
     {
       id: nvBytes(balanceLock.id, 32),
+      source: balanceLock.source,
       ownerChainId: balanceLock.ownerChainId,
       ownerAddress: nvAddress(balanceLock.ownerAddress, ownerVmType),
       currencyChainId: balanceLock.currencyChainId,

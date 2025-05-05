@@ -21,8 +21,14 @@ CREATE INDEX "balances_created_at_index"
 CREATE INDEX "balances_updated_at_index"
   ON "balances" ("updated_at");
 
+CREATE TYPE "balance_lock_source_t" AS ENUM (
+  'deposit',
+  'withdrawal'
+);
+
 CREATE TABLE "balance_locks" (
   "id" TEXT NOT NULL,
+  "source" "balance_lock_source_t" NOT NULL,
   "owner_chain_id" TEXT NOT NULL,
   "owner_address" TEXT NOT NULL,
   "currency_chain_id" TEXT NOT NULL,

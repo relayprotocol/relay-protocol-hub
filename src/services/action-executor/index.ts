@@ -51,6 +51,7 @@ export class ActionExecutorService {
         const lockResult = await saveBalanceLock(
           {
             id: message.result.onchainId,
+            source: "deposit",
             ownerChainId: message.data.chainId,
             ownerAddress: message.result.depositor,
             currencyChainId: message.data.chainId,
