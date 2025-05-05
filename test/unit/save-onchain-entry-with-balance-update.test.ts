@@ -19,20 +19,19 @@ describe("save-onchain-entry-with-balance-update", () => {
   it("random runs", async () => {
     const chainId = chains[randomNumber(chains.length)].id;
 
-    const ownerAddresses = fillArray(3, () => randomHex(20));
-    const currencyAddresses = fillArray(3, () => randomHex(20));
+    const owneres = fillArray(3, () => randomHex(20));
+    const currencyes = fillArray(3, () => randomHex(20));
 
     // Save transaction entry updates to both the database and in-memory
     const inMemoryBalances: Record<string, number> = {};
     await iter(250, async () => {
-      const ownerAddress = ownerAddresses[randomNumber(ownerAddresses.length)];
-      const currencyAddress =
-        currencyAddresses[randomNumber(currencyAddresses.length)];
+      const owner = owneres[randomNumber(owneres.length)];
+      const currency = currencyes[randomNumber(currencyes.length)];
       const balanceDiff = randomNumber(ONE_BILLION);
 
       // Update in-memory balances
       {
-        const key = `${chainId}-${ownerAddress}-${currencyAddress}`;
+        const key = `${chainId}-${owner}-${currency}`;
         if (!inMemoryBalances[key]) {
           inMemoryBalances[key] = 0;
         }
@@ -43,8 +42,8 @@ describe("save-onchain-entry-with-balance-update", () => {
         id: randomHex(32),
         chainId,
         transactionId: randomHex(32),
-        ownerAddress,
-        currencyAddress,
+        owner,
+        currency,
         balanceDiff: balanceDiff.toString(),
       };
 
@@ -57,14 +56,9 @@ describe("save-onchain-entry-with-balance-update", () => {
     // Ensure database balances match in-memory balances
     await Promise.all(
       Object.keys(inMemoryBalances).map(async (key) => {
-        const [chainId, ownerAddress, currencyAddress] = key.split("-");
+        const [chainId, owner, currency] = key.split("-");
 
-        const dbBalance = await getBalance(
-          chainId,
-          ownerAddress,
-          chainId,
-          currencyAddress
-        );
+        const dbBalance = await getBalance(chainId, owner, chainId, currency);
         expect(dbBalance).toBeTruthy();
         expect(
           dbBalance?.availableAmount === inMemoryBalances[key].toString()

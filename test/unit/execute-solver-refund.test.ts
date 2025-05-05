@@ -25,8 +25,8 @@ describe("execute-solver-refund", () => {
     const chain = chains[randomNumber(chains.length)];
 
     const solverAddress = randomHex(20);
-    const ownerAddresses = fillArray(10, () => randomHex(20));
-    const currencyAddresses = fillArray(10, () => randomHex(20));
+    const owneres = fillArray(10, () => randomHex(20));
+    const currencyes = fillArray(10, () => randomHex(20));
 
     // Save updates to both the database and in-memory
     const inMemoryBalances: Record<
@@ -45,17 +45,15 @@ describe("execute-solver-refund", () => {
           {
             payment: {
               chainId: chain.id,
-              currency:
-                currencyAddresses[randomNumber(currencyAddresses.length)],
+              currency: currencyes[randomNumber(currencyes.length)],
               amount: randomNumber(ONE_BILLION).toString(),
               weight: "1",
             },
             refunds: [
               {
                 chainId: chain.id,
-                recipient: ownerAddresses[randomNumber(ownerAddresses.length)],
-                currency:
-                  currencyAddresses[randomNumber(currencyAddresses.length)],
+                recipient: owneres[randomNumber(owneres.length)],
+                currency: currencyes[randomNumber(currencyes.length)],
                 minimumAmount: randomNumber(ONE_BILLION).toString(),
                 deadline: now() + 3600,
                 extraData: "0x",
@@ -67,9 +65,8 @@ describe("execute-solver-refund", () => {
           chainId: chain.id,
           payments: [
             {
-              recipient: ownerAddresses[randomNumber(ownerAddresses.length)],
-              currency:
-                currencyAddresses[randomNumber(currencyAddresses.length)],
+              recipient: owneres[randomNumber(owneres.length)],
+              currency: currencyes[randomNumber(currencyes.length)],
               expectedAmount: randomNumber(ONE_BILLION).toString(),
               minimumAmount: randomNumber(ONE_BILLION).toString(),
             },
@@ -84,11 +81,9 @@ describe("execute-solver-refund", () => {
             : [
                 {
                   recipientChainId: chain.id,
-                  recipient:
-                    ownerAddresses[randomNumber(ownerAddresses.length)],
+                  recipient: owneres[randomNumber(owneres.length)],
                   currencyChainId: chain.id,
-                  currency:
-                    currencyAddresses[randomNumber(currencyAddresses.length)],
+                  currency: currencyes[randomNumber(currencyes.length)],
                   amount: randomNumber(ONE_BILLION).toString(),
                 },
               ],
@@ -106,7 +101,7 @@ describe("execute-solver-refund", () => {
           onchainId: randomHex(32),
           escrow: chain.escrow,
           depositId: orderId,
-          depositor: ownerAddresses[randomNumber(ownerAddresses.length)],
+          depositor: owneres[randomNumber(owneres.length)],
           currency: order.inputs[0].payment.currency,
           amount: order.inputs[0].payment.amount,
         },
@@ -182,14 +177,9 @@ describe("execute-solver-refund", () => {
     // Ensure database balances match in-memory balances
     await Promise.all(
       Object.keys(inMemoryBalances).map(async (key) => {
-        const [chainId, ownerAddress, currencyAddress] = key.split("-");
+        const [chainId, owner, currency] = key.split("-");
 
-        const dbBalance = await getBalance(
-          chainId,
-          ownerAddress,
-          chainId,
-          currencyAddress
-        );
+        const dbBalance = await getBalance(chainId, owner, chainId, currency);
         expect(dbBalance).toBeTruthy();
         expect(
           dbBalance?.availableAmount ===

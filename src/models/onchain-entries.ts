@@ -15,8 +15,8 @@ export type OnchainEntry = {
   id: string;
   chainId: string;
   transactionId: string;
-  ownerAddress: string;
-  currencyAddress: string;
+  owner: string;
+  currency: string;
   balanceDiff: string;
 };
 
@@ -32,8 +32,8 @@ export const getOnchainEntry = async (
         onchain_entries.id,
         onchain_entries.chain_id,
         onchain_entries.transaction_id,
-        onchain_entries.owner_address,
-        onchain_entries.currency_address,
+        onchain_entries.owner,
+        onchain_entries.currency,
         onchain_entries.balance_diff,
         onchain_entries.created_at,
         onchain_entries.updated_at
@@ -52,8 +52,8 @@ export const getOnchainEntry = async (
     id: result.id,
     chainId: result.chain_id,
     transactionId: result.transaction_id,
-    ownerAddress: result.owner_address,
-    currencyAddress: result.currency_address,
+    owner: result.owner,
+    currency: result.currency,
     balanceDiff: result.balance_diff,
     createdAt: result.created_at,
     updatedAt: result.updated_at,
@@ -77,35 +77,35 @@ export const saveOnchainEntryWithBalanceUpdate = async (
           id,
           chain_id,
           transaction_id,
-          owner_address,
-          currency_address,
+          owner,
+          currency,
           balance_diff
         ) VALUES (
           $/id/,
           $/chainId/,
           $/transactionId/,
-          $/ownerAddress/,
-          $/currencyAddress/,
+          $/owner/,
+          $/currency/,
           $/balanceDiff/
         ) ON CONFLICT DO NOTHING
         RETURNING *
       )
       INSERT INTO balances (
         owner_chain_id,
-        owner_address,
+        owner,
         currency_chain_id,
-        currency_address,
+        currency,
         available_amount
       ) (
         SELECT
           x.chain_id,
-          x.owner_address,
+          x.owner,
           x.chain_id,
-          x.currency_address,
+          x.currency,
           x.balance_diff
         FROM x
       )
-      ON CONFLICT (owner_chain_id, owner_address, currency_chain_id, currency_address)
+      ON CONFLICT (owner_chain_id, owner, currency_chain_id, currency)
       DO UPDATE SET
         available_amount = balances.available_amount + EXCLUDED.available_amount,
         updated_at = now()
@@ -115,8 +115,8 @@ export const saveOnchainEntryWithBalanceUpdate = async (
       id: nvBytes(onchainEntry.id, 32),
       chainId: onchainEntry.chainId,
       transactionId: nvTransactionId(onchainEntry.transactionId, vmType),
-      ownerAddress: nvAddress(onchainEntry.ownerAddress, vmType),
-      currencyAddress: nvCurrency(onchainEntry.currencyAddress, vmType),
+      owner: nvAddress(onchainEntry.owner, vmType),
+      currency: nvCurrency(onchainEntry.currency, vmType),
       balanceDiff: onchainEntry.balanceDiff,
     }
   );
@@ -126,9 +126,9 @@ export const saveOnchainEntryWithBalanceUpdate = async (
 
   return {
     ownerChainId: result.owner_chain_id,
-    ownerAddress: result.owner_address,
+    owner: result.owner,
     currencyChainId: result.currency_chain_id,
-    currencyAddress: result.currency_address,
+    currency: result.currency,
     availableAmount: result.available_amount,
     lockedAmount: result.locked_amount,
     createdAt: result.created_at,

@@ -22,8 +22,8 @@ describe("execute-escrow-withdrawal", () => {
   it("random runs", async () => {
     const chain = chains[randomNumber(chains.length)];
 
-    const ownerAddresses = fillArray(10, () => randomHex(20));
-    const currencyAddresses = fillArray(10, () => randomHex(20));
+    const owneres = fillArray(10, () => randomHex(20));
+    const currencyes = fillArray(10, () => randomHex(20));
 
     // Save updates to both the database and in-memory
     const inMemoryBalances: Record<
@@ -43,8 +43,8 @@ describe("execute-escrow-withdrawal", () => {
           onchainId: randomHex(32),
           escrow: chain.escrow,
           depositId: zeroHash,
-          depositor: ownerAddresses[randomNumber(ownerAddresses.length)],
-          currency: currencyAddresses[randomNumber(currencyAddresses.length)],
+          depositor: owneres[randomNumber(owneres.length)],
+          currency: currencyes[randomNumber(currencyes.length)],
           amount: randomNumber(ONE_BILLION).toString(),
         },
       };
@@ -87,9 +87,9 @@ describe("execute-escrow-withdrawal", () => {
         id: withdrawalMessage.result.withdrawalId,
         source: "withdrawal",
         ownerChainId: chain.id,
-        ownerAddress: depositMessage.result.depositor,
+        owner: depositMessage.result.depositor,
         currencyChainId: chain.id,
-        currencyAddress: depositMessage.result.currency,
+        currency: depositMessage.result.currency,
         amount,
       });
       expect(saveResult).toBeTruthy();
@@ -127,14 +127,9 @@ describe("execute-escrow-withdrawal", () => {
     // Ensure database balances match in-memory balances
     await Promise.all(
       Object.keys(inMemoryBalances).map(async (key) => {
-        const [chainId, ownerAddress, currencyAddress] = key.split("-");
+        const [chainId, owner, currency] = key.split("-");
 
-        const dbBalance = await getBalance(
-          chainId,
-          ownerAddress,
-          chainId,
-          currencyAddress
-        );
+        const dbBalance = await getBalance(chainId, owner, chainId, currency);
         expect(dbBalance).toBeTruthy();
         if (
           dbBalance?.availableAmount !==
