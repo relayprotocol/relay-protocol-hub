@@ -56,11 +56,11 @@ export default {
     const withdrawalRequest = await saveWithdrawalRequest({
       id: result.id,
       ownerChainId: req.body.ownerChainId,
-      ownerAddress: req.body.owner,
+      owner: req.body.owner,
       chainId: req.body.chainId,
-      currencyAddress: req.body.currency,
+      currency: req.body.currency,
       amount: req.body.amount,
-      recipientAddress: req.body.recipient,
+      recipient: req.body.recipient,
       encodedData: result.encodedData,
       signature: result.signature,
     });

@@ -6,11 +6,11 @@ import { db } from "../common/db";
 export type WithdrawalRequest = {
   id: string;
   ownerChainId: string;
-  ownerAddress: string;
+  owner: string;
   chainId: string;
-  currencyAddress: string;
+  currency: string;
   amount: string;
-  recipientAddress: string;
+  recipient: string;
   encodedData: string;
   signature: string;
   executed?: boolean;
@@ -25,11 +25,11 @@ export const getWithdrawalRequest = async (
       SELECT
         withdrawal_requests.id,
         withdrawal_requests.owner_chain_id,
-        withdrawal_requests.owner_address,
+        withdrawal_requests.owner,
         withdrawal_requests.chain_id,
-        withdrawal_requests.currency_address,
+        withdrawal_requests.currency,
         withdrawal_requests.amount,
-        withdrawal_requests.recipient_address,
+        withdrawal_requests.recipient,
         withdrawal_requests.encoded_data,
         withdrawal_requests.signature,
         withdrawal_requests.executed,
@@ -49,11 +49,11 @@ export const getWithdrawalRequest = async (
   return {
     id: result.id,
     ownerChainId: result.owner_chain_id,
-    ownerAddress: result.owner_address,
+    owner: result.owner,
     chainId: result.chain_id,
-    currencyAddress: result.currency_address,
+    currency: result.currency,
     amount: result.amount,
-    recipientAddress: result.recipient_address,
+    recipient: result.recipient,
     encodedData: result.encoded_data,
     signature: result.signature,
     executed: result.executed,
@@ -71,21 +71,21 @@ export const saveWithdrawalRequest = async (
       INSERT INTO withdrawal_requests (
         id,
         owner_chain_id,
-        owner_address,
+        owner,
         chain_id,
-        currency_address,
+        currency,
         amount,
-        recipient_address,
+        recipient,
         encoded_data,
         signature
       ) VALUES (
         $/id/,
         $/ownerChainId/,
-        $/ownerAddress/,
+        $/owner/,
         $/chainId/,
-        $/currencyAddress/,
+        $/currency/,
         $/amount/,
-        $/recipientAddress/,
+        $/recipient/,
         $/encodedData/,
         $/signature/
       ) ON CONFLICT DO NOTHING
@@ -94,11 +94,11 @@ export const saveWithdrawalRequest = async (
     {
       id: withdrawalRequest.id,
       ownerChainId: withdrawalRequest.ownerChainId,
-      ownerAddress: withdrawalRequest.ownerAddress,
+      owner: withdrawalRequest.owner,
       chainId: withdrawalRequest.chainId,
-      currencyAddress: withdrawalRequest.currencyAddress,
+      currency: withdrawalRequest.currency,
       amount: withdrawalRequest.amount,
-      recipientAddress: withdrawalRequest.recipientAddress,
+      recipient: withdrawalRequest.recipient,
       encodedData: withdrawalRequest.encodedData,
       signature: withdrawalRequest.signature,
     }
@@ -110,11 +110,11 @@ export const saveWithdrawalRequest = async (
   return {
     id: result.id,
     ownerChainId: result.owner_chain_id,
-    ownerAddress: result.owner_address,
+    owner: result.owner,
     chainId: result.chain_id,
-    currencyAddress: result.currency_address,
+    currency: result.currency,
     amount: result.amount,
-    recipientAddress: result.recipient_address,
+    recipient: result.recipient,
     encodedData: result.encoded_data,
     signature: result.signature,
     executed: result.executed,

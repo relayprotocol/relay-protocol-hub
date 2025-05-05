@@ -123,9 +123,9 @@ export class RequestHandlerService {
           id,
           source: "withdrawal",
           ownerChainId: request.ownerChainId,
-          ownerAddress: request.owner,
+          owner: request.owner,
           currencyChainId: request.chainId,
-          currencyAddress: request.currency,
+          currency: request.currency,
           amount: request.amount,
           expiration: data.expiration,
         });

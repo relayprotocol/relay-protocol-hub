@@ -24,8 +24,8 @@ describe("handle-unlock", () => {
   it("random runs", async () => {
     const chain = chains[randomNumber(chains.length)];
 
-    const ownerAddresses = fillArray(10, () => randomHex(20));
-    const currencyAddresses = fillArray(10, () => randomHex(20));
+    const owneres = fillArray(10, () => randomHex(20));
+    const currencyes = fillArray(10, () => randomHex(20));
 
     // Save updates to both the database and in-memory
     const inMemoryBalances: Record<
@@ -40,9 +40,8 @@ describe("handle-unlock", () => {
         id: randomHex(32),
         chainId: chain.id,
         transactionId: randomHex(32),
-        ownerAddress: ownerAddresses[randomNumber(ownerAddresses.length)],
-        currencyAddress:
-          currencyAddresses[randomNumber(currencyAddresses.length)],
+        owner: owneres[randomNumber(owneres.length)],
+        currency: currencyes[randomNumber(currencyes.length)],
         balanceDiff: randomNumber(ONE_BILLION).toString(),
       };
       expect(
@@ -53,9 +52,9 @@ describe("handle-unlock", () => {
         id: randomHex(32),
         source: randomNumber(10) % 2 === 0 ? "deposit" : "withdrawal",
         ownerChainId: onchainEntry.chainId,
-        ownerAddress: onchainEntry.ownerAddress,
+        owner: onchainEntry.owner,
         currencyChainId: onchainEntry.chainId,
-        currencyAddress: onchainEntry.currencyAddress,
+        currency: onchainEntry.currency,
         amount: onchainEntry.balanceDiff,
         expiration: randomNumber(ONE_BILLION),
       };
@@ -63,7 +62,7 @@ describe("handle-unlock", () => {
 
       // Update in-memory balances
       {
-        const key = `${onchainEntry.chainId}-${onchainEntry.ownerAddress}-${onchainEntry.currencyAddress}`;
+        const key = `${onchainEntry.chainId}-${onchainEntry.owner}-${onchainEntry.currency}`;
         if (!inMemoryBalances[key]) {
           inMemoryBalances[key] = {
             availableAmount: 0,
@@ -80,7 +79,7 @@ describe("handle-unlock", () => {
 
         // Update in-memory balances
         {
-          const key = `${onchainEntry.chainId}-${onchainEntry.ownerAddress}-${onchainEntry.currencyAddress}`;
+          const key = `${onchainEntry.chainId}-${onchainEntry.owner}-${onchainEntry.currency}`;
           if (!inMemoryBalances[key]) {
             inMemoryBalances[key] = {
               availableAmount: 0,
@@ -102,14 +101,9 @@ describe("handle-unlock", () => {
     // Ensure database balances match in-memory balances
     await Promise.all(
       Object.keys(inMemoryBalances).map(async (key) => {
-        const [chainId, ownerAddress, currencyAddress] = key.split("-");
+        const [chainId, owner, currency] = key.split("-");
 
-        const dbBalance = await getBalance(
-          chainId,
-          ownerAddress,
-          chainId,
-          currencyAddress
-        );
+        const dbBalance = await getBalance(chainId, owner, chainId, currency);
         expect(dbBalance).toBeTruthy();
         expect(
           dbBalance?.availableAmount ===

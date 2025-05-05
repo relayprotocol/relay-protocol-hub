@@ -23,8 +23,8 @@ describe("save-balance-lock", () => {
   it("random runs", async () => {
     const chainId = chains[randomNumber(chains.length)].id;
 
-    const ownerAddresses = fillArray(20, () => randomHex(20));
-    const currencyAddresses = fillArray(20, () => randomHex(20));
+    const owneres = fillArray(20, () => randomHex(20));
+    const currencyes = fillArray(20, () => randomHex(20));
 
     // Save transaction entry updates to both the database and in-memory
     const inMemoryBalances: Record<
@@ -35,14 +35,13 @@ describe("save-balance-lock", () => {
       }
     > = {};
     await iter(250, async () => {
-      const ownerAddress = ownerAddresses[randomNumber(ownerAddresses.length)];
-      const currencyAddress =
-        currencyAddresses[randomNumber(currencyAddresses.length)];
+      const owner = owneres[randomNumber(owneres.length)];
+      const currency = currencyes[randomNumber(currencyes.length)];
       const balanceDiff = randomNumber(ONE_BILLION);
 
       // Update in-memory balances
       {
-        const key = `${chainId}-${ownerAddress}-${currencyAddress}`;
+        const key = `${chainId}-${owner}-${currency}`;
         if (!inMemoryBalances[key]) {
           inMemoryBalances[key] = {
             availableAmount: 0,
@@ -56,8 +55,8 @@ describe("save-balance-lock", () => {
         id: randomHex(32),
         chainId,
         transactionId: randomHex(32),
-        ownerAddress,
-        currencyAddress,
+        owner,
+        currency,
         balanceDiff: balanceDiff.toString(),
       };
       await saveOnchainEntryWithBalanceUpdate(onchainEntry);
@@ -66,7 +65,7 @@ describe("save-balance-lock", () => {
     // Lock balances both in the database and in-memory
     await Promise.all(
       Object.keys(inMemoryBalances).map(async (key) => {
-        const [chainId, ownerAddress, currencyAddress] = key.split("-");
+        const [chainId, owner, currency] = key.split("-");
 
         await iter(randomNumber(5), async () => {
           const lockedAmount = Math.floor(
@@ -83,9 +82,9 @@ describe("save-balance-lock", () => {
             id: randomHex(32),
             source: "deposit",
             ownerChainId: chainId,
-            ownerAddress: ownerAddress,
+            owner: owner,
             currencyChainId: chainId,
-            currencyAddress,
+            currency,
             amount: lockedAmount.toString(),
           };
 
@@ -98,14 +97,9 @@ describe("save-balance-lock", () => {
     // Ensure database balances match in-memory balances
     await Promise.all(
       Object.keys(inMemoryBalances).map(async (key) => {
-        const [chainId, ownerAddress, currencyAddress] = key.split("-");
+        const [chainId, owner, currency] = key.split("-");
 
-        const dbBalance = await getBalance(
-          chainId,
-          ownerAddress,
-          chainId,
-          currencyAddress
-        );
+        const dbBalance = await getBalance(chainId, owner, chainId, currency);
         expect(dbBalance).toBeTruthy();
         expect(
           dbBalance?.availableAmount ===

@@ -34,8 +34,8 @@ export class ActionExecutorService {
           id: message.result.onchainId,
           chainId: message.data.chainId,
           transactionId: message.data.transactionId,
-          ownerAddress: message.result.depositor,
-          currencyAddress: message.result.currency,
+          owner: message.result.depositor,
+          currency: message.result.currency,
           balanceDiff: message.result.amount,
         },
         { tx }
@@ -53,9 +53,9 @@ export class ActionExecutorService {
             id: message.result.onchainId,
             source: "deposit",
             ownerChainId: message.data.chainId,
-            ownerAddress: message.result.depositor,
+            owner: message.result.depositor,
             currencyChainId: message.data.chainId,
-            currencyAddress: message.result.currency,
+            currency: message.result.currency,
             amount: message.result.amount,
           },
           { tx }
@@ -128,20 +128,20 @@ export class ActionExecutorService {
               message.data.order.solverChainId,
               message.data.order.solver,
               balanceLock.currencyChainId,
-              balanceLock.currencyAddress,
+              balanceLock.currency,
               { tx }
             );
 
             const newBalances = await reallocateBalance(
               {
                 ownerChainId: balanceLock.ownerChainId,
-                ownerAddress: balanceLock.ownerAddress,
+                owner: balanceLock.owner,
                 currencyChainId: balanceLock.currencyChainId,
-                currencyAddress: balanceLock.currencyAddress,
+                currency: balanceLock.currency,
               },
               {
                 ownerChainId: message.data.order.solverChainId,
-                ownerAddress: message.data.order.solver,
+                owner: message.data.order.solver,
               },
               balanceLock.amount,
               { tx }
@@ -156,7 +156,7 @@ export class ActionExecutorService {
           this._verifyReallocationResult(
             r.newBalances,
             r.balanceLock.ownerChainId,
-            r.balanceLock.ownerAddress,
+            r.balanceLock.owner,
             message.data.order.solverChainId,
             message.data.order.solver
           )
@@ -181,13 +181,13 @@ export class ActionExecutorService {
           const newBalances = await reallocateBalance(
             {
               ownerChainId: message.data.order.solverChainId,
-              ownerAddress: message.data.order.solver,
+              owner: message.data.order.solver,
               currencyChainId: fee.currencyChainId,
-              currencyAddress: fee.currency,
+              currency: fee.currency,
             },
             {
               ownerChainId: fee.recipientChainId,
-              ownerAddress: fee.recipient,
+              owner: fee.recipient,
             },
             String(
               BigInt(fee.amount) +
@@ -252,20 +252,20 @@ export class ActionExecutorService {
               message.data.order.solverChainId,
               message.data.order.solver,
               balanceLock.currencyChainId,
-              balanceLock.currencyAddress,
+              balanceLock.currency,
               { tx }
             );
 
             const newBalances = await reallocateBalance(
               {
                 ownerChainId: balanceLock.ownerChainId,
-                ownerAddress: balanceLock.ownerAddress,
+                owner: balanceLock.owner,
                 currencyChainId: balanceLock.currencyChainId,
-                currencyAddress: balanceLock.currencyAddress,
+                currency: balanceLock.currency,
               },
               {
                 ownerChainId: message.data.order.solverChainId,
-                ownerAddress: message.data.order.solver,
+                owner: message.data.order.solver,
               },
               balanceLock.amount,
               { tx }
@@ -280,7 +280,7 @@ export class ActionExecutorService {
           this._verifyReallocationResult(
             r.newBalances,
             r.balanceLock.ownerChainId,
-            r.balanceLock.ownerAddress,
+            r.balanceLock.owner,
             message.data.order.solverChainId,
             message.data.order.solver
           )
@@ -309,9 +309,7 @@ export class ActionExecutorService {
 
     // Ensure that the reallocation resulted in balance changes for the `from` and `to` wallets
     return [fromId, toId].every((id) =>
-      newBalances.find(
-        (b) => this._getId(b.ownerChainId, b.ownerAddress) === id
-      )
+      newBalances.find((b) => this._getId(b.ownerChainId, b.owner) === id)
     );
   }
 }

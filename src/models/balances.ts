@@ -6,9 +6,9 @@ import { db } from "../common/db";
 
 export type Balance = {
   ownerChainId: string;
-  ownerAddress: string;
+  owner: string;
   currencyChainId: string;
-  currencyAddress: string;
+  currency: string;
   availableAmount: string;
   lockedAmount: string;
 };
@@ -19,9 +19,9 @@ export type BalanceLock = {
   id: string;
   source: BalanceLockSource;
   ownerChainId: string;
-  ownerAddress: string;
+  owner: string;
   currencyChainId: string;
-  currencyAddress: string;
+  currency: string;
   amount: string;
   expiration?: number;
   executed?: boolean;
@@ -29,9 +29,9 @@ export type BalanceLock = {
 
 export const getBalance = async (
   ownerChainId: string,
-  ownerAddress: string,
+  owner: string,
   currencyChainId: string,
-  currencyAddress: string,
+  currency: string,
   options?: {
     tx?: ITask<any>;
   }
@@ -40,24 +40,24 @@ export const getBalance = async (
     `
       SELECT
         balances.owner_chain_id,
-        balances.owner_address,
+        balances.owner,
         balances.currency_chain_id,
-        balances.currency_address,
+        balances.currency,
         balances.available_amount,
         balances.locked_amount,
         balances.created_at,
         balances.updated_at
       FROM balances
       WHERE balances.owner_chain_id = $/ownerChainId/
-        AND balances.owner_address = $/ownerAddress/
+        AND balances.owner = $/owner/
         AND balances.currency_chain_id = $/currencyChainId/
-        AND balances.currency_address = $/currencyAddress/
+        AND balances.currency = $/currency/
     `,
     {
       ownerChainId,
-      ownerAddress,
+      owner,
       currencyChainId,
-      currencyAddress,
+      currency,
     }
   );
   if (!result) {
@@ -66,9 +66,9 @@ export const getBalance = async (
 
   return {
     ownerChainId: result.owner_chain_id,
-    ownerAddress: result.owner_address,
+    owner: result.owner,
     currencyChainId: result.currency_chain_id,
-    currencyAddress: result.currency_address,
+    currency: result.currency,
     availableAmount: result.available_amount,
     lockedAmount: result.locked_amount,
     createdAt: result.created_at,
@@ -78,9 +78,9 @@ export const getBalance = async (
 
 export const initializeBalance = async (
   ownerChainId: string,
-  ownerAddress: string,
+  owner: string,
   currencyChainId: string,
-  currencyAddress: string,
+  currency: string,
   options?: {
     tx?: ITask<any>;
   }
@@ -96,25 +96,25 @@ export const initializeBalance = async (
     `
       INSERT INTO balances (
         owner_chain_id,
-        owner_address,
+        owner,
         currency_chain_id,
-        currency_address,
+        currency,
         available_amount,
         locked_amount
       ) VALUES (
         $/ownerChainId/,
-        $/ownerAddress/,
+        $/owner/,
         $/currencyChainId/,
-        $/currencyAddress/,
+        $/currency/,
         0,
         0
       ) ON CONFLICT DO NOTHING
     `,
     {
       ownerChainId,
-      ownerAddress: nvAddress(ownerAddress, ownerVmType),
+      owner: nvAddress(owner, ownerVmType),
       currencyChainId,
-      currencyAddress: nvCurrency(currencyAddress, currencyVmType),
+      currency: nvCurrency(currency, currencyVmType),
     }
   );
   if (!result) {
@@ -123,9 +123,9 @@ export const initializeBalance = async (
 
   return {
     ownerChainId: result.owner_chain_id,
-    ownerAddress: result.owner_address,
+    owner: result.owner,
     currencyChainId: result.currency_chain_id,
-    currencyAddress: result.currency_address,
+    currency: result.currency,
     availableAmount: result.available_amount,
     lockedAmount: result.locked_amount,
     createdAt: result.created_at,
@@ -145,9 +145,9 @@ export const getBalanceLock = async (
         balance_locks.id,
         balance_locks.source,
         balance_locks.owner_chain_id,
-        balance_locks.owner_address,
+        balance_locks.owner,
         balance_locks.currency_chain_id,
-        balance_locks.currency_address,
+        balance_locks.currency,
         balance_locks.amount,
         balance_locks.expiration,
         balance_locks.created_at,
@@ -167,9 +167,9 @@ export const getBalanceLock = async (
     id: result.id,
     source: result.source,
     ownerChainId: result.owner_chain_id,
-    ownerAddress: result.owner_address,
+    owner: result.owner,
     currencyChainId: result.currency_chain_id,
-    currencyAddress: result.currency_address,
+    currency: result.currency,
     amount: result.amount,
     expiration: result.expiration ?? undefined,
     executed: result.executed ?? undefined,
@@ -198,18 +198,18 @@ export const saveBalanceLock = async (
           id,
           source,
           owner_chain_id,
-          owner_address,
+          owner,
           currency_chain_id,
-          currency_address,
+          currency,
           amount,
           expiration
         ) VALUES (
           $/id/,
           $/source/,
           $/ownerChainId/,
-          $/ownerAddress/,
+          $/owner/,
           $/currencyChainId/,
-          $/currencyAddress/,
+          $/currency/,
           $/amount/,
           $/expiration/
         ) ON CONFLICT DO NOTHING
@@ -221,18 +221,18 @@ export const saveBalanceLock = async (
         updated_at = now()
       FROM x
       WHERE balances.owner_chain_id = x.owner_chain_id
-        AND balances.owner_address = x.owner_address
+        AND balances.owner = x.owner
         AND balances.currency_chain_id = x.currency_chain_id
-        AND balances.currency_address = x.currency_address
+        AND balances.currency = x.currency
       RETURNING *
     `,
     {
       id: nvBytes(balanceLock.id, 32),
       source: balanceLock.source,
       ownerChainId: balanceLock.ownerChainId,
-      ownerAddress: nvAddress(balanceLock.ownerAddress, ownerVmType),
+      owner: nvAddress(balanceLock.owner, ownerVmType),
       currencyChainId: balanceLock.currencyChainId,
-      currencyAddress: nvCurrency(balanceLock.currencyAddress, currencyVmType),
+      currency: nvCurrency(balanceLock.currency, currencyVmType),
       amount: balanceLock.amount,
       expiration: balanceLock.expiration ?? null,
     }
@@ -243,9 +243,9 @@ export const saveBalanceLock = async (
 
   return {
     ownerChainId: result.owner_chain_id,
-    ownerAddress: result.owner_address,
+    owner: result.owner,
     currencyChainId: result.currency_chain_id,
-    currencyAddress: result.currency_address,
+    currency: result.currency,
     availableAmount: result.available_amount,
     lockedAmount: result.locked_amount,
     createdAt: result.created_at,
@@ -274,9 +274,9 @@ export const unlockBalanceLock = async (
             AND NOT balance_locks.executed
           RETURNING
             balance_locks.owner_chain_id,
-            balance_locks.owner_address,
+            balance_locks.owner,
             balance_locks.currency_chain_id,
-            balance_locks.currency_address,
+            balance_locks.currency,
             balance_locks.amount
         )
         UPDATE balances SET
@@ -289,9 +289,9 @@ export const unlockBalanceLock = async (
           updated_at = now()
         FROM x
         WHERE balances.owner_chain_id = x.owner_chain_id
-          AND balances.owner_address = x.owner_address
+          AND balances.owner = x.owner
           AND balances.currency_chain_id = x.currency_chain_id
-          AND balances.currency_address = x.currency_address
+          AND balances.currency = x.currency
         RETURNING *
     `,
     {
@@ -304,9 +304,9 @@ export const unlockBalanceLock = async (
 
   return {
     ownerChainId: result.owner_chain_id,
-    ownerAddress: result.owner_address,
+    owner: result.owner,
     currencyChainId: result.currency_chain_id,
-    currencyAddress: result.currency_address,
+    currency: result.currency,
     availableAmount: result.available_amount,
     lockedAmount: result.locked_amount,
     createdAt: result.created_at,
@@ -317,9 +317,9 @@ export const unlockBalanceLock = async (
 export const reallocateBalance = async (
   from: Pick<
     Balance,
-    "ownerChainId" | "ownerAddress" | "currencyChainId" | "currencyAddress"
+    "ownerChainId" | "owner" | "currencyChainId" | "currency"
   >,
-  to: Pick<Balance, "ownerChainId" | "ownerAddress">,
+  to: Pick<Balance, "ownerChainId" | "owner">,
   amount: string,
   options?: {
     tx?: ITask<any>;
@@ -338,20 +338,20 @@ export const reallocateBalance = async (
   const results = await (options?.tx ?? db).manyOrNone(
     `
       WITH
-        x(owner_chain_id, owner_address, currency_chain_id, currency_address, balance_diff) AS (
+        x(owner_chain_id, owner, currency_chain_id, currency, balance_diff) AS (
           VALUES
             (
               $/fromOwnerChainId/::TEXT,
-              $/fromOwnerAddress/::TEXT,
+              $/fromowner/::TEXT,
               $/fromCurrencyChainId/::TEXT,
-              $/fromCurrencyAddress/::TEXT,
+              $/fromcurrency/::TEXT,
               -$/amount/::NUMERIC(78, 0)
             ),
             (
               $/toOwnerChainId/,
-              $/toOwnerAddress/,
+              $/toowner/,
               $/fromCurrencyChainId/,
-              $/fromCurrencyAddress/,
+              $/fromcurrency/,
               $/amount/
             )
         )
@@ -360,27 +360,27 @@ export const reallocateBalance = async (
           updated_at = now()
         FROM x
         WHERE balances.owner_chain_id = x.owner_chain_id
-          AND balances.owner_address = x.owner_address
+          AND balances.owner = x.owner
           AND balances.currency_chain_id = x.currency_chain_id
-          AND balances.currency_address = x.currency_address
+          AND balances.currency = x.currency
         RETURNING *
     `,
     {
       fromOwnerChainId: from.ownerChainId,
-      fromOwnerAddress: nvAddress(from.ownerAddress, fromOwnerVmType),
+      fromowner: nvAddress(from.owner, fromOwnerVmType),
       fromCurrencyChainId: from.currencyChainId,
-      fromCurrencyAddress: nvCurrency(from.currencyAddress, fromCurrencyVmType),
+      fromcurrency: nvCurrency(from.currency, fromCurrencyVmType),
       toOwnerChainId: to.ownerChainId,
-      toOwnerAddress: nvAddress(to.ownerAddress, toOwnerVmType),
+      toowner: nvAddress(to.owner, toOwnerVmType),
       amount,
     }
   );
 
   return results.map((result) => ({
     ownerChainId: result.owner_chain_id,
-    ownerAddress: result.owner_address,
+    owner: result.owner,
     currencyChainId: result.currency_chain_id,
-    currencyAddress: result.currency_address,
+    currency: result.currency,
     availableAmount: result.available_amount,
     lockedAmount: result.locked_amount,
     createdAt: result.created_at,
