@@ -5,7 +5,7 @@
   "scripts": {
     "build": "tsc -b",
     "migrate": "node-pg-migrate -m ./migrations -d POSTGRES_URL --no-check-order",
-    "start": "node ./dist/index.js",
+    "start": "yarn migrate up 2>/dev/null && node ./dist/index.js",
     "test": "yarn migrate up && jest"
   },
   "dependencies": {
