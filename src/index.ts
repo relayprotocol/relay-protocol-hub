@@ -1,6 +1,3 @@
-// Initialize queues and crobs
-import "./jobs";
-
 // Initialize http and ws servers
 import "./http-server";
 
