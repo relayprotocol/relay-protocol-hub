@@ -36,7 +36,7 @@ const Schema = {
     }),
     signatures: Type.Array(
       Type.Object({
-        oracleAddress: Type.String({
+        oracle: Type.String({
           description: "The ethereum-vm address of the signing oracle",
         }),
         signature: Type.String({
@@ -80,9 +80,9 @@ export default {
 
     // TODO: Keep track of allowed oracles for every chain
 
-    for (const { oracleAddress, signature } of signatures) {
+    for (const { oracle, signature } of signatures) {
       const isSignatureValid = await verifyMessage({
-        address: oracleAddress as Address,
+        address: oracle as Address,
         message: {
           raw: messageId,
         },
