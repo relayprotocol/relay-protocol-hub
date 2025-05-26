@@ -12,6 +12,7 @@ setupEndpoints(httpServer);
 
 httpServer.listen(
   {
+    host: "0.0.0.0",
     port: config.httpPort,
   },
   (error) => {
