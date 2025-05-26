@@ -110,20 +110,20 @@ const Schema = {
             "The bps difference between the quoted amount and the deposited amount",
         }),
       }),
+      signatures: Type.Array(
+        Type.Object({
+          oracle: Type.String({
+            description: "The ethereum-vm address of the signing oracle",
+          }),
+          signature: Type.String({
+            description: "The corresponding oracle signature",
+          }),
+        }),
+        {
+          minItems: 1,
+        }
+      ),
     }),
-    signatures: Type.Array(
-      Type.Object({
-        oracle: Type.String({
-          description: "The ethereum-vm address of the signing oracle",
-        }),
-        signature: Type.String({
-          description: "The corresponding oracle signature",
-        }),
-      }),
-      {
-        minItems: 1,
-      }
-    ),
   }),
   response: {
     200: Type.Object({
@@ -141,7 +141,9 @@ export default {
     req: FastifyRequestTypeBox<typeof Schema>,
     reply: FastifyReplyTypeBox<typeof Schema>
   ) => {
-    const signatures = req.body.signatures;
+    const message = req.body.message;
+
+    const signatures = message.signatures;
     if (!signatures.length) {
       return reply.status(400).send({
         message: "At least one signature is required",
@@ -149,7 +151,6 @@ export default {
       });
     }
 
-    const message = req.body.message;
     const messageId = getSolverRefundMessageId(
       message,
       await getSdkChainsConfig()
