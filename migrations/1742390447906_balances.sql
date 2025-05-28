@@ -15,6 +15,9 @@ ALTER TABLE "balances"
   ADD CONSTRAINT "balances_pk"
   PRIMARY KEY ("owner_chain_id", "owner", "currency_chain_id", "currency");
 
+CREATE INDEX "balances_owner_index"
+  ON "balances" ("owner");
+
 CREATE INDEX "balances_created_at_index"
   ON "balances" ("created_at");
 
@@ -43,6 +46,9 @@ CREATE TABLE "balance_locks" (
 ALTER TABLE "balance_locks"
   ADD CONSTRAINT "balance_locks_pk"
   PRIMARY KEY ("id");
+
+CREATE INDEX "balance_locks_owner_index"
+  ON "balance_locks" ("owner");
 
 CREATE INDEX "balance_locks_created_at_index"
   ON "balance_locks" ("created_at");
