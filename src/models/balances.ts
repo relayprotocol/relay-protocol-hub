@@ -27,6 +27,31 @@ export type BalanceLock = {
   executed?: boolean;
 };
 
+const resultToBalance = (result: any): DbEntry<Balance> => ({
+  ownerChainId: result.owner_chain_id,
+  owner: result.owner,
+  currencyChainId: result.currency_chain_id,
+  currency: result.currency,
+  availableAmount: result.available_amount,
+  lockedAmount: result.locked_amount,
+  createdAt: result.created_at,
+  updatedAt: result.updated_at,
+});
+
+const resultToBalanceLock = (result: any): DbEntry<BalanceLock> => ({
+  id: result.id,
+  source: result.source,
+  ownerChainId: result.owner_chain_id,
+  owner: result.owner,
+  currencyChainId: result.currency_chain_id,
+  currency: result.currency,
+  amount: result.amount,
+  expiration: result.expiration ?? undefined,
+  executed: result.executed ?? undefined,
+  createdAt: result.created_at,
+  updatedAt: result.updated_at,
+});
+
 export const getBalance = async (
   ownerChainId: string,
   owner: string,
@@ -64,16 +89,38 @@ export const getBalance = async (
     return undefined;
   }
 
-  return {
-    ownerChainId: result.owner_chain_id,
-    owner: result.owner,
-    currencyChainId: result.currency_chain_id,
-    currency: result.currency,
-    availableAmount: result.available_amount,
-    lockedAmount: result.locked_amount,
-    createdAt: result.created_at,
-    updatedAt: result.updated_at,
-  };
+  return resultToBalance(result);
+};
+
+export const getBalancesByOwner = async (
+  owner: string,
+  ownerChainId?: string,
+  options?: {
+    tx?: ITask<any>;
+  }
+): Promise<DbEntry<Balance>[]> => {
+  const results = await (options?.tx ?? db).manyOrNone(
+    `
+      SELECT
+        balances.owner_chain_id,
+        balances.owner,
+        balances.currency_chain_id,
+        balances.currency,
+        balances.available_amount,
+        balances.locked_amount,
+        balances.created_at,
+        balances.updated_at
+      FROM balances
+      WHERE balances.owner = $/owner/
+        ${ownerChainId ? " AND balances.owner_chain_id = $/ownerChainId/" : ""}
+    `,
+    {
+      owner,
+      ownerChainId,
+    }
+  );
+
+  return results.map(resultToBalance);
 };
 
 export const initializeBalance = async (
@@ -121,16 +168,7 @@ export const initializeBalance = async (
     return undefined;
   }
 
-  return {
-    ownerChainId: result.owner_chain_id,
-    owner: result.owner,
-    currencyChainId: result.currency_chain_id,
-    currency: result.currency,
-    availableAmount: result.available_amount,
-    lockedAmount: result.locked_amount,
-    createdAt: result.created_at,
-    updatedAt: result.updated_at,
-  };
+  return resultToBalance(result);
 };
 
 export const getBalanceLock = async (
@@ -163,19 +201,44 @@ export const getBalanceLock = async (
     return undefined;
   }
 
-  return {
-    id: result.id,
-    source: result.source,
-    ownerChainId: result.owner_chain_id,
-    owner: result.owner,
-    currencyChainId: result.currency_chain_id,
-    currency: result.currency,
-    amount: result.amount,
-    expiration: result.expiration ?? undefined,
-    executed: result.executed ?? undefined,
-    createdAt: result.created_at,
-    updatedAt: result.updated_at,
-  };
+  return resultToBalanceLock(result);
+};
+
+export const getBalanceLocksByOwner = async (
+  owner: string,
+  ownerChainId?: string,
+  options?: {
+    tx?: ITask<any>;
+  }
+): Promise<DbEntry<BalanceLock>[]> => {
+  const results = await (options?.tx ?? db).manyOrNone(
+    `
+      SELECT
+        balance_locks.id,
+        balance_locks.source,
+        balance_locks.owner_chain_id,
+        balance_locks.owner,
+        balance_locks.currency_chain_id,
+        balance_locks.currency,
+        balance_locks.amount,
+        balance_locks.expiration,
+        balance_locks.created_at,
+        balance_locks.updated_at
+      FROM balance_locks
+      WHERE balance_locks.owner = $/owner/
+        ${
+          ownerChainId
+            ? " AND balance_locks.owner_chain_id = $/ownerChainId/"
+            : ""
+        }
+    `,
+    {
+      owner,
+      ownerChainId,
+    }
+  );
+
+  return results.map(resultToBalanceLock);
 };
 
 export const saveBalanceLock = async (
@@ -241,16 +304,7 @@ export const saveBalanceLock = async (
     return undefined;
   }
 
-  return {
-    ownerChainId: result.owner_chain_id,
-    owner: result.owner,
-    currencyChainId: result.currency_chain_id,
-    currency: result.currency,
-    availableAmount: result.available_amount,
-    lockedAmount: result.locked_amount,
-    createdAt: result.created_at,
-    updatedAt: result.updated_at,
-  };
+  return resultToBalance(result);
 };
 
 export const unlockBalanceLock = async (
@@ -302,16 +356,7 @@ export const unlockBalanceLock = async (
     return undefined;
   }
 
-  return {
-    ownerChainId: result.owner_chain_id,
-    owner: result.owner,
-    currencyChainId: result.currency_chain_id,
-    currency: result.currency,
-    availableAmount: result.available_amount,
-    lockedAmount: result.locked_amount,
-    createdAt: result.created_at,
-    updatedAt: result.updated_at,
-  };
+  return resultToBalance(result);
 };
 
 export const reallocateBalance = async (
@@ -376,14 +421,5 @@ export const reallocateBalance = async (
     }
   );
 
-  return results.map((result) => ({
-    ownerChainId: result.owner_chain_id,
-    owner: result.owner,
-    currencyChainId: result.currency_chain_id,
-    currency: result.currency,
-    availableAmount: result.available_amount,
-    lockedAmount: result.locked_amount,
-    createdAt: result.created_at,
-    updatedAt: result.updated_at,
-  }));
+  return results.map(resultToBalance);
 };
