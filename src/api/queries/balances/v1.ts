@@ -42,7 +42,7 @@ const Schema = {
 };
 
 export default {
-  method: "POST",
+  method: "GET",
   url: "/queries/balances/:owner/v1",
   schema: Schema,
   handler: async (
