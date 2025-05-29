@@ -13,6 +13,7 @@ import {
 import { privateKeyToAccount } from "viem/accounts";
 
 import { ChainMetadataEthereumVm, getChain } from "../../common/chains";
+import { db } from "../../common/db";
 import { externalError } from "../../common/error";
 import { config } from "../../config";
 import {
@@ -20,6 +21,7 @@ import {
   saveBalanceLock,
   unlockBalanceLock,
 } from "../../models/balances";
+import { saveWithdrawalRequest } from "../../models/withdrawal-requests";
 
 type WithdrawalRequest = {
   ownerChainId: string;
@@ -119,19 +121,42 @@ export class RequestHandlerService {
         });
         const signature = await walletClient.signTypedData(eip712TypedData);
 
-        const newBalance = await saveBalanceLock({
-          id,
-          source: "withdrawal",
-          ownerChainId: request.ownerChainId,
-          owner: request.owner,
-          currencyChainId: request.chainId,
-          currency: request.currency,
-          amount: request.amount,
-          expiration: data.expiration,
+        await db.tx(async (tx) => {
+          const newBalance = await saveBalanceLock(
+            {
+              id,
+              source: "withdrawal",
+              ownerChainId: request.ownerChainId,
+              owner: request.owner,
+              currencyChainId: request.chainId,
+              currency: request.currency,
+              amount: request.amount,
+              expiration: data.expiration,
+            },
+            { tx }
+          );
+          if (!newBalance) {
+            throw externalError("Failed to save balance lock");
+          }
+
+          const withdrawalRequest = await saveWithdrawalRequest(
+            {
+              id,
+              ownerChainId: request.ownerChainId,
+              owner: request.owner,
+              chainId: request.chainId,
+              currency: request.currency,
+              amount: request.amount,
+              recipient: request.recipient,
+              encodedData,
+              signature,
+            },
+            { tx }
+          );
+          if (!withdrawalRequest) {
+            throw externalError("Failed to save withdrawal request");
+          }
         });
-        if (!newBalance) {
-          throw externalError("Failed to save balance lock");
-        }
 
         return {
           id,

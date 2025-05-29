@@ -20,6 +20,7 @@ import {
   unlockBalanceLock,
 } from "../../models/balances";
 import { saveOnchainEntryWithBalanceUpdate } from "../../models/onchain-entries";
+import { markWithdrawalRequestAsExecuted } from "../../models/withdrawal-requests";
 
 export class ActionExecutorService {
   public async executeEscrowDeposit(
@@ -71,13 +72,25 @@ export class ActionExecutorService {
   public async executeEscrowWithdrawal(
     message: EscrowWithdrawalMessage
   ): Promise<void> {
-    if (message.result.status !== EscrowWithdrawalStatus.EXECUTED) {
-      throw externalError("Escrow withdrawal is not executed");
+    if (message.result.status === EscrowWithdrawalStatus.PENDING) {
+      throw externalError("Escrow withdrawal is pending");
     }
 
     // Very important to guarantee atomic execution
     await db.tx(async (tx) => {
       // Step 1:
+      // Mark the corresponding withdrawal request as executed
+      const executeResult = await markWithdrawalRequestAsExecuted(
+        message.result.withdrawalId,
+        { tx }
+      );
+      if (!executeResult) {
+        throw externalError(
+          "Corresponding withdrawal request already unlocked"
+        );
+      }
+
+      // Step 2:
       // Unlock and reduce the balance
       const unlockResult = await (async () => {
         const balanceLock = await getBalanceLock(message.result.withdrawalId, {
@@ -85,7 +98,13 @@ export class ActionExecutorService {
         });
         const newBalance = await unlockBalanceLock(
           message.result.withdrawalId,
-          { tx, skipAvailableBalanceAdjustment: true }
+          {
+            tx,
+            skipAvailableBalanceAdjustment:
+              message.result.status === EscrowWithdrawalStatus.EXECUTED
+                ? true
+                : false,
+          }
         );
         return { balanceLock, newBalance };
       })();

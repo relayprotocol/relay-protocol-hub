@@ -35,9 +35,11 @@ const resultToWithdrawalRequest = (
 
 export const getWithdrawalRequest = async (
   id: string,
-  tx?: ITask<any>
+  options?: {
+    tx?: ITask<any>;
+  }
 ): Promise<DbEntry<WithdrawalRequest> | undefined> => {
-  const result = await (tx ?? db).oneOrNone(
+  const result = await (options?.tx ?? db).oneOrNone(
     `
       SELECT
         withdrawal_requests.id,
@@ -69,9 +71,11 @@ export const getWithdrawalRequest = async (
 export const getPendingWithdrawalRequestsByOwner = async (
   owner: string,
   ownerChainId?: string,
-  tx?: ITask<any>
+  options?: {
+    tx?: ITask<any>;
+  }
 ): Promise<DbEntry<WithdrawalRequest>[]> => {
-  const results = await (tx ?? db).manyOrNone(
+  const results = await (options?.tx ?? db).manyOrNone(
     `
       SELECT
         withdrawal_requests.id,
@@ -105,9 +109,11 @@ export const getPendingWithdrawalRequestsByOwner = async (
 
 export const saveWithdrawalRequest = async (
   withdrawalRequest: WithdrawalRequest,
-  tx?: ITask<any>
+  options?: {
+    tx?: ITask<any>;
+  }
 ): Promise<DbEntry<WithdrawalRequest> | undefined> => {
-  const result = await (tx ?? db).oneOrNone(
+  const result = await (options?.tx ?? db).oneOrNone(
     `
       INSERT INTO withdrawal_requests (
         id,
@@ -143,6 +149,30 @@ export const saveWithdrawalRequest = async (
       encodedData: withdrawalRequest.encodedData,
       signature: withdrawalRequest.signature,
     }
+  );
+  if (!result) {
+    return undefined;
+  }
+
+  return resultToWithdrawalRequest(result);
+};
+
+export const markWithdrawalRequestAsExecuted = async (
+  id: string,
+  options?: {
+    tx?: ITask<any>;
+  }
+): Promise<DbEntry<WithdrawalRequest> | undefined> => {
+  const result = await (options?.tx ?? db).oneOrNone(
+    `
+      UPDATE withdrawal_requests SET
+        executed = TRUE,
+        updated_at = now()
+      WHERE withdrawal_requests.id = $/id/
+        AND NOT withdrawal_requests.executed
+      RETURNING *
+    `,
+    { id }
   );
   if (!result) {
     return undefined;

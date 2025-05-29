@@ -6,7 +6,6 @@ import {
   FastifyReplyTypeBox,
   FastifyRequestTypeBox,
 } from "../../utils";
-import { saveWithdrawalRequest } from "../../../models/withdrawal-requests";
 import { RequestHandlerService } from "../../../services/request-handler";
 
 const Schema = {
@@ -51,25 +50,6 @@ export default {
   ) => {
     const requestHandler = new RequestHandlerService();
     const result = await requestHandler.handleWithdrawal(req.body);
-
-    // Save the withdrawal request
-    const withdrawalRequest = await saveWithdrawalRequest({
-      id: result.id,
-      ownerChainId: req.body.ownerChainId,
-      owner: req.body.owner,
-      chainId: req.body.chainId,
-      currency: req.body.currency,
-      amount: req.body.amount,
-      recipient: req.body.recipient,
-      encodedData: result.encodedData,
-      signature: result.signature,
-    });
-    if (!withdrawalRequest) {
-      return reply.status(400).send({
-        message: "Failed to save withdrawal request",
-        code: "SAVE_FAILED",
-      });
-    }
 
     return reply.status(200).send(result);
   },
