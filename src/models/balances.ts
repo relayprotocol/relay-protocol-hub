@@ -112,6 +112,7 @@ export const getBalancesByOwner = async (
         balances.updated_at
       FROM balances
       WHERE balances.owner = $/owner/
+        AND (balances.available_amount > 0 OR balances.locked_amount > 0)
         ${ownerChainId ? " AND balances.owner_chain_id = $/ownerChainId/" : ""}
     `,
     {
