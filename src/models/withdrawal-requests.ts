@@ -16,6 +16,23 @@ export type WithdrawalRequest = {
   executed?: boolean;
 };
 
+const resultToWithdrawalRequest = (
+  result: any
+): DbEntry<WithdrawalRequest> => ({
+  id: result.id,
+  ownerChainId: result.owner_chain_id,
+  owner: result.owner,
+  chainId: result.chain_id,
+  currency: result.currency,
+  amount: result.amount,
+  recipient: result.recipient,
+  encodedData: result.encoded_data,
+  signature: result.signature,
+  executed: result.executed,
+  createdAt: result.created_at,
+  updatedAt: result.updated_at,
+});
+
 export const getWithdrawalRequest = async (
   id: string,
   tx?: ITask<any>
@@ -46,20 +63,44 @@ export const getWithdrawalRequest = async (
     return undefined;
   }
 
-  return {
-    id: result.id,
-    ownerChainId: result.owner_chain_id,
-    owner: result.owner,
-    chainId: result.chain_id,
-    currency: result.currency,
-    amount: result.amount,
-    recipient: result.recipient,
-    encodedData: result.encoded_data,
-    signature: result.signature,
-    executed: result.executed,
-    createdAt: result.created_at,
-    updatedAt: result.updated_at,
-  };
+  return resultToWithdrawalRequest(result);
+};
+
+export const getPendingWithdrawalRequestsByOwner = async (
+  owner: string,
+  ownerChainId?: string,
+  tx?: ITask<any>
+): Promise<DbEntry<WithdrawalRequest>[]> => {
+  const results = await (tx ?? db).manyOrNone(
+    `
+      SELECT
+        withdrawal_requests.id,
+        withdrawal_requests.owner_chain_id,
+        withdrawal_requests.owner,
+        withdrawal_requests.chain_id,
+        withdrawal_requests.currency,
+        withdrawal_requests.amount,
+        withdrawal_requests.recipient,
+        withdrawal_requests.encoded_data,
+        withdrawal_requests.signature,
+        withdrawal_requests.executed,
+        withdrawal_requests.created_at,
+        withdrawal_requests.updated_at
+      FROM withdrawal_requests
+      WHERE withdrawal_requests.owner = $/owner/
+        AND NOT withdrawal_requests.executed
+        ${
+          ownerChainId
+            ? " AND withdrawal_requests.owner_chain_id = $/ownerChainId/"
+            : ""
+        }
+    `,
+    {
+      owner,
+      ownerChainId,
+    }
+  );
+  return results.map(resultToWithdrawalRequest);
 };
 
 export const saveWithdrawalRequest = async (
@@ -107,18 +148,5 @@ export const saveWithdrawalRequest = async (
     return undefined;
   }
 
-  return {
-    id: result.id,
-    ownerChainId: result.owner_chain_id,
-    owner: result.owner,
-    chainId: result.chain_id,
-    currency: result.currency,
-    amount: result.amount,
-    recipient: result.recipient,
-    encodedData: result.encoded_data,
-    signature: result.signature,
-    executed: result.executed,
-    createdAt: result.created_at,
-    updatedAt: result.updated_at,
-  };
+  return resultToWithdrawalRequest(result);
 };

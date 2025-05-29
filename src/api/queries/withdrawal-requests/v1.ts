@@ -6,7 +6,7 @@ import {
   FastifyReplyTypeBox,
   FastifyRequestTypeBox,
 } from "../../utils";
-import { getPendingBalanceLocksByOwner } from "../../../models/balances";
+import { getPendingWithdrawalRequestsByOwner } from "../../../models/withdrawal-requests";
 
 const Schema = {
   params: Type.Object({
@@ -23,17 +23,20 @@ const Schema = {
   }),
   response: {
     200: Type.Object({
-      balanceLocks: Type.Array(
+      withdrawalRequests: Type.Array(
         Type.Object({
+          id: Type.String(),
           ownerChainId: Type.String(),
           owner: Type.String(),
-          currencyChainId: Type.String(),
+          chainId: Type.String(),
           currency: Type.String(),
           amount: Type.String(),
-          expiration: Type.Optional(Type.Number()),
+          recipient: Type.String(),
+          encodedData: Type.String(),
+          signature: Type.String(),
         }),
         {
-          description: "Pending balance locks owned by the queried owner",
+          description: "Pending withdrawal requests owned by the queried owner",
         }
       ),
     }),
@@ -43,25 +46,28 @@ const Schema = {
 
 export default {
   method: "GET",
-  url: "/queries/balance-locks/:owner/v1",
+  url: "/queries/withdrawal-requests/:owner/v1",
   schema: Schema,
   handler: async (
     req: FastifyRequestTypeBox<typeof Schema>,
     reply: FastifyReplyTypeBox<typeof Schema>
   ) => {
-    const balanceLocks = await getPendingBalanceLocksByOwner(
+    const withdrawalRequests = await getPendingWithdrawalRequestsByOwner(
       req.params.owner,
       req.query.chainId
     );
 
     return reply.status(200).send({
-      balanceLocks: balanceLocks.map((b) => ({
-        ownerChainId: b.ownerChainId,
-        owner: b.owner,
-        currencyChainId: b.currencyChainId,
-        currency: b.currency,
-        amount: b.amount,
-        expiration: b.expiration,
+      withdrawalRequests: withdrawalRequests.map((w) => ({
+        id: w.id,
+        ownerChainId: w.ownerChainId,
+        owner: w.owner,
+        chainId: w.chainId,
+        currency: w.currency,
+        amount: w.amount,
+        recipient: w.recipient,
+        encodedData: w.encodedData,
+        signature: w.signature,
       })),
     });
   },

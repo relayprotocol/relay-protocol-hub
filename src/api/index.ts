@@ -11,6 +11,7 @@ import actionsSolverRefundsV1 from "./actions/solver-refunds/v1";
 // Queries
 import queriesBalanceLocksV1 from "./queries/balance-locks/v1";
 import queriesBalancesV1 from "./queries/balances/v1";
+import queriesWithdrawalRequestsV1 from "./queries/withdrawal-requests/v1";
 
 // Requests
 import requestsUnlocksV1 from "./requests/unlocks/v1";
@@ -23,6 +24,7 @@ const endpoints = [
   actionsSolverRefundsV1,
   queriesBalanceLocksV1,
   queriesBalancesV1,
+  queriesWithdrawalRequestsV1,
   requestsUnlocksV1,
   requestsWithdrawalsV1,
 ] as Endpoint[];

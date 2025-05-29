@@ -187,6 +187,7 @@ export const getBalanceLock = async (
         balance_locks.currency_chain_id,
         balance_locks.currency,
         balance_locks.amount,
+        balance_locks.executed,
         balance_locks.expiration,
         balance_locks.created_at,
         balance_locks.updated_at
@@ -204,7 +205,7 @@ export const getBalanceLock = async (
   return resultToBalanceLock(result);
 };
 
-export const getBalanceLocksByOwner = async (
+export const getPendingBalanceLocksByOwner = async (
   owner: string,
   ownerChainId?: string,
   options?: {
@@ -221,11 +222,13 @@ export const getBalanceLocksByOwner = async (
         balance_locks.currency_chain_id,
         balance_locks.currency,
         balance_locks.amount,
+        balance_locks.executed,
         balance_locks.expiration,
         balance_locks.created_at,
         balance_locks.updated_at
       FROM balance_locks
       WHERE balance_locks.owner = $/owner/
+        AND NOT balance_locks.executed
         ${
           ownerChainId
             ? " AND balance_locks.owner_chain_id = $/ownerChainId/"

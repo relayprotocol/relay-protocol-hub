@@ -19,6 +19,9 @@ ALTER TABLE "withdrawal_requests"
   ADD CONSTRAINT "withdrawal_requests_pk"
   PRIMARY KEY ("id");
 
+CREATE INDEX "withdrawal_requests_owner_index"
+  ON "withdrawal_requests" ("owner");
+
 CREATE INDEX "withdrawal_requests_created_at_index"
   ON "withdrawal_requests" ("created_at");
 
