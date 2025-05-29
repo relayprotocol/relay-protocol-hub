@@ -1,10 +1,12 @@
-import { encodeWithdrawal } from "@reservoir0x/relay-protocol-sdk";
+import {
+  encodeWithdrawal,
+  getDecodedWithdrawalId,
+} from "@reservoir0x/relay-protocol-sdk";
 import { randomBytes } from "crypto";
 import {
   Address,
   createWalletClient,
   encodeFunctionData,
-  hashTypedData,
   Hex,
   http,
   parseAbi,
@@ -114,12 +116,16 @@ export class RequestHandlerService {
           },
         } as const;
 
-        const id = hashTypedData(eip712TypedData);
         const encodedData = encodeWithdrawal({
           vmType: chain.vmType,
           withdrawal: data,
         });
         const signature = await walletClient.signTypedData(eip712TypedData);
+
+        const id = getDecodedWithdrawalId({
+          vmType: chain.vmType,
+          withdrawal: data,
+        });
 
         await db.tx(async (tx) => {
           const newBalance = await saveBalanceLock(
