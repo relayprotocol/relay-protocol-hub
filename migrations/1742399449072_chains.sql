@@ -1,7 +1,8 @@
 -- Up Migration
 
 CREATE TYPE "vm_type_t" AS ENUM (
-  'ethereum-vm'
+  'ethereum-vm',
+  'solana-vm'
 );
 
 CREATE TABLE "chains" (
