@@ -1,4 +1,5 @@
 import { VmType } from "@reservoir0x/relay-protocol-sdk";
+import { PublicKey } from "@solana/web3.js";
 
 import { externalError } from "../common/error";
 
@@ -37,6 +38,14 @@ export const nvAddress = (address: string, vmType: VmType) => {
       return hexString;
     }
 
+    case "solana-vm": {
+      try {
+        return new PublicKey(address).toBase58();
+      } catch {
+        throw externalError(`Invalid address: ${address}`);
+      }
+    }
+
     default: {
       throw externalError("Vm type not implemented");
     }
@@ -57,6 +66,14 @@ export const nvCurrency = (currency: string, vmType: VmType) => {
       return hexString;
     }
 
+    case "solana-vm": {
+      try {
+        return new PublicKey(currency).toBase58();
+      } catch {
+        throw externalError(`Invalid currency: ${currency}`);
+      }
+    }
+
     default: {
       throw externalError("Vm type not implemented");
     }
@@ -75,6 +92,10 @@ export const nvTransactionId = (transactionId: string, vmType: VmType) => {
       }
 
       return hexString;
+    }
+
+    case "solana-vm": {
+      return transactionId;
     }
 
     default: {
