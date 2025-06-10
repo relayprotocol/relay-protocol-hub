@@ -25,7 +25,7 @@ describe("execute-escrow-deposit", () => {
       },
       result: {
         onchainId: randomHex(32),
-        escrow: chain.escrow,
+        escrow: chain.escrow!,
         depositId: randomHex(32),
         depositor: randomHex(20),
         currency: randomHex(20),
@@ -72,7 +72,7 @@ describe("execute-escrow-deposit", () => {
         },
         result: {
           onchainId: randomHex(32),
-          escrow: chain.escrow,
+          escrow: chain.escrow!,
           depositId: randomNumber(100) % 2 === 0 ? randomHex(32) : zeroHash,
           depositor: owneres[randomNumber(owneres.length)],
           currency: currencyes[randomNumber(currencyes.length)],

@@ -56,7 +56,7 @@ describe("execute-escrow-withdrawal", () => {
         },
         result: {
           onchainId: randomHex(32),
-          escrow: chain.escrow,
+          escrow: chain.escrow!,
           depositId: zeroHash,
           depositor: owneres[randomNumber(owneres.length)],
           currency: currencyes[randomNumber(currencyes.length)],
@@ -117,7 +117,7 @@ describe("execute-escrow-withdrawal", () => {
         },
         result: {
           withdrawalId: withdrawalResult.id,
-          escrow: chain.escrow,
+          escrow: chain.escrow!,
           status: EscrowWithdrawalStatus.EXECUTED,
         },
       };
