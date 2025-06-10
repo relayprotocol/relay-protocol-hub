@@ -105,7 +105,7 @@ describe("execute-solver-fill", () => {
         },
         result: {
           onchainId: randomHex(32),
-          escrow: chain.escrow,
+          escrow: chain.escrow!,
           depositId: orderId,
           depositor: owneres[randomNumber(owneres.length)],
           currency: order.inputs[0].payment.currency,

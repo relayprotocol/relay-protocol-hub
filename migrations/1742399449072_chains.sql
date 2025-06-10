@@ -1,14 +1,19 @@
 -- Up Migration
 
 CREATE TYPE "vm_type_t" AS ENUM (
+  'bitcoin-vm',
   'ethereum-vm',
-  'solana-vm'
+  'hyperliquid-vm',
+  'solana-vm',
+  'sui-vm',
+  'ton-vm',
+  'tron-vm'
 );
 
 CREATE TABLE "chains" (
   "id" TEXT NOT NULL,
   "vm_type" "vm_type_t" NOT NULL,
-  "escrow" TEXT NOT NULL,
+  "escrow" TEXT,
   "metadata" JSONB NOT NULL,
   "created_at" TIMESTAMPTZ NOT NULL DEFAULT now(),
   "updated_at" TIMESTAMPTZ NOT NULL DEFAULT now()

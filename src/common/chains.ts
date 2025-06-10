@@ -3,22 +3,26 @@ import { VmType } from "@reservoir0x/relay-protocol-sdk";
 import { db } from "./db";
 
 // VM-specific chain metadata
+export type ChainMetadataBitcoinVm = {};
 export type ChainMetadataEthereumVm = { chainId: number };
+export type ChainMetadataHyperliquidVm = {};
 export type ChainMetadataSolanaVm = {};
+export type ChainMetadataSuiVm = {};
 export type ChainMetadataTronVm = {};
 export type ChainMetadataTonVm = {};
-export type ChainMetadataSuiVm = {};
 
 export type Chain = {
   id: string;
   vmType: VmType;
-  escrow: string;
+  escrow?: string;
   metadata:
+    | ChainMetadataBitcoinVm
     | ChainMetadataEthereumVm
+    | ChainMetadataHyperliquidVm
     | ChainMetadataSolanaVm
+    | ChainMetadataSuiVm
     | ChainMetadataTronVm
-    | ChainMetadataTonVm
-    | ChainMetadataSuiVm;
+    | ChainMetadataTonVm;
 };
 
 let _chains: { [id: string]: Chain } | undefined;
