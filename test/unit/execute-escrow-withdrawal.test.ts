@@ -1,4 +1,4 @@
-import { describe, expect, it } from "@jest/globals";
+import { describe, expect, it, jest } from "@jest/globals";
 import {
   EscrowDepositMessage,
   EscrowWithdrawalMessage,
@@ -6,8 +6,9 @@ import {
 } from "@reservoir0x/relay-protocol-sdk";
 import { zeroHash } from "viem";
 
-import { getBalance, saveBalanceLock } from "../../src/models/balances";
+import { getBalance } from "../../src/models/balances";
 import { ActionExecutorService } from "../../src/services/action-executor";
+import { RequestHandlerService } from "../../src/services/request-handler";
 
 import { chains } from "../common/chains";
 import {
@@ -17,6 +18,20 @@ import {
   randomHex,
   randomNumber,
 } from "../common/utils";
+
+jest.mock("../../src/config", () => {
+  return {
+    config: {
+      ...(
+        jest.requireActual(
+          "../../src/config"
+        ) as typeof import("../../src/config")
+      ).config,
+      ecdsaPrivateKey:
+        "0x0000000000000000000000000000000000000000000000000000000000000001",
+    },
+  };
+});
 
 describe("execute-escrow-withdrawal", () => {
   it("random runs", async () => {
@@ -68,31 +83,19 @@ describe("execute-escrow-withdrawal", () => {
         );
       }
 
-      const withdrawalMessage: EscrowWithdrawalMessage = {
-        data: {
-          chainId: chain.id,
-          withdrawal: randomHex(64),
-        },
-        result: {
-          withdrawalId: randomHex(32),
-          escrow: chain.escrow,
-          status: EscrowWithdrawalStatus.EXECUTED,
-        },
-      };
-
       const amount = (
         1 + randomNumber(Number(depositMessage.result.amount) / 2)
       ).toString();
-      const saveResult = await saveBalanceLock({
-        id: withdrawalMessage.result.withdrawalId,
-        source: "withdrawal",
+
+      const requestHandler = new RequestHandlerService();
+      const withdrawalResult = await requestHandler.handleWithdrawal({
         ownerChainId: chain.id,
         owner: depositMessage.result.depositor,
-        currencyChainId: chain.id,
+        chainId: chain.id,
         currency: depositMessage.result.currency,
         amount,
+        recipient: depositMessage.result.depositor,
       });
-      expect(saveResult).toBeTruthy();
 
       // Update in-memory balances
       {
@@ -106,6 +109,18 @@ describe("execute-escrow-withdrawal", () => {
         inMemoryBalances[key].availableAmount -= Number(amount);
         inMemoryBalances[key].lockedAmount += Number(amount);
       }
+
+      const withdrawalMessage: EscrowWithdrawalMessage = {
+        data: {
+          chainId: chain.id,
+          withdrawal: withdrawalResult.encodedData,
+        },
+        result: {
+          withdrawalId: withdrawalResult.id,
+          escrow: chain.escrow,
+          status: EscrowWithdrawalStatus.EXECUTED,
+        },
+      };
 
       await expect(
         actionExecutor.executeEscrowWithdrawal(withdrawalMessage)

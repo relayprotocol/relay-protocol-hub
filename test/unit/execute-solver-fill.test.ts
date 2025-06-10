@@ -41,6 +41,7 @@ describe("execute-solver-fill", () => {
       const inputPaymentAmount = randomNumber(ONE_BILLION).toString();
 
       const order: Order = {
+        version: "v1",
         solverChainId: chain.id,
         solver: solverAddress,
         salt: randomNumber(ONE_BILLION).toString(),

@@ -38,6 +38,7 @@ describe("execute-solver-refund", () => {
     > = {};
     await iterNoConcurrency(150, async () => {
       const order: Order = {
+        version: "v1",
         solverChainId: chain.id,
         solver: solverAddress,
         salt: randomNumber(ONE_BILLION).toString(),

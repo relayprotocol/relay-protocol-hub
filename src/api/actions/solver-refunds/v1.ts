@@ -17,6 +17,7 @@ const Schema = {
       data: Type.Object({
         order: Type.Object(
           {
+            version: Type.Literal("v1"),
             solverChainId: Type.String(),
             solver: Type.String(),
             salt: Type.String(),
