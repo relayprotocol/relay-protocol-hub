@@ -38,6 +38,17 @@ export const nvAddress = (address: string, vmType: VmType) => {
       return hexString;
     }
 
+    case "hyperliquid-vm": {
+      const requiredLengthInBytes = 20;
+
+      const hexString = nvBytes(address, requiredLengthInBytes);
+      if (hexString.length !== 2 + requiredLengthInBytes * 2) {
+        throw externalError(`Invalid address: ${address}`);
+      }
+
+      return hexString;
+    }
+
     case "solana-vm": {
       try {
         return new PublicKey(address).toBase58();
@@ -66,6 +77,17 @@ export const nvCurrency = (currency: string, vmType: VmType) => {
       return hexString;
     }
 
+    case "hyperliquid-vm": {
+      const requiredLengthInBytes = 16;
+
+      const hexString = nvBytes(currency, requiredLengthInBytes);
+      if (hexString.length !== 2 + requiredLengthInBytes * 2) {
+        throw externalError(`Invalid currency: ${currency}`);
+      }
+
+      return hexString;
+    }
+
     case "solana-vm": {
       try {
         return new PublicKey(currency).toBase58();
@@ -84,6 +106,17 @@ export const nvCurrency = (currency: string, vmType: VmType) => {
 export const nvTransactionId = (transactionId: string, vmType: VmType) => {
   switch (vmType) {
     case "ethereum-vm": {
+      const requiredLengthInBytes = 32;
+
+      const hexString = nvBytes(transactionId, requiredLengthInBytes);
+      if (hexString.length !== 2 + requiredLengthInBytes * 2) {
+        throw externalError(`Invalid transaction id: ${transactionId}`);
+      }
+
+      return hexString;
+    }
+
+    case "hyperliquid-vm": {
       const requiredLengthInBytes = 32;
 
       const hexString = nvBytes(transactionId, requiredLengthInBytes);
