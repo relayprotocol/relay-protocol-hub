@@ -1,5 +1,5 @@
 import { Type } from "@fastify/type-provider-typebox";
-import { getEscrowWithdrawalMessageId } from "@reservoir0x/relay-protocol-sdk";
+import { getDepositoryWithdrawalMessageId } from "@reservoir0x/relay-protocol-sdk";
 import { Address, Hex, verifyMessage } from "viem";
 
 import { getSdkChainsConfig } from "../../../common/chains";
@@ -26,8 +26,8 @@ const Schema = {
         withdrawalId: Type.String({
           description: "The id of the attested withdrawal",
         }),
-        escrow: Type.String({
-          description: "The escrow address of the withdrawal",
+        depository: Type.String({
+          description: "The depository address of the withdrawal",
         }),
         status: Type.Number({
           description: "The status of the withdrawal",
@@ -58,7 +58,7 @@ const Schema = {
 
 export default {
   method: "POST",
-  url: "/actions/escrow-withdrawals/v1",
+  url: "/actions/depository-withdrawals/v1",
   schema: Schema,
   handler: async (
     req: FastifyRequestTypeBox<typeof Schema>,
@@ -74,7 +74,7 @@ export default {
       });
     }
 
-    const messageId = getEscrowWithdrawalMessageId(
+    const messageId = getDepositoryWithdrawalMessageId(
       message,
       await getSdkChainsConfig()
     );
@@ -98,7 +98,7 @@ export default {
     }
 
     const actionExecutor = new ActionExecutorService();
-    await actionExecutor.executeEscrowWithdrawal(message);
+    await actionExecutor.executeDepositoryWithdrawal(message);
 
     return reply.status(200).send({ message: "Success" });
   },

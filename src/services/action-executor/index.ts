@@ -1,7 +1,7 @@
 import {
-  EscrowDepositMessage,
-  EscrowWithdrawalMessage,
-  EscrowWithdrawalStatus,
+  DepositoryDepositMessage,
+  DepositoryWithdrawalMessage,
+  DepositoryWithdrawalStatus,
   SolverFillMessage,
   SolverFillStatus,
   SolverRefundMessage,
@@ -23,8 +23,8 @@ import { saveOnchainEntryWithBalanceUpdate } from "../../models/onchain-entries"
 import { markWithdrawalRequestAsExecuted } from "../../models/withdrawal-requests";
 
 export class ActionExecutorService {
-  public async executeEscrowDeposit(
-    message: EscrowDepositMessage
+  public async executeDepositoryDeposit(
+    message: DepositoryDepositMessage
   ): Promise<void> {
     // Very important to guarantee atomic execution
     await db.tx(async (tx) => {
@@ -69,11 +69,11 @@ export class ActionExecutorService {
     });
   }
 
-  public async executeEscrowWithdrawal(
-    message: EscrowWithdrawalMessage
+  public async executeDepositoryWithdrawal(
+    message: DepositoryWithdrawalMessage
   ): Promise<void> {
-    if (message.result.status === EscrowWithdrawalStatus.PENDING) {
-      throw externalError("Escrow withdrawal is pending");
+    if (message.result.status === DepositoryWithdrawalStatus.PENDING) {
+      throw externalError("Depository withdrawal is pending");
     }
 
     // Very important to guarantee atomic execution
@@ -101,7 +101,7 @@ export class ActionExecutorService {
           {
             tx,
             skipAvailableBalanceAdjustment:
-              message.result.status === EscrowWithdrawalStatus.EXECUTED
+              message.result.status === DepositoryWithdrawalStatus.EXECUTED
                 ? true
                 : false,
           }

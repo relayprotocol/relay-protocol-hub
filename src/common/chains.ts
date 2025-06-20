@@ -14,7 +14,7 @@ export type ChainMetadataTonVm = {};
 export type Chain = {
   id: string;
   vmType: VmType;
-  escrow?: string;
+  depository?: string;
   metadata:
     | ChainMetadataBitcoinVm
     | ChainMetadataEthereumVm
@@ -35,7 +35,7 @@ export const getChains = async () => {
       __chains[chain.id] = {
         id: chain.id,
         vmType: chain.vm_type,
-        escrow: chain.escrow,
+        depository: chain.depository,
         metadata: chain.metadata,
       };
     }

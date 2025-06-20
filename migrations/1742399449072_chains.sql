@@ -13,7 +13,7 @@ CREATE TYPE "vm_type_t" AS ENUM (
 CREATE TABLE "chains" (
   "id" TEXT NOT NULL,
   "vm_type" "vm_type_t" NOT NULL,
-  "escrow" TEXT,
+  "depository" TEXT,
   "metadata" JSONB NOT NULL,
   "created_at" TIMESTAMPTZ NOT NULL DEFAULT now(),
   "updated_at" TIMESTAMPTZ NOT NULL DEFAULT now()
