@@ -85,10 +85,10 @@ export class RequestHandlerService {
 
         const eip712TypedData = {
           domain: {
-            name: "RelayEscrow",
+            name: "RelayDepository",
             version: "1",
             chainId: (chain.metadata as ChainMetadataEthereumVm).chainId,
-            verifyingContract: chain.escrow as Address,
+            verifyingContract: chain.depository as Address,
           },
           types: {
             CallRequest: [

@@ -1,8 +1,8 @@
 import { describe, expect, it, jest } from "@jest/globals";
 import {
-  EscrowDepositMessage,
-  EscrowWithdrawalMessage,
-  EscrowWithdrawalStatus,
+  DepositoryDepositMessage,
+  DepositoryWithdrawalMessage,
+  DepositoryWithdrawalStatus,
 } from "@reservoir0x/relay-protocol-sdk";
 import { zeroHash } from "viem";
 
@@ -33,7 +33,7 @@ jest.mock("../../src/config", () => {
   };
 });
 
-describe("execute-escrow-withdrawal", () => {
+describe("execute-depository-withdrawal", () => {
   it("random runs", async () => {
     const chain = chains[randomNumber(chains.length)];
 
@@ -49,14 +49,14 @@ describe("execute-escrow-withdrawal", () => {
       }
     > = {};
     await iter(250, async () => {
-      const depositMessage: EscrowDepositMessage = {
+      const depositMessage: DepositoryDepositMessage = {
         data: {
           chainId: chain.id,
           transactionId: randomHex(32),
         },
         result: {
           onchainId: randomHex(32),
-          escrow: chain.escrow!,
+          depository: chain.depository!,
           depositId: zeroHash,
           depositor: owneres[randomNumber(owneres.length)],
           currency: currencyes[randomNumber(currencyes.length)],
@@ -66,7 +66,7 @@ describe("execute-escrow-withdrawal", () => {
 
       const actionExecutor = new ActionExecutorService();
       await expect(
-        actionExecutor.executeEscrowDeposit(depositMessage)
+        actionExecutor.executeDepositoryDeposit(depositMessage)
       ).resolves.not.toThrowError();
 
       // Update in-memory balances
@@ -110,20 +110,20 @@ describe("execute-escrow-withdrawal", () => {
         inMemoryBalances[key].lockedAmount += Number(amount);
       }
 
-      const withdrawalMessage: EscrowWithdrawalMessage = {
+      const withdrawalMessage: DepositoryWithdrawalMessage = {
         data: {
           chainId: chain.id,
           withdrawal: withdrawalResult.encodedData,
         },
         result: {
           withdrawalId: withdrawalResult.id,
-          escrow: chain.escrow!,
-          status: EscrowWithdrawalStatus.EXECUTED,
+          depository: chain.depository!,
+          status: DepositoryWithdrawalStatus.EXECUTED,
         },
       };
 
       await expect(
-        actionExecutor.executeEscrowWithdrawal(withdrawalMessage)
+        actionExecutor.executeDepositoryWithdrawal(withdrawalMessage)
       ).resolves.not.toThrowError();
 
       // Update in-memory balances

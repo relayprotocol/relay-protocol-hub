@@ -1,5 +1,5 @@
 import { Type } from "@fastify/type-provider-typebox";
-import { getEscrowDepositMessageId } from "@reservoir0x/relay-protocol-sdk";
+import { getDepositoryDepositMessageId } from "@reservoir0x/relay-protocol-sdk";
 import { Address, Hex, verifyMessage } from "viem";
 
 import {
@@ -26,8 +26,8 @@ const Schema = {
         onchainId: Type.String({
           description: "The onchain id of the deposit",
         }),
-        escrow: Type.String({
-          description: "The escrow address of the deposit",
+        depository: Type.String({
+          description: "The depository address of the deposit",
         }),
         depositId: Type.String({
           description: "The id associated to the deposit",
@@ -65,7 +65,7 @@ const Schema = {
 
 export default {
   method: "POST",
-  url: "/actions/escrow-deposits/v1",
+  url: "/actions/depository-deposits/v1",
   schema: Schema,
   handler: async (
     req: FastifyRequestTypeBox<typeof Schema>,
@@ -81,7 +81,7 @@ export default {
       });
     }
 
-    const messageId = getEscrowDepositMessageId(
+    const messageId = getDepositoryDepositMessageId(
       message,
       await getSdkChainsConfig()
     );
@@ -105,7 +105,7 @@ export default {
     }
 
     const actionExecutor = new ActionExecutorService();
-    await actionExecutor.executeEscrowDeposit(message);
+    await actionExecutor.executeDepositoryDeposit(message);
 
     return reply.status(200).send({ message: "Success" });
   },

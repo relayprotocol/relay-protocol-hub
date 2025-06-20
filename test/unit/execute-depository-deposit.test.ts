@@ -1,5 +1,5 @@
 import { describe, expect, it } from "@jest/globals";
-import { EscrowDepositMessage } from "@reservoir0x/relay-protocol-sdk";
+import { DepositoryDepositMessage } from "@reservoir0x/relay-protocol-sdk";
 import { zeroHash } from "viem";
 
 import { getBalance } from "../../src/models/balances";
@@ -14,18 +14,18 @@ import {
   randomNumber,
 } from "../common/utils";
 
-describe("execute-escrow-deposit", () => {
+describe("execute-depository-deposit", () => {
   it("execute the same deposit multiple times", async () => {
     const chain = chains[randomNumber(chains.length)];
 
-    const message: EscrowDepositMessage = {
+    const message: DepositoryDepositMessage = {
       data: {
         chainId: chain.id,
         transactionId: randomHex(32),
       },
       result: {
         onchainId: randomHex(32),
-        escrow: chain.escrow!,
+        depository: chain.depository!,
         depositId: randomHex(32),
         depositor: randomHex(20),
         currency: randomHex(20),
@@ -36,7 +36,7 @@ describe("execute-escrow-deposit", () => {
     await iter(100, async () => {
       const actionExecutor = new ActionExecutorService();
       await expect(
-        actionExecutor.executeEscrowDeposit(message)
+        actionExecutor.executeDepositoryDeposit(message)
       ).resolves.not.toThrowError();
     });
 
@@ -65,14 +65,14 @@ describe("execute-escrow-deposit", () => {
       }
     > = {};
     await iter(250, async () => {
-      const message: EscrowDepositMessage = {
+      const message: DepositoryDepositMessage = {
         data: {
           chainId: chain.id,
           transactionId: randomHex(32),
         },
         result: {
           onchainId: randomHex(32),
-          escrow: chain.escrow!,
+          depository: chain.depository!,
           depositId: randomNumber(100) % 2 === 0 ? randomHex(32) : zeroHash,
           depositor: owneres[randomNumber(owneres.length)],
           currency: currencyes[randomNumber(currencyes.length)],
@@ -82,7 +82,7 @@ describe("execute-escrow-deposit", () => {
 
       const actionExecutor = new ActionExecutorService();
       await expect(
-        actionExecutor.executeEscrowDeposit(message)
+        actionExecutor.executeDepositoryDeposit(message)
       ).resolves.not.toThrowError();
 
       // Update in-memory balances

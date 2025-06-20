@@ -1,6 +1,6 @@
 import { describe, expect, it } from "@jest/globals";
 import {
-  EscrowDepositMessage,
+  DepositoryDepositMessage,
   getOrderId,
   Order,
   SolverRefundMessage,
@@ -93,14 +93,14 @@ describe("execute-solver-refund", () => {
 
       const actionExecutor = new ActionExecutorService();
 
-      const escrowDepositMessage: EscrowDepositMessage = {
+      const depositoryDepositMessage: DepositoryDepositMessage = {
         data: {
           chainId: chain.id,
           transactionId: randomHex(32),
         },
         result: {
           onchainId: randomHex(32),
-          escrow: chain.escrow!,
+          depository: chain.depository!,
           depositId: orderId,
           depositor: owneres[randomNumber(owneres.length)],
           currency: order.inputs[0].payment.currency,
@@ -108,12 +108,12 @@ describe("execute-solver-refund", () => {
         },
       };
       await expect(
-        actionExecutor.executeEscrowDeposit(escrowDepositMessage)
+        actionExecutor.executeDepositoryDeposit(depositoryDepositMessage)
       ).resolves.not.toThrowError();
 
       // Update in-memory balances
       {
-        const key = `${chain.id}-${escrowDepositMessage.result.depositor}-${escrowDepositMessage.result.currency}`;
+        const key = `${chain.id}-${depositoryDepositMessage.result.depositor}-${depositoryDepositMessage.result.currency}`;
         if (!inMemoryBalances[key]) {
           inMemoryBalances[key] = {
             availableAmount: 0,
@@ -121,7 +121,7 @@ describe("execute-solver-refund", () => {
           };
         }
         inMemoryBalances[key].lockedAmount += Number(
-          escrowDepositMessage.result.amount
+          depositoryDepositMessage.result.amount
         );
       }
 
@@ -131,8 +131,8 @@ describe("execute-solver-refund", () => {
           orderSignature: randomHex(64),
           inputs: [
             {
-              transactionId: escrowDepositMessage.data.transactionId,
-              onchainId: escrowDepositMessage.result.onchainId,
+              transactionId: depositoryDepositMessage.data.transactionId,
+              onchainId: depositoryDepositMessage.result.onchainId,
               inputIndex: 0,
             },
           ],
@@ -156,13 +156,13 @@ describe("execute-solver-refund", () => {
 
       // Update in-memory balances
       {
-        const key = `${chain.id}-${escrowDepositMessage.result.depositor}-${escrowDepositMessage.result.currency}`;
+        const key = `${chain.id}-${depositoryDepositMessage.result.depositor}-${depositoryDepositMessage.result.currency}`;
         inMemoryBalances[key].lockedAmount -= Number(
-          escrowDepositMessage.result.amount
+          depositoryDepositMessage.result.amount
         );
       }
       {
-        const key = `${chain.id}-${order.solver}-${escrowDepositMessage.result.currency}`;
+        const key = `${chain.id}-${order.solver}-${depositoryDepositMessage.result.currency}`;
         if (!inMemoryBalances[key]) {
           inMemoryBalances[key] = {
             availableAmount: 0,
@@ -170,7 +170,7 @@ describe("execute-solver-refund", () => {
           };
         }
         inMemoryBalances[key].availableAmount += Number(
-          escrowDepositMessage.result.amount
+          depositoryDepositMessage.result.amount
         );
       }
     });

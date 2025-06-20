@@ -3,8 +3,8 @@ import { FastifyInstance } from "fastify";
 import { Endpoint, errorWrapper } from "./utils";
 
 // Actions
-import actionsEscrowDepositsV1 from "./actions/escrow-deposits/v1";
-import actionsEscrowWithdrawalsV1 from "./actions/escrow-withdrawals/v1";
+import actionsDepositoryDepositsV1 from "./actions/depository-deposits/v1";
+import actionsDepositoryWithdrawalsV1 from "./actions/depository-withdrawals/v1";
 import actionsSolverFillsV1 from "./actions/solver-fills/v1";
 import actionsSolverRefundsV1 from "./actions/solver-refunds/v1";
 
@@ -18,8 +18,8 @@ import requestsUnlocksV1 from "./requests/unlocks/v1";
 import requestsWithdrawalsV1 from "./requests/withdrawals/v1";
 
 const endpoints = [
-  actionsEscrowDepositsV1,
-  actionsEscrowWithdrawalsV1,
+  actionsDepositoryDepositsV1,
+  actionsDepositoryWithdrawalsV1,
   actionsSolverFillsV1,
   actionsSolverRefundsV1,
   queriesBalanceLocksV1,
