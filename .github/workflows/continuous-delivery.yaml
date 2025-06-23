@@ -75,3 +75,28 @@ jobs:
             ./dev/platform/relay-protocol-hub.yaml \
             ${{ github.sha }} \
             relay-protocol-hub
+
+  deploy-production:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: [build]
+    environment: prod
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - name: Checkout repository k8s-configs
+        uses: actions/checkout@v3
+        with:
+          repository: unevenlabs/k8s-configs
+          token: ${{ secrets.DEVOPSBOT_TOKEN }}
+          path: k8s-configs
+
+      - name: Deploy to Prod Environment
+        working-directory: k8s-configs
+        env:
+          DEVOPSBOT_GPG_PRIVATE_KEY: ${{ secrets.DEVOPSBOT_GPG_PRIVATE_KEY }}
+        run: |
+          ./utils/version_update.sh \
+            ./prod/platform/relay-protocol-hub.yaml \
+            ${{ github.sha }} \
+            relay-protocol-hub
