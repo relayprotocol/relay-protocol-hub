@@ -1,6 +1,15 @@
 import { VmType } from "@reservoir0x/relay-protocol-sdk";
 
+// For "ethereum-vm" allocator logic
+import { privateKeyToAccount } from "viem/accounts";
+
+// For "solana-vm" allocator logic
+import { Keypair } from "@solana/web3.js";
+import bs58 from "bs58";
+
 import { db } from "./db";
+import { config } from "../config";
+import { externalError } from "./error";
 
 // VM-specific chain metadata
 export type ChainMetadataBitcoinVm = {};
@@ -53,6 +62,27 @@ export const getChain = async (chainId: string) => {
   }
 
   return chains[chainId];
+};
+
+export const getAllocatorForChain = async (chainId: string) => {
+  const chain = await getChain(chainId);
+  switch (chain.vmType) {
+    case "ethereum-vm": {
+      return privateKeyToAccount(
+        config.ecdsaPrivateKey as any
+      ).address.toLowerCase();
+    }
+
+    case "solana-vm": {
+      return Keypair.fromSecretKey(
+        bs58.decode(config.ed25519PrivateKey)
+      ).publicKey.toBase58();
+    }
+
+    default: {
+      throw externalError("Vm type not implemented");
+    }
+  }
 };
 
 export const getSdkChainsConfig = async () => {
