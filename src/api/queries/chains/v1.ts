@@ -61,7 +61,9 @@ export default {
             id,
             vmType: chains[id].vmType,
             depository: chains[id].depository,
-            allocator: await getAllocatorForChain(id),
+            allocator: chains[id].depository
+              ? await getAllocatorForChain(id)
+              : undefined,
           };
         })
       ),
