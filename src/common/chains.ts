@@ -44,7 +44,7 @@ export const getChains = async () => {
       __chains[chain.id] = {
         id: chain.id,
         vmType: chain.vm_type,
-        depository: chain.depository,
+        depository: chain.depository ?? undefined,
         metadata: chain.metadata,
       };
     }
