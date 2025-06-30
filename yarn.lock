@@ -634,10 +634,10 @@
   resolved "https://registry.yarnpkg.com/@noble/hashes/-/hashes-1.8.0.tgz#cee43d801fcef9644b11b8194857695acd5f815a"
   integrity sha512-jCs9ldd7NwzpgXDIf6P3+NrHh9/sD6CQdxHyjQI+h/6rDNo88ypBxxz45UDuZHz9r3tNz7N/VInSVoVdtXEI4A==
 
-"@reservoir0x/relay-protocol-sdk@^0.0.29":
-  version "0.0.29"
-  resolved "https://registry.yarnpkg.com/@reservoir0x/relay-protocol-sdk/-/relay-protocol-sdk-0.0.29.tgz#892ba26cef948d39f87a58601aa60a1b7ae32fc4"
-  integrity sha512-C9gjl0Q4fG44sZusBLuSbeX5qBQyNuRy4r65+t8/6RHbscj0Aej3dSsof0Mct6zSRnx1IvJXHXmqA/BAPWTQYQ==
+"@reservoir0x/relay-protocol-sdk@^0.0.30":
+  version "0.0.30"
+  resolved "https://registry.yarnpkg.com/@reservoir0x/relay-protocol-sdk/-/relay-protocol-sdk-0.0.30.tgz#5788b188cdf3f926373a24bedd9c86f0109d3754"
+  integrity sha512-frhzPlhEzNDUqdYB0rYhI4QxR9lIcA/+kwqhDeVeb23GdSVPDx3zxATZU2AkIrZ2kpK68PSKShSZYwBtmfK2Pw==
   dependencies:
     "@ton/core" "^0.60.1"
     "@ton/crypto" "^3.3.0"
