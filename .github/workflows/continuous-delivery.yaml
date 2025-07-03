@@ -48,8 +48,8 @@ jobs:
         with:
           push: true
           tags: |
-            ghcr.io/reservoirprotocol/relay-protocol-hub:latest
-            ghcr.io/reservoirprotocol/relay-protocol-hub:${{ github.sha }}
+            ghcr.io/relayprotocol/relay-protocol-hub:latest
+            ghcr.io/relayprotocol/relay-protocol-hub:${{ github.sha }}
 
   deploy-staging:
     name: Deploy to Development
