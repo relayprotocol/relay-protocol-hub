@@ -2,7 +2,7 @@
 
 > #### Reference implementation of a Relay protocol hub
 
-See [Overview](./docs/Overview.md) for in-depth documentation on how the hub works
+See [overview](./docs/overview.md) for in-depth documentation on how the hub works
 
 ### Installation
 
