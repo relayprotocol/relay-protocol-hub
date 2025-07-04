@@ -24,6 +24,7 @@ import {
   unlockBalanceLock,
 } from "../../models/balances";
 import { saveWithdrawalRequest } from "../../models/withdrawal-requests";
+import nacl from "tweetnacl";
 
 type WithdrawalRequest = {
   ownerChainId: string;
@@ -168,6 +169,81 @@ export class RequestHandlerService {
           id,
           encodedData,
           signature,
+        };
+      }
+
+      case "solana-vm": {
+        // Create transfer request structure for Solana
+        const transferRequest = {
+          recipient: request.recipient, // Solana public key as string
+          token: request.currency, // SystemProgram.programId for SOL, token address for SPL tokens
+          amount: BigInt(request.amount).toString(),
+          nonce: BigInt("0x" + randomBytes(32).toString("hex")).toString(),
+          expiration: Math.floor(Date.now() / 1000) + 5 * 60,
+        };
+
+        // Encode the transfer request struct for signing
+        const encodedData = encodeWithdrawal({
+          vmType: chain.vmType,
+          withdrawal: transferRequest,
+        });
+
+        // Generate message hash for this withdrawal
+        const messageHash = getDecodedWithdrawalId({
+          vmType: chain.vmType,
+          withdrawal: transferRequest,
+        });
+
+        // Sign with Ed25519 private key (Solana uses Ed25519)
+        const signature = nacl.sign.detached(
+          Buffer.from(messageHash.substring(2), 'hex'), 
+          Buffer.from(config.ed25519PrivateKey.substring(2), 'hex')
+        );
+
+        // Convert the signature to hex string
+        const signatureHex = Buffer.from(signature).toString('hex');
+
+        await db.tx(async (tx) => {
+          const newBalance = await saveBalanceLock(
+            {
+              id: messageHash,
+              source: "withdrawal",
+              ownerChainId: request.ownerChainId,
+              owner: request.owner,
+              currencyChainId: request.chainId,
+              currency: request.currency,
+              amount: request.amount,
+              expiration: Number(transferRequest.expiration),
+            },
+            { tx }
+          );
+          if (!newBalance) {
+            throw externalError("Failed to save balance lock");
+          }
+
+          const withdrawalRequest = await saveWithdrawalRequest(
+            {
+              id: messageHash,
+              ownerChainId: request.ownerChainId,
+              owner: request.owner,
+              chainId: request.chainId,
+              currency: request.currency,
+              amount: request.amount,
+              recipient: request.recipient,
+              encodedData,
+              signature: signatureHex,
+            },
+            { tx }
+          );
+          if (!withdrawalRequest) {
+            throw externalError("Failed to save withdrawal request");
+          }
+        });
+
+        return {
+          id: messageHash,
+          encodedData,
+          signature: signatureHex,
         };
       }
 
