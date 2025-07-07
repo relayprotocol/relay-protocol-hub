@@ -10,7 +10,7 @@
   },
   "dependencies": {
     "@fastify/type-provider-typebox": "^5.1.0",
-    "@reservoir0x/relay-protocol-sdk": "^0.0.31",
+    "@reservoir0x/relay-protocol-sdk": "^0.0.32",
     "@sinclair/typebox": "^0.34.14",
     "@solana/web3.js": "^1.98.2",
     "axios": "^1.8.3",
@@ -21,6 +21,7 @@
     "pg": "^8.13.1",
     "pg-promise": "^11.10.2",
     "pg-query-stream": "^4.7.1",
+    "tweetnacl": "^1.0.3",
     "viem": "^2.22.8",
     "winston": "^3.17.0",
     "ws": "^8.18.1"

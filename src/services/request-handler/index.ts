@@ -2,7 +2,10 @@ import {
   encodeWithdrawal,
   getDecodedWithdrawalId,
 } from "@reservoir0x/relay-protocol-sdk";
+import { Keypair } from "@solana/web3.js";
+import bs58 from "bs58";
 import { randomBytes } from "crypto";
+import nacl from "tweetnacl";
 import {
   Address,
   createWalletClient,
@@ -40,9 +43,16 @@ type UnlockRequest = {
 
 export class RequestHandlerService {
   public async handleWithdrawal(request: WithdrawalRequest) {
+    let id: string;
+    let encodedData: string;
+    let signature: string;
+    let expiration: number | undefined;
+
     const chain = await getChain(request.chainId);
     switch (chain.vmType) {
       case "ethereum-vm": {
+        expiration = Math.floor(Date.now() / 1000) + 5 * 60;
+
         const data = {
           calls:
             request.currency === zeroAddress
@@ -72,15 +82,17 @@ export class RequestHandlerService {
                   },
                 ],
           nonce: BigInt("0x" + randomBytes(32).toString("hex")).toString(),
-          expiration: Math.floor(Date.now() / 1000) + 5 * 60,
+          expiration,
         };
 
-        const walletClient = createWalletClient({
-          account: privateKeyToAccount(config.ecdsaPrivateKey as Hex),
-          // Viem will error if we pass no URL to the `http` transport, so here we
-          // just pass a mock URL, which isn't even going to be used since we only
-          // use `walletClient` for signing messages offchain
-          transport: http("http://localhost:1"),
+        id = getDecodedWithdrawalId({
+          vmType: chain.vmType,
+          withdrawal: data,
+        });
+
+        encodedData = encodeWithdrawal({
+          vmType: chain.vmType,
+          withdrawal: data,
         });
 
         const eip712TypedData = {
@@ -116,64 +128,100 @@ export class RequestHandlerService {
           },
         } as const;
 
-        const encodedData = encodeWithdrawal({
-          vmType: chain.vmType,
-          withdrawal: data,
-        });
-        const signature = await walletClient.signTypedData(eip712TypedData);
-
-        const id = getDecodedWithdrawalId({
-          vmType: chain.vmType,
-          withdrawal: data,
+        const walletClient = createWalletClient({
+          account: privateKeyToAccount(config.ecdsaPrivateKey as Hex),
+          // Viem will error if we pass no URL to the `http` transport, so here we
+          // just pass a mock URL, which isn't even going to be used since we only
+          // use `walletClient` for signing messages offchain
+          transport: http("http://localhost:1"),
         });
 
-        await db.tx(async (tx) => {
-          const newBalance = await saveBalanceLock(
-            {
-              id,
-              source: "withdrawal",
-              ownerChainId: request.ownerChainId,
-              owner: request.owner,
-              currencyChainId: request.chainId,
-              currency: request.currency,
-              amount: request.amount,
-              expiration: data.expiration,
-            },
-            { tx }
-          );
-          if (!newBalance) {
-            throw externalError("Failed to save balance lock");
-          }
+        signature = await walletClient.signTypedData(eip712TypedData);
 
-          const withdrawalRequest = await saveWithdrawalRequest(
-            {
-              id,
-              ownerChainId: request.ownerChainId,
-              owner: request.owner,
-              chainId: request.chainId,
-              currency: request.currency,
-              amount: request.amount,
-              recipient: request.recipient,
-              encodedData,
-              signature,
-            },
-            { tx }
-          );
-          if (!withdrawalRequest) {
-            throw externalError("Failed to save withdrawal request");
-          }
-        });
-
-        return {
-          id,
-          encodedData,
-          signature,
-        };
+        break;
       }
 
-      default:
+      case "solana-vm": {
+        expiration = Math.floor(Date.now() / 1000) + 5 * 60;
+
+        const data = {
+          recipient: request.recipient,
+          token: request.currency,
+          amount: request.amount,
+          nonce: BigInt("0x" + randomBytes(32).toString("hex")).toString(),
+          expiration,
+        };
+
+        id = getDecodedWithdrawalId({
+          vmType: chain.vmType,
+          withdrawal: data,
+        });
+
+        encodedData = encodeWithdrawal({
+          vmType: chain.vmType,
+          withdrawal: data,
+        });
+
+        signature =
+          "0x" +
+          Buffer.from(
+            nacl.sign.detached(
+              Buffer.from(id.slice(2), "hex"),
+              Keypair.fromSecretKey(bs58.decode(config.ed25519PrivateKey))
+                .secretKey
+            )
+          ).toString("hex");
+
+        break;
+      }
+
+      default: {
         throw externalError("Vm type not implemented");
+      }
     }
+
+    await db.tx(async (tx) => {
+      const newBalance = await saveBalanceLock(
+        {
+          id,
+          source: "withdrawal",
+          ownerChainId: request.ownerChainId,
+          owner: request.owner,
+          currencyChainId: request.chainId,
+          currency: request.currency,
+          amount: request.amount,
+          expiration,
+        },
+        { tx }
+      );
+      if (!newBalance) {
+        throw externalError("Failed to save balance lock");
+      }
+
+      const withdrawalRequest = await saveWithdrawalRequest(
+        {
+          id,
+          ownerChainId: request.ownerChainId,
+          owner: request.owner,
+          chainId: request.chainId,
+          currency: request.currency,
+          amount: request.amount,
+          recipient: request.recipient,
+          encodedData,
+          signature,
+        },
+        { tx }
+      );
+      if (!withdrawalRequest) {
+        throw externalError("Failed to save withdrawal request");
+      }
+    });
+
+    return {
+      id,
+      encodedData,
+      signature,
+    };
   }
 
   public async handleUnlock(request: UnlockRequest) {
