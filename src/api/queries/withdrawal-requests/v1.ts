@@ -6,6 +6,7 @@ import {
   FastifyReplyTypeBox,
   FastifyRequestTypeBox,
 } from "../../utils";
+import { getAllocatorForChain } from "../../../common/chains";
 import { getPendingWithdrawalRequestsByOwner } from "../../../models/withdrawal-requests";
 
 const Schema = {
@@ -33,6 +34,7 @@ const Schema = {
           amount: Type.String(),
           recipient: Type.String(),
           encodedData: Type.String(),
+          signer: Type.String(),
           signature: Type.String(),
         }),
         {
@@ -58,17 +60,20 @@ export default {
     );
 
     return reply.status(200).send({
-      withdrawalRequests: withdrawalRequests.map((w) => ({
-        id: w.id,
-        ownerChainId: w.ownerChainId,
-        owner: w.owner,
-        chainId: w.chainId,
-        currency: w.currency,
-        amount: w.amount,
-        recipient: w.recipient,
-        encodedData: w.encodedData,
-        signature: w.signature,
-      })),
+      withdrawalRequests: await Promise.all(
+        withdrawalRequests.map(async (w) => ({
+          id: w.id,
+          ownerChainId: w.ownerChainId,
+          owner: w.owner,
+          chainId: w.chainId,
+          currency: w.currency,
+          amount: w.amount,
+          recipient: w.recipient,
+          encodedData: w.encodedData,
+          signer: await getAllocatorForChain(w.chainId),
+          signature: w.signature,
+        }))
+      ),
     });
   },
 } as Endpoint;

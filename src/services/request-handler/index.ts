@@ -17,7 +17,11 @@ import {
 } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 
-import { ChainMetadataEthereumVm, getChain } from "../../common/chains";
+import {
+  ChainMetadataEthereumVm,
+  getAllocatorForChain,
+  getChain,
+} from "../../common/chains";
 import { db } from "../../common/db";
 import { externalError } from "../../common/error";
 import { config } from "../../config";
@@ -221,6 +225,7 @@ export class RequestHandlerService {
       id,
       encodedData,
       signature,
+      signer: await getAllocatorForChain(request.chainId),
     };
   }
 
