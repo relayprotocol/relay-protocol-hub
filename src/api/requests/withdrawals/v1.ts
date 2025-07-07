@@ -32,6 +32,7 @@ const Schema = {
         description:
           "The withdrawal data (encoded based on the withdrawing chain's vm type)",
       }),
+      signer: Type.String({ description: "The signer of the withdrawal" }),
       signature: Type.String({
         description: "The allocator signature for the withdrawal",
       }),
