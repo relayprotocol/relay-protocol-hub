@@ -148,7 +148,7 @@ export class RequestHandlerService {
           recipient: request.recipient,
           token: request.currency,
           amount: request.amount,
-          nonce: BigInt("0x" + randomBytes(32).toString("hex")).toString(),
+          nonce: BigInt("0x" + randomBytes(8).toString("hex")).toString(),
           expiration,
         };
 
