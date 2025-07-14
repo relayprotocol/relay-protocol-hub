@@ -1,5 +1,7 @@
 import { VmType } from "@reservoir0x/relay-protocol-sdk";
 import { PublicKey } from "@solana/web3.js";
+import { bech32, bech32m } from "bech32";
+import bs58 from "bs58";
 
 import { externalError } from "../common/error";
 
@@ -57,6 +59,46 @@ export const nvAddress = (address: string, vmType: VmType) => {
       }
     }
 
+    case "bitcoin-vm": {
+      try {
+        // For bech32 addresses (P2WPKH)
+        try {
+          const decoded = bech32.decode(address);
+          // Validate that it's a Bitcoin address by checking the prefix
+          if (decoded.prefix !== "bc" && decoded.prefix !== "tb") {
+            throw new Error("Invalid Bitcoin address prefix");
+          }
+          return address;
+        } catch (e1) {
+          // For bech32m addresses (P2TR)
+          try {
+            const decoded = bech32m.decode(address);
+            // Validate that it's a Bitcoin address by checking the prefix
+            if (decoded.prefix !== "bc" && decoded.prefix !== "tb") {
+              throw new Error("Invalid Bitcoin address prefix");
+            }
+            return address;
+          } catch (e2) {
+            // For P2PKH / P2SH (base58 encoded)
+            bs58.decode(address);
+            
+            // Validate address format
+            // P2PKH starts with 1, P2SH starts with 3
+            if (address.startsWith("1") || address.startsWith("3")) {
+              // Additional validation: check length
+              if (address.length < 26 || address.length > 35) {
+                throw new Error("Invalid Bitcoin address length");
+              }
+              return address;
+            }
+            throw new Error("Invalid Bitcoin address format");
+          }
+        }
+      } catch (e) {
+        throw externalError(`Invalid address: ${address}`);
+      }
+    }
+
     default: {
       throw externalError("Vm type not implemented");
     }
@@ -66,6 +108,8 @@ export const nvAddress = (address: string, vmType: VmType) => {
 // Normalize and validate a currency
 export const nvCurrency = (currency: string, vmType: VmType) => {
   switch (vmType) {
+
+    case "bitcoin-vm":
     case "ethereum-vm": {
       const requiredLengthInBytes = 20;
 
@@ -129,6 +173,17 @@ export const nvTransactionId = (transactionId: string, vmType: VmType) => {
 
     case "solana-vm": {
       return transactionId;
+    }
+
+    case "bitcoin-vm": {
+      const requiredLengthInBytes = 32;
+
+      const hexString = nvBytes(transactionId, requiredLengthInBytes);
+      if (hexString.length !== 2 + requiredLengthInBytes * 2) {
+        throw externalError(`Invalid transaction id: ${transactionId}`);
+      }
+
+      return hexString;
     }
 
     default: {
