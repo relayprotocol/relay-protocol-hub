@@ -12,7 +12,7 @@ import { config } from "../config";
 import { externalError } from "./error";
 
 // VM-specific chain metadata
-export type ChainMetadataBitcoinVm = {};
+export type ChainMetadataBitcoinVm = { httpRpcUrl: string };
 export type ChainMetadataEthereumVm = { chainId: number };
 export type ChainMetadataHyperliquidVm = {};
 export type ChainMetadataSolanaVm = {};

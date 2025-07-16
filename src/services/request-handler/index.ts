@@ -1,6 +1,7 @@
 import {
   encodeWithdrawal,
   getDecodedWithdrawalId,
+  bitcoin,
 } from "@reservoir0x/relay-protocol-sdk";
 import { Keypair } from "@solana/web3.js";
 import bs58 from "bs58";
@@ -21,6 +22,7 @@ import {
   ChainMetadataEthereumVm,
   getAllocatorForChain,
   getChain,
+  ChainMetadataBitcoinVm,
 } from "../../common/chains";
 import { db } from "../../common/db";
 import { externalError } from "../../common/error";
@@ -31,6 +33,7 @@ import {
   unlockBalanceLock,
 } from "../../models/balances";
 import { saveWithdrawalRequest } from "../../models/withdrawal-requests";
+import { createAndSignTransaction } from "../../common/vm/bitcoin-vm/utils/transaction";
 
 type WithdrawalRequest = {
   ownerChainId: string;
@@ -176,6 +179,66 @@ export class RequestHandlerService {
             )
           ).toString("hex");
 
+        break;
+      }
+
+      case "bitcoin-vm": {
+        expiration = Math.floor(Date.now() / 1000) + 60 * 60;
+        const data = {
+          recipient: request.recipient,
+          amount: request.amount,
+          nonce: BigInt("0x" + randomBytes(8).toString("hex")).toString(),
+          expiration,
+          txId: "0x",
+        };
+
+        id = getDecodedWithdrawalId({
+          vmType: chain.vmType,
+          withdrawal: data,
+        });
+
+        // Get Bitcoin address from chain.depository
+        if (!chain.depository) {
+          throw externalError("Bitcoin depository address not configured for chain");
+        }
+        const bitcoinAddress = chain.depository;
+
+        // Get UTXOs for the Bitcoin address
+        const bitcoinRpc = bitcoin.createProvider((chain.metadata as ChainMetadataBitcoinVm).httpRpcUrl);
+        const utxos = await bitcoinRpc.getUtxos(bitcoinAddress, true);
+        
+        if (utxos.length === 0) {
+          throw externalError("No UTXOs available for Bitcoin withdrawal");
+        }
+        
+        // Estimate fee rate (satoshis per byte)
+        const feeRate = await bitcoinRpc.estimateSmartFee(2, "conservative");
+        
+        // Create and sign Bitcoin transaction
+        const { txHex, txId } = await createAndSignTransaction(
+          config.bitcoinPrivateKey,
+          utxos,
+          request.recipient,
+          parseInt(request.amount),
+          feeRate,
+          !chain.id.includes("testnet") ? "bitcoin" : "testnet",
+          {
+            enableRBF: true,
+          }
+        );
+        
+        // Store txId in data field for Oracle to use
+        data.txId = txId;
+        
+        // Re-encode withdrawal data with txId
+        encodedData = encodeWithdrawal({
+          vmType: chain.vmType,
+          withdrawal: data,
+        });
+        
+        // Use the signed transaction hex as the signature
+        signature = "0x" + txHex;
+        
         break;
       }
 
