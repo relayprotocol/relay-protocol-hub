@@ -311,13 +311,18 @@ export const saveBalanceLock = async (
   return resultToBalance(result);
 };
 
+// If the balance lock has no explicit expiration, it defaults to 7 days from the moment of creation
+const DEFAULT_BALANCE_LOCK_EXPIRATION = "7 days";
+
 export const unlockBalanceLock = async (
   balanceLockId: string,
   options?: {
     // When set, this results in the total balance being reduced,
     // otherwise the total balance stays the same, while only the
-    // available / locked ratio changes.
+    // available / locked ratio changes
     skipAvailableBalanceAdjustment?: boolean;
+    // When set, the balance lock expiration is checked before unlocking
+    checkExpiration?: boolean;
     tx?: ITask<any>;
   }
 ): Promise<DbEntry<Balance> | undefined> => {
@@ -330,6 +335,16 @@ export const unlockBalanceLock = async (
             updated_at = now()
           WHERE balance_locks.id = $/balanceLockId/
             AND NOT balance_locks.executed
+            ${
+              options?.checkExpiration
+                ? `
+                  AND COALESCE(
+                    balance_locks.expiration,
+                    balance_locks.created_at + interval '${DEFAULT_BALANCE_LOCK_EXPIRATION}'
+                  ) > now()
+                `
+                : ""
+            }
           RETURNING
             balance_locks.owner_chain_id,
             balance_locks.owner,
