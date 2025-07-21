@@ -240,7 +240,9 @@ export class RequestHandlerService {
       );
     }
 
-    const newBalance = await unlockBalanceLock(request.id);
+    const newBalance = await unlockBalanceLock(request.id, {
+      checkExpiration: true,
+    });
     if (!newBalance) {
       throw externalError("Failed to unlock balance");
     }
