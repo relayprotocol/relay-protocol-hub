@@ -341,7 +341,7 @@ export const unlockBalanceLock = async (
                   AND COALESCE(
                     to_timestamp(balance_locks.expiration),
                     balance_locks.created_at + interval '${DEFAULT_BALANCE_LOCK_EXPIRATION}'
-                  ) > now()
+                  ) < now()
                 `
                 : ""
             }
