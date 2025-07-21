@@ -11,4 +11,12 @@ export const chains: Chain[] = [
       chainId: 1,
     },
   },
+  {
+    id: "bitcoin-testnet",
+    vmType: "bitcoin-vm",
+    depository: "tb1q4ay9q4g7nh28lkyj6m3f2kw5kw8xlqurk6y33t",
+    metadata: {
+      httpRpcUrl: "https://mempool.space/testnet/api",
+    },
+  },
 ];

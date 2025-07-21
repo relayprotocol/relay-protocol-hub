@@ -46,7 +46,7 @@ export async function createAndSignTransaction(
   let keyPair = ECPair.fromPrivateKey(privateKeyBuffer);
   
   // Get sender's address from public key
-  const { address } = bitcoin.payments.p2pkh({
+  const { address } = bitcoin.payments.p2wpkh({
     pubkey: Buffer.from(keyPair.publicKey),
     network: bitcoinNetwork,
   });
@@ -66,12 +66,11 @@ export async function createAndSignTransaction(
   let inputAmount = BigInt(0);
   const selectedUtxos: bitcoinSdk.UtxoItem[] = [];
   
-  // Convert amount to BigInt
   const amountBigInt = BigInt(amount);
   
   // Select UTXOs until we have enough to cover amount + estimated fee
   // Start with a basic fee estimate that will be refined
-  let estimatedFee = BigInt(1000); // Start with 1000 satoshis as base fee
+  let estimatedFee = BigInt(1000);
   
   // Calculate number of expected outputs (recipient + change + optional memo)
   const outputCount = options?.includeMemo ? 3 : 2;

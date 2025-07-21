@@ -206,13 +206,13 @@ export class RequestHandlerService {
         // Get UTXOs for the Bitcoin address
         const bitcoinRpc = bitcoin.createProvider((chain.metadata as ChainMetadataBitcoinVm).httpRpcUrl);
         const utxos = await bitcoinRpc.getUtxos(bitcoinAddress, true);
-        
         if (utxos.length === 0) {
           throw externalError("No UTXOs available for Bitcoin withdrawal");
         }
         
         // Estimate fee rate (satoshis per byte)
-        const feeRate = await bitcoinRpc.estimateSmartFee(2, "conservative");
+        const feeRateResponse = await bitcoinRpc.estimateSmartFee(2, "conservative");
+        const feeRate = Math.ceil(feeRateResponse.feerate * 100000000 / 1000); // Convert BTC/kB to sat/byte
         
         // Create and sign Bitcoin transaction
         const { txHex, txId } = await createAndSignTransaction(

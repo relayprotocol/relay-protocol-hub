@@ -23,7 +23,7 @@ export default async () => {
         id: chain.id,
         vmType: chain.vmType,
         depository: chain.depository,
-        metadata: {},
+        metadata: chain.metadata ?? {},
       }
     );
   }
