@@ -38,6 +38,10 @@ const resultToBalance = (result: any): DbEntry<Balance> => ({
   updatedAt: result.updated_at,
 });
 
+// If the balance lock has no explicit expiration, it defaults to 7 days from the moment of creation
+const DEFAULT_BALANCE_LOCK_EXPIRATION_PG = "7 days";
+const DEFAULT_BALANCE_LOCK_EXPIRATION = 7 * 24 * 60 * 60;
+
 const resultToBalanceLock = (result: any): DbEntry<BalanceLock> => ({
   id: result.id,
   source: result.source,
@@ -46,7 +50,10 @@ const resultToBalanceLock = (result: any): DbEntry<BalanceLock> => ({
   currencyChainId: result.currency_chain_id,
   currency: result.currency,
   amount: result.amount,
-  expiration: result.expiration ?? undefined,
+  expiration:
+    result.expiration ??
+    Math.floor((result.created_at as Date).getTime() / 1000) +
+      DEFAULT_BALANCE_LOCK_EXPIRATION,
   executed: result.executed ?? undefined,
   createdAt: result.created_at,
   updatedAt: result.updated_at,
@@ -311,9 +318,6 @@ export const saveBalanceLock = async (
   return resultToBalance(result);
 };
 
-// If the balance lock has no explicit expiration, it defaults to 7 days from the moment of creation
-const DEFAULT_BALANCE_LOCK_EXPIRATION = "7 days";
-
 export const unlockBalanceLock = async (
   balanceLockId: string,
   options?: {
@@ -340,7 +344,7 @@ export const unlockBalanceLock = async (
                 ? `
                   AND COALESCE(
                     to_timestamp(balance_locks.expiration),
-                    balance_locks.created_at + interval '${DEFAULT_BALANCE_LOCK_EXPIRATION}'
+                    balance_locks.created_at + interval '${DEFAULT_BALANCE_LOCK_EXPIRATION_PG}'
                   ) < now()
                 `
                 : ""
