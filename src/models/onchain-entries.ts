@@ -20,6 +20,17 @@ export type OnchainEntry = {
   balanceDiff: string;
 };
 
+const resultToOnchainEntry = (result: any) => ({
+  id: result.id,
+  chainId: result.chain_id,
+  transactionId: result.transaction_id,
+  owner: result.owner,
+  currency: result.currency,
+  balanceDiff: result.balance_diff,
+  createdAt: result.created_at,
+  updatedAt: result.updated_at,
+});
+
 export const getOnchainEntry = async (
   id: string,
   options?: {
@@ -48,16 +59,38 @@ export const getOnchainEntry = async (
     return undefined;
   }
 
-  return {
-    id: result.id,
-    chainId: result.chain_id,
-    transactionId: result.transaction_id,
-    owner: result.owner,
-    currency: result.currency,
-    balanceDiff: result.balance_diff,
-    createdAt: result.created_at,
-    updatedAt: result.updated_at,
-  };
+  return resultToOnchainEntry(result);
+};
+
+export const getOnchainEntriesByChainIdAndTransactionId = async (
+  chainId: string,
+  transactionId: string,
+  options?: {
+    tx?: ITask<any>;
+  }
+): Promise<DbEntry<OnchainEntry>[]> => {
+  const results = await (options?.tx ?? db).manyOrNone(
+    `
+      SELECT
+        onchain_entries.id,
+        onchain_entries.chain_id,
+        onchain_entries.transaction_id,
+        onchain_entries.owner,
+        onchain_entries.currency,
+        onchain_entries.balance_diff,
+        onchain_entries.created_at,
+        onchain_entries.updated_at
+      FROM onchain_entries
+      WHERE onchain_entries.chainId = $/chainId/
+        AND onchain_entries.transaction_id = $/transactionId/
+    `,
+    {
+      chainId,
+      transactionId,
+    }
+  );
+
+  return results.map(resultToOnchainEntry);
 };
 
 export const saveOnchainEntryWithBalanceUpdate = async (

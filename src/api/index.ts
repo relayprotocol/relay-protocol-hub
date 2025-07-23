@@ -12,6 +12,7 @@ import actionsSolverRefundsV1 from "./actions/solver-refunds/v1";
 import queriesBalanceLocksV1 from "./queries/balance-locks/v1";
 import queriesBalancesV1 from "./queries/balances/v1";
 import queriesChainsV1 from "./queries/chains/v1";
+import queriesDepositoryDepositsV1 from "./queries/depository-deposits/v1";
 import queriesWithdrawalRequestsV1 from "./queries/withdrawal-requests/v1";
 
 // Requests
@@ -26,6 +27,7 @@ const endpoints = [
   queriesBalanceLocksV1,
   queriesBalancesV1,
   queriesChainsV1,
+  queriesDepositoryDepositsV1,
   queriesWithdrawalRequestsV1,
   requestsUnlocksV1,
   requestsWithdrawalsV1,
