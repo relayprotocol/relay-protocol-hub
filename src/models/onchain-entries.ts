@@ -81,7 +81,7 @@ export const getOnchainEntriesByChainIdAndTransactionId = async (
         onchain_entries.created_at,
         onchain_entries.updated_at
       FROM onchain_entries
-      WHERE onchain_entries.chainId = $/chainId/
+      WHERE onchain_entries.chain_id = $/chainId/
         AND onchain_entries.transaction_id = $/transactionId/
     `,
     {
