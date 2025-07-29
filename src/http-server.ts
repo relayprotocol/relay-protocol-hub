@@ -48,6 +48,11 @@ const setupSwagger = async () => {
 setupSwagger().then(() => {
   // Setup authentication
   httpServer.addHook("preHandler", (req, reply, done) => {
+    // Skip these routes
+    if (req.url === "/" || req.url.startsWith("/documentation")) {
+      return done();
+    }
+
     if (config.apiKeys) {
       const apiKey = req.headers["x-api-key"] as string | undefined;
       if (!apiKey || !config.apiKeys[apiKey]) {
