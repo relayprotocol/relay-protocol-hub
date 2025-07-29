@@ -8,6 +8,19 @@ import { config } from "./config";
 const COMPONENT = "http-server";
 
 const httpServer = Fastify().withTypeProvider<TypeBoxTypeProvider>();
+
+// Setup authentication
+httpServer.addHook("preHandler", (req, reply, done) => {
+  if (config.apiKeys) {
+    const apiKey = req.headers["x-api-key"] as string | undefined;
+    if (!apiKey || !config.apiKeys[apiKey]) {
+      return reply.code(401).send({ error: "Unauthorized" });
+    }
+  }
+
+  return done();
+});
+
 setupEndpoints(httpServer);
 
 httpServer.listen(
