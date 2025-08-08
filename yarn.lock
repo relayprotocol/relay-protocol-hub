@@ -740,15 +740,17 @@
   resolved "https://registry.yarnpkg.com/@noble/hashes/-/hashes-1.8.0.tgz#cee43d801fcef9644b11b8194857695acd5f815a"
   integrity sha512-jCs9ldd7NwzpgXDIf6P3+NrHh9/sD6CQdxHyjQI+h/6rDNo88ypBxxz45UDuZHz9r3tNz7N/VInSVoVdtXEI4A==
 
-"@reservoir0x/relay-protocol-sdk@^0.0.34":
-  version "0.0.34"
-  resolved "https://registry.yarnpkg.com/@reservoir0x/relay-protocol-sdk/-/relay-protocol-sdk-0.0.34.tgz#8b18e3ce2ed6b243a9ee78921a05930a8c07d9f5"
-  integrity sha512-W/nxKoAUJy/yCFnh04yCbcbDqNlP688GdFlXwFzt5h/4yf7NVtGK+Ag++Hj52DDOjhPJlIRriItN1rtIogAcGQ==
+"@reservoir0x/relay-protocol-sdk@^0.0.35":
+  version "0.0.35"
+  resolved "https://registry.yarnpkg.com/@reservoir0x/relay-protocol-sdk/-/relay-protocol-sdk-0.0.35.tgz#9b5757084df625b79633793a9a650c647af955ae"
+  integrity sha512-TWA2iPlhfVCMyw26d+hR1vuSQeYLyPPKAisJIKng5B5DM8U1viVc1Vvdc7t4KAtn5bDW5njZpQojH8CO9Ae8jQ==
   dependencies:
     "@coral-xyz/anchor" "^0.31.1"
     "@mysten/sui" "^1.24.0"
     "@ton/core" "^0.60.1"
     "@ton/crypto" "^3.3.0"
+    bech32 "^2.0.0"
+    bitcoinjs-lib "^6.1.7"
     bs58 "^6.0.0"
     js-sha256 "^0.11.0"
     viem "^2.26.3"

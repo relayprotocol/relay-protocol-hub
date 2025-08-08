@@ -10,7 +10,7 @@
   },
   "dependencies": {
     "@fastify/type-provider-typebox": "^5.1.0",
-    "@reservoir0x/relay-protocol-sdk": "^0.0.34",
+    "@reservoir0x/relay-protocol-sdk": "^0.0.35",
     "@sinclair/typebox": "^0.34.14",
     "@solana/web3.js": "^1.98.2",
     "axios": "^1.8.3",

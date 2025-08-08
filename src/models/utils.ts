@@ -1,7 +1,6 @@
 import { VmType } from "@reservoir0x/relay-protocol-sdk";
 import { PublicKey } from "@solana/web3.js";
-import { bech32, bech32m } from "bech32";
-import bs58 from "bs58";
+import * as bitcoin from "bitcoinjs-lib";
 
 import { externalError } from "../common/error";
 
@@ -25,47 +24,6 @@ export const nvBytes = (bytes: string, requiredLengthInBytes: number) => {
 
   return "0x" + result;
 };
-
-// Normalize and validate a Bitcoin address
-export const nvBitCoinAddress = (address: string) => {
-  try {
-    // For bech32 addresses (P2WPKH)
-    try {
-      const decoded = bech32.decode(address);
-      // Validate that it's a Bitcoin address by checking the prefix
-      if (decoded.prefix !== "bc" && decoded.prefix !== "tb") {
-        throw new Error("Invalid Bitcoin address prefix");
-      }
-      return address;
-    } catch (e1) {
-      // For bech32m addresses (P2TR)
-      try {
-        const decoded = bech32m.decode(address);
-        // Validate that it's a Bitcoin address by checking the prefix
-        if (decoded.prefix !== "bc" && decoded.prefix !== "tb") {
-          throw new Error("Invalid Bitcoin address prefix");
-        }
-        return address;
-      } catch (e2) {
-        // For P2PKH / P2SH (base58 encoded)
-        bs58.decode(address);
-        
-        // Validate address format
-        // P2PKH starts with 1, P2SH starts with 3
-        if (address.startsWith("1") || address.startsWith("3")) {
-          // Additional validation: check length
-          if (address.length < 26 || address.length > 35) {
-            throw new Error("Invalid Bitcoin address length");
-          }
-          return address;
-        }
-        throw new Error(`Invalid Bitcoin address format ${address}`);
-      }
-    }
-  } catch (e) {
-    throw externalError(`Invalid address: ${address}`);
-  }
-}
 
 // Normalize and validate an address
 export const nvAddress = (address: string, vmType: VmType) => {
@@ -101,7 +59,12 @@ export const nvAddress = (address: string, vmType: VmType) => {
     }
 
     case "bitcoin-vm": {
-      return nvBitCoinAddress(address);
+      const result = validateAndNormalizeBitcoinVmAddress(address);
+      if (!result) {
+        throw externalError(`Invalid address: ${address}`);
+      }
+
+      return result;
     }
 
     default: {
@@ -113,7 +76,6 @@ export const nvAddress = (address: string, vmType: VmType) => {
 // Normalize and validate a currency
 export const nvCurrency = (currency: string, vmType: VmType) => {
   switch (vmType) {
-
     case "ethereum-vm": {
       const requiredLengthInBytes = 20;
 
@@ -143,9 +105,14 @@ export const nvCurrency = (currency: string, vmType: VmType) => {
         throw externalError(`Invalid currency: ${currency}`);
       }
     }
-    
+
     case "bitcoin-vm": {
-      return nvBitCoinAddress(currency);
+      const result = validateAndNormalizeBitcoinVmAddress(currency);
+      if (!result) {
+        throw externalError(`Invalid currency: ${currency}`);
+      }
+
+      return result;
     }
 
     default: {
@@ -197,4 +164,33 @@ export const nvTransactionId = (transactionId: string, vmType: VmType) => {
       throw externalError("Vm type not implemented");
     }
   }
+};
+
+const validateAndNormalizeBitcoinVmAddress = (
+  address: string
+): string | undefined => {
+  // Try P2PKH / P2SH (Base58Check)
+  try {
+    const { version } = bitcoin.address.fromBase58Check(address);
+    if (
+      version === bitcoin.networks.bitcoin.pubKeyHash ||
+      version === bitcoin.networks.bitcoin.scriptHash
+    ) {
+      return address;
+    }
+  } catch {
+    // Ignore Base58Check failure
+  }
+
+  // Try Bech32 (P2WPKH / P2WSH)
+  try {
+    const { prefix } = bitcoin.address.fromBech32(address);
+    if (prefix === "bc") {
+      return address.toLowerCase();
+    }
+  } catch {
+    // Ignore Bech32 failure
+  }
+
+  return undefined;
 };

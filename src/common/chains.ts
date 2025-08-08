@@ -8,16 +8,16 @@ import { Keypair } from "@solana/web3.js";
 import bs58 from "bs58";
 
 // For "bitcoin-vm" allocator logic
-import * as bitcoin from 'bitcoinjs-lib';
-import * as ecc from 'tiny-secp256k1';
-import { ECPairFactory } from 'ecpair';
+import * as bitcoin from "bitcoinjs-lib";
+import { ECPairFactory } from "ecpair";
+import * as ecc from "tiny-secp256k1";
 
 import { db } from "./db";
-import { config } from "../config";
 import { externalError } from "./error";
+import { config } from "../config";
 
 // VM-specific chain metadata
-export type ChainMetadataBitcoinVm = { httpRpcUrl: string };
+export type ChainMetadataBitcoinVm = {};
 export type ChainMetadataEthereumVm = { chainId: number };
 export type ChainMetadataHyperliquidVm = {};
 export type ChainMetadataSolanaVm = {};
@@ -85,18 +85,19 @@ export const getAllocatorForChain = async (chainId: string) => {
     }
 
     case "bitcoin-vm": {
-      const bitcoinNetwork = !chain.id.includes('testnet') 
-        ? bitcoin.networks.bitcoin 
-        : bitcoin.networks.testnet;
-      // Create key pair from private key
-      const privateKeyBuffer = Buffer.from(config.bitcoinPrivateKey, 'hex');
-      let keyPair = ECPairFactory(ecc).fromPrivateKey(privateKeyBuffer);
-      // Generate a p2wpkh address
+      const keyPair = ECPairFactory(ecc).fromPrivateKey(
+        Buffer.from(config.ecdsaPrivateKey, "hex")
+      );
+
       const { address } = bitcoin.payments.p2wpkh({
         pubkey: Buffer.from(keyPair.publicKey),
-        network: bitcoinNetwork,
+        network: bitcoin.networks.bitcoin,
       });
-      return address!;
+      if (!address) {
+        throw new Error("Failed to retrieve address");
+      }
+
+      return address;
     }
 
     default: {

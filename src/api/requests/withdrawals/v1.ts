@@ -24,6 +24,53 @@ const Schema = {
     recipient: Type.String({
       description: "The address of the recipient for the withdrawal proceeds",
     }),
+    additionalData: Type.Optional(
+      Type.Object(
+        {
+          "bitcoin-vm": Type.Optional(
+            Type.Object({
+              allocatorUtxos: Type.Array(
+                Type.Object(
+                  {
+                    txid: Type.String(),
+                    vout: Type.Number(),
+                    value: Type.String(),
+                  },
+                  {
+                    description:
+                      "Allocator UTXOs to be used for generating the withdrawal request",
+                  }
+                )
+              ),
+              relayer: Type.String({
+                description: "The address of the relayer",
+              }),
+              relayerUtxos: Type.Array(
+                Type.Object(
+                  {
+                    txid: Type.String(),
+                    vout: Type.Number(),
+                    value: Type.String(),
+                  },
+                  {
+                    description:
+                      "Relayer UTXOs to be used for the transaction fee payment",
+                  }
+                )
+              ),
+              transactionFee: Type.String({
+                description:
+                  "The transaction fee taken out of the specified relayer UTXOs",
+              }),
+            })
+          ),
+        },
+        {
+          description:
+            "Additional data needed for generating the withdrawal request",
+        }
+      )
+    ),
   }),
   response: {
     200: Type.Object({

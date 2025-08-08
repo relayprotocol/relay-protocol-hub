@@ -1,11 +1,13 @@
 import {
   encodeWithdrawal,
   getDecodedWithdrawalId,
-  bitcoin,
 } from "@reservoir0x/relay-protocol-sdk";
 import { Keypair } from "@solana/web3.js";
+import * as bitcoin from "bitcoinjs-lib";
 import bs58 from "bs58";
 import { randomBytes } from "crypto";
+import { ECPairFactory } from "ecpair";
+import * as ecc from "tiny-secp256k1";
 import nacl from "tweetnacl";
 import {
   Address,
@@ -22,7 +24,6 @@ import {
   ChainMetadataEthereumVm,
   getAllocatorForChain,
   getChain,
-  ChainMetadataBitcoinVm,
 } from "../../common/chains";
 import { db } from "../../common/db";
 import { externalError } from "../../common/error";
@@ -33,7 +34,13 @@ import {
   unlockBalanceLock,
 } from "../../models/balances";
 import { saveWithdrawalRequest } from "../../models/withdrawal-requests";
-import { createAndSignTransaction } from "../../common/vm/bitcoin-vm/utils/transaction";
+
+type AdditionalDataBitcoinVm = {
+  allocatorUtxos: { txid: string; vout: number; value: string }[];
+  relayer: string;
+  relayerUtxos: { txid: string; vout: number; value: string }[];
+  transactionFee: string;
+};
 
 type WithdrawalRequest = {
   ownerChainId: string;
@@ -42,6 +49,9 @@ type WithdrawalRequest = {
   currency: string;
   amount: string;
   recipient: string;
+  additionalData?: {
+    "bitcoin-vm"?: AdditionalDataBitcoinVm;
+  };
 };
 
 type UnlockRequest = {
@@ -183,62 +193,125 @@ export class RequestHandlerService {
       }
 
       case "bitcoin-vm": {
-        expiration = Math.floor(Date.now() / 1000) + 60 * 60;
-        const data = {
-          recipient: request.recipient,
-          amount: request.amount,
-          nonce: BigInt("0x" + randomBytes(8).toString("hex")).toString(),
-          expiration,
-          txId: "0x",
-        };
+        const additionalData = request.additionalData?.["bitcoin-vm"];
+        if (!additionalData) {
+          throw externalError(
+            "Additional data is required for generating the withdrawal request"
+          );
+        }
+
+        // Dust threshold in satoshis
+        const MIN_UTXO_VALUE = 546n;
+
+        // Compute the allocator change
+        const totalAllocatorUtxosValue = additionalData.allocatorUtxos.reduce(
+          (acc, { value }) => acc + BigInt(value),
+          0n
+        );
+        const allocatorChange =
+          totalAllocatorUtxosValue - BigInt(request.amount);
+        if (allocatorChange < MIN_UTXO_VALUE) {
+          throw externalError("Insufficient allocator UTXOs");
+        }
+
+        // Compute the relayer change
+        const totalRelayerUtxosValue = additionalData.relayerUtxos.reduce(
+          (acc, { value }) => acc + BigInt(value),
+          0n
+        );
+        const relayerChange =
+          totalRelayerUtxosValue - BigInt(additionalData.transactionFee);
+        if (relayerChange < 0) {
+          throw externalError("Insufficient relayer UTXOs");
+        }
+
+        // Start constructing the PSBT
+        const psbt = new bitcoin.Psbt({ network: bitcoin.networks.bitcoin });
+
+        const allocator = await getAllocatorForChain(request.chainId);
+
+        // Add allocator input UTXOs
+        for (const utxo of additionalData.allocatorUtxos) {
+          psbt.addInput({
+            hash: utxo.txid,
+            index: utxo.vout,
+            // For enabling Replace-By-Fee
+            sequence: 0xfffffffd,
+            witnessUtxo: {
+              script: bitcoin.address.toOutputScript(
+                allocator,
+                bitcoin.networks.bitcoin
+              ),
+              value: Number(BigInt(utxo.value)),
+            },
+          });
+        }
+
+        // Add relayer input UTXOs
+        for (const utxo of additionalData.relayerUtxos) {
+          if (additionalData.relayer === allocator) {
+            throw externalError(
+              "The relayer must be different from the allocator"
+            );
+          }
+
+          psbt.addInput({
+            hash: utxo.txid,
+            index: utxo.vout,
+            // For enabling Replace-By-Fee
+            sequence: 0xfffffffd,
+            witnessUtxo: {
+              script: bitcoin.address.toOutputScript(
+                additionalData.relayer,
+                bitcoin.networks.bitcoin
+              ),
+              value: Number(BigInt(utxo.value)),
+            },
+          });
+        }
+
+        // Add allocator change
+        psbt.addOutput({
+          address: allocator,
+          value: Number(allocatorChange),
+        });
+
+        // Add relayer change
+        if (relayerChange >= MIN_UTXO_VALUE) {
+          psbt.addOutput({
+            address: additionalData.relayer,
+            value: Number(relayerChange),
+          });
+        }
+
+        // Sign the PSBT using the allocator wallet
+        const keyPair = ECPairFactory(ecc).fromPrivateKey(
+          Buffer.from(config.ecdsaPrivateKey, "hex")
+        );
+        await psbt.signAllInputsAsync({
+          publicKey: Buffer.from(keyPair.publicKey),
+          sign: (hash: Buffer) => {
+            return Buffer.from(keyPair.sign(hash));
+          },
+        });
 
         id = getDecodedWithdrawalId({
           vmType: chain.vmType,
-          withdrawal: data,
+          withdrawal: {
+            psbt: psbt.toHex(),
+          },
         });
 
-        // Get Bitcoin address from chain.depository
-        if (!chain.depository) {
-          throw externalError("Bitcoin depository address not configured for chain");
-        }
-        const bitcoinAddress = chain.depository;
-
-        // Get UTXOs for the Bitcoin address
-        const bitcoinRpc = bitcoin.createProvider((chain.metadata as ChainMetadataBitcoinVm).httpRpcUrl);
-        const utxos = await bitcoinRpc.getUtxos(bitcoinAddress, true);
-        if (utxos.length === 0) {
-          throw externalError("No UTXOs available for Bitcoin withdrawal");
-        }
-        
-        // Estimate fee rate (satoshis per byte)
-        const feeRateResponse = await bitcoinRpc.estimateSmartFee(2, "conservative");
-        const feeRate = Math.ceil(feeRateResponse.feerate * 100000000 / 1000); // Convert BTC/kB to sat/byte
-        
-        // Create and sign Bitcoin transaction
-        const { txHex, txId } = await createAndSignTransaction(
-          config.bitcoinPrivateKey,
-          utxos,
-          request.recipient,
-          parseInt(request.amount),
-          feeRate,
-          !chain.id.includes("testnet") ? "bitcoin" : "testnet",
-          {
-            enableRBF: true,
-          }
-        );
-        
-        // Store txId in data field for Oracle to use
-        data.txId = txId;
-        
-        // Re-encode withdrawal data with txId
         encodedData = encodeWithdrawal({
           vmType: chain.vmType,
-          withdrawal: data,
+          withdrawal: {
+            psbt: psbt.toHex(),
+          },
         });
-        
-        // Use the signed transaction hex as the signature
-        signature = "0x" + txHex;
-        
+
+        // The signature is bundled within the the encoded withdrawal data
+        signature = "0x";
+
         break;
       }
 
