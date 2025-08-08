@@ -8,6 +8,9 @@
     "start": "yarn migrate up 2>/dev/null && node ./dist/index.js",
     "test": "yarn migrate up && jest"
   },
+  "resolutions": {
+    "strip-ansi": "5.x"
+  },
   "dependencies": {
     "@fastify/swagger": "^9.5.1",
     "@fastify/swagger-ui": "^5.2.3",
