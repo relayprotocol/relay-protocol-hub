@@ -7,9 +7,14 @@ import { privateKeyToAccount } from "viem/accounts";
 import { Keypair } from "@solana/web3.js";
 import bs58 from "bs58";
 
+// For "bitcoin-vm" allocator logic
+import * as bitcoin from "bitcoinjs-lib";
+import { ECPairFactory } from "ecpair";
+import * as ecc from "tiny-secp256k1";
+
 import { db } from "./db";
-import { config } from "../config";
 import { externalError } from "./error";
+import { config } from "../config";
 
 // VM-specific chain metadata
 export type ChainMetadataBitcoinVm = {};
@@ -77,6 +82,22 @@ export const getAllocatorForChain = async (chainId: string) => {
       return Keypair.fromSecretKey(
         bs58.decode(config.ed25519PrivateKey)
       ).publicKey.toBase58();
+    }
+
+    case "bitcoin-vm": {
+      const keyPair = ECPairFactory(ecc).fromPrivateKey(
+        Buffer.from(config.ecdsaPrivateKey, "hex")
+      );
+
+      const { address } = bitcoin.payments.p2wpkh({
+        pubkey: Buffer.from(keyPair.publicKey),
+        network: bitcoin.networks.bitcoin,
+      });
+      if (!address) {
+        throw new Error("Failed to retrieve address");
+      }
+
+      return address;
     }
 
     default: {

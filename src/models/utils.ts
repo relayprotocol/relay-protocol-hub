@@ -1,5 +1,6 @@
 import { VmType } from "@reservoir0x/relay-protocol-sdk";
 import { PublicKey } from "@solana/web3.js";
+import * as bitcoin from "bitcoinjs-lib";
 
 import { externalError } from "../common/error";
 
@@ -57,6 +58,15 @@ export const nvAddress = (address: string, vmType: VmType) => {
       }
     }
 
+    case "bitcoin-vm": {
+      const result = validateAndNormalizeBitcoinVmAddress(address);
+      if (!result) {
+        throw externalError(`Invalid address: ${address}`);
+      }
+
+      return result;
+    }
+
     default: {
       throw externalError("Vm type not implemented");
     }
@@ -96,6 +106,15 @@ export const nvCurrency = (currency: string, vmType: VmType) => {
       }
     }
 
+    case "bitcoin-vm": {
+      const result = validateAndNormalizeBitcoinVmAddress(currency);
+      if (!result) {
+        throw externalError(`Invalid currency: ${currency}`);
+      }
+
+      return result;
+    }
+
     default: {
       throw externalError("Vm type not implemented");
     }
@@ -131,8 +150,47 @@ export const nvTransactionId = (transactionId: string, vmType: VmType) => {
       return transactionId;
     }
 
+    case "bitcoin-vm": {
+      const requiredLengthInBytes = 32;
+      const hexString = nvBytes(`0x${transactionId}`, requiredLengthInBytes);
+      if (hexString.length !== 2 + requiredLengthInBytes * 2) {
+        throw externalError(`Invalid transaction id: ${transactionId}`);
+      }
+
+      return hexString.slice(2);
+    }
+
     default: {
       throw externalError("Vm type not implemented");
     }
   }
+};
+
+const validateAndNormalizeBitcoinVmAddress = (
+  address: string
+): string | undefined => {
+  // Try P2PKH / P2SH (Base58Check)
+  try {
+    const { version } = bitcoin.address.fromBase58Check(address);
+    if (
+      version === bitcoin.networks.bitcoin.pubKeyHash ||
+      version === bitcoin.networks.bitcoin.scriptHash
+    ) {
+      return address;
+    }
+  } catch {
+    // Ignore Base58Check failure
+  }
+
+  // Try Bech32 (P2WPKH / P2WSH)
+  try {
+    const { prefix } = bitcoin.address.fromBech32(address);
+    if (prefix === "bc") {
+      return address.toLowerCase();
+    }
+  } catch {
+    // Ignore Bech32 failure
+  }
+
+  return undefined;
 };
