@@ -38,6 +38,10 @@ const resultToBalance = (result: any): DbEntry<Balance> => ({
   updatedAt: result.updated_at,
 });
 
+// If the balance lock has no explicit expiration, it defaults to 7 days from the moment of creation
+const DEFAULT_BALANCE_LOCK_EXPIRATION_PG = "7 days";
+const DEFAULT_BALANCE_LOCK_EXPIRATION = 7 * 24 * 60 * 60;
+
 const resultToBalanceLock = (result: any): DbEntry<BalanceLock> => ({
   id: result.id,
   source: result.source,
@@ -46,7 +50,10 @@ const resultToBalanceLock = (result: any): DbEntry<BalanceLock> => ({
   currencyChainId: result.currency_chain_id,
   currency: result.currency,
   amount: result.amount,
-  expiration: result.expiration ?? undefined,
+  expiration:
+    result.expiration ??
+    Math.floor((result.created_at as Date).getTime() / 1000) +
+      DEFAULT_BALANCE_LOCK_EXPIRATION,
   executed: result.executed ?? undefined,
   createdAt: result.created_at,
   updatedAt: result.updated_at,
@@ -316,8 +323,10 @@ export const unlockBalanceLock = async (
   options?: {
     // When set, this results in the total balance being reduced,
     // otherwise the total balance stays the same, while only the
-    // available / locked ratio changes.
+    // available / locked ratio changes
     skipAvailableBalanceAdjustment?: boolean;
+    // When set, the balance lock expiration is checked before unlocking
+    checkExpiration?: boolean;
     tx?: ITask<any>;
   }
 ): Promise<DbEntry<Balance> | undefined> => {
@@ -330,6 +339,16 @@ export const unlockBalanceLock = async (
             updated_at = now()
           WHERE balance_locks.id = $/balanceLockId/
             AND NOT balance_locks.executed
+            ${
+              options?.checkExpiration
+                ? `
+                  AND COALESCE(
+                    to_timestamp(balance_locks.expiration),
+                    balance_locks.created_at + interval '${DEFAULT_BALANCE_LOCK_EXPIRATION_PG}'
+                  ) < now()
+                `
+                : ""
+            }
           RETURNING
             balance_locks.owner_chain_id,
             balance_locks.owner,

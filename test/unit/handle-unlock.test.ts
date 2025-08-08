@@ -11,7 +11,7 @@ import { chains } from "../common/chains";
 import {
   fillArray,
   iter,
-  ONE_BILLION,
+  ONE_MILLION,
   randomHex,
   randomNumber,
 } from "../common/utils";
@@ -42,7 +42,7 @@ describe("handle-unlock", () => {
         transactionId: randomHex(32),
         owner: owneres[randomNumber(owneres.length)],
         currency: currencyes[randomNumber(currencyes.length)],
-        balanceDiff: randomNumber(ONE_BILLION).toString(),
+        balanceDiff: randomNumber(ONE_MILLION).toString(),
       };
       expect(
         await saveOnchainEntryWithBalanceUpdate(onchainEntry)
@@ -56,7 +56,7 @@ describe("handle-unlock", () => {
         currencyChainId: onchainEntry.chainId,
         currency: onchainEntry.currency,
         amount: onchainEntry.balanceDiff,
-        expiration: randomNumber(ONE_BILLION),
+        expiration: randomNumber(ONE_MILLION),
       };
       expect(await saveBalanceLock(balanceLock)).toBeTruthy();
 

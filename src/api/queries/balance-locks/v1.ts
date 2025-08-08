@@ -25,6 +25,7 @@ const Schema = {
     200: Type.Object({
       balanceLocks: Type.Array(
         Type.Object({
+          id: Type.String(),
           ownerChainId: Type.String(),
           owner: Type.String(),
           currencyChainId: Type.String(),
@@ -56,6 +57,7 @@ export default {
 
     return reply.status(200).send({
       balanceLocks: balanceLocks.map((b) => ({
+        id: b.id,
         ownerChainId: b.ownerChainId,
         owner: b.owner,
         currencyChainId: b.currencyChainId,

@@ -15,6 +15,9 @@ ALTER TABLE "onchain_entries"
   ADD CONSTRAINT "onchain_entries_pk"
   PRIMARY KEY ("id");
 
+CREATE INDEX "onchain_entries_chain_id_transaction_id_index"
+  ON "onchain_entries" ("chain_id", "transaction_id");
+
 CREATE INDEX "onchain_entries_created_at_index"
   ON "onchain_entries" ("created_at");
 

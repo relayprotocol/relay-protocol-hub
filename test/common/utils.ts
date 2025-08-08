@@ -1,5 +1,6 @@
 import { randomBytes } from "crypto";
 
+export const ONE_MILLION = 1_000_000;
 export const ONE_BILLION = 1_000_000_000;
 
 export const fillArray = <T>(count: number, fn: () => T) =>
