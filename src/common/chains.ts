@@ -70,23 +70,25 @@ export const getChain = async (chainId: string) => {
 };
 
 export const getAllocatorForChain = async (chainId: string) => {
+  const ecdsaPk = config.ecdsaPrivateKey;
+  const ed25519Pk = config.ed25519PrivateKey;
+
   const chain = await getChain(chainId);
   switch (chain.vmType) {
     case "ethereum-vm": {
-      return privateKeyToAccount(
-        config.ecdsaPrivateKey as any
-      ).address.toLowerCase();
+      return privateKeyToAccount(ecdsaPk as any).address.toLowerCase();
     }
 
     case "solana-vm": {
-      return Keypair.fromSecretKey(
-        bs58.decode(config.ed25519PrivateKey)
-      ).publicKey.toBase58();
+      return Keypair.fromSecretKey(bs58.decode(ed25519Pk)).publicKey.toBase58();
     }
 
     case "bitcoin-vm": {
       const keyPair = ECPairFactory(ecc).fromPrivateKey(
-        Buffer.from(config.ecdsaPrivateKey, "hex")
+        Buffer.from(
+          ecdsaPk.startsWith("0x") ? ecdsaPk.slice(2) : ecdsaPk,
+          "hex"
+        )
       );
 
       const { address } = bitcoin.payments.p2wpkh({
