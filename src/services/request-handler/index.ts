@@ -287,8 +287,12 @@ export class RequestHandlerService {
         }
 
         // Sign the PSBT using the allocator wallet
+        const ecdsaPk = config.ecdsaPrivateKey;
         const keyPair = ECPairFactory(ecc).fromPrivateKey(
-          Buffer.from(config.ecdsaPrivateKey, "hex")
+          Buffer.from(
+            ecdsaPk.startsWith("0x") ? ecdsaPk.slice(2) : ecdsaPk,
+            "hex"
+          )
         );
         await psbt.signAllInputsAsync({
           publicKey: Buffer.from(keyPair.publicKey),
