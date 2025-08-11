@@ -210,7 +210,7 @@ export class RequestHandlerService {
         );
         const allocatorChange =
           totalAllocatorUtxosValue - BigInt(request.amount);
-        if (allocatorChange < MIN_UTXO_VALUE) {
+        if (allocatorChange > 0n && allocatorChange < MIN_UTXO_VALUE) {
           throw externalError("Insufficient allocator UTXOs");
         }
 
@@ -271,10 +271,12 @@ export class RequestHandlerService {
         }
 
         // Add allocator change
-        psbt.addOutput({
-          address: allocator,
-          value: Number(allocatorChange),
-        });
+        if (allocatorChange > 0n) {
+          psbt.addOutput({
+            address: allocator,
+            value: Number(allocatorChange),
+          });
+        }
 
         // Add relayer change
         if (relayerChange >= MIN_UTXO_VALUE) {
