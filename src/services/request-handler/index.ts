@@ -220,7 +220,9 @@ export class RequestHandlerService {
           0n
         );
         const relayerChange =
-          totalRelayerUtxosValue - BigInt(additionalData.transactionFee);
+          BigInt(request.amount) +
+          totalRelayerUtxosValue -
+          BigInt(additionalData.transactionFee);
         if (relayerChange < 0) {
           throw externalError("Insufficient relayer UTXOs");
         }
