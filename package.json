@@ -4,7 +4,7 @@
   "license": "MIT",
   "scripts": {
     "build": "tsc -b",
-    "migrate": "node-pg-migrate -m ./migrations -d POSTGRES_URL --no-check-order",
+    "migrate": "node dist/scripts/run-migrations.js -m ./migrations -d POSTGRES_URL --no-check-order",
     "start": "yarn migrate up 2>/dev/null && node ./dist/index.js",
     "test": "yarn migrate up && jest"
   },
