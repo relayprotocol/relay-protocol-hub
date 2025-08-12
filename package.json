@@ -6,7 +6,7 @@
     "build": "tsc -b",
     "migrate": "node dist/scripts/run-migrations.js -m ./migrations -d POSTGRES_URL --no-check-order",
     "start": "yarn migrate up 2>/dev/null && node ./dist/index.js",
-    "test": "yarn migrate up && jest"
+    "test": "yarn build && yarn migrate up && jest"
   },
   "resolutions": {
     "strip-ansi": "5.x"
