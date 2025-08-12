@@ -12,6 +12,8 @@
     "strip-ansi": "5.x"
   },
   "dependencies": {
+    "@aws-sdk/credential-providers": "^3.864.0",
+    "@aws-sdk/rds-signer": "^3.864.0",
     "@fastify/swagger": "^9.5.1",
     "@fastify/swagger-ui": "^5.2.3",
     "@fastify/type-provider-typebox": "^5.1.0",
