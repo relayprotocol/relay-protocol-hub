@@ -5,7 +5,6 @@ import { getDatabaseUrlWithPassword } from '../common/db'
 (async () => {
   process.env.POSTGRES_URL = await getDatabaseUrlWithPassword(String(process.env.POSTGRES_URL));
 
-  console.log(process.env.POSTGRES_URL)
   spawnSync(
     'node-pg-migrate',
     process.argv.slice(2),
