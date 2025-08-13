@@ -9,6 +9,7 @@ import {
   FastifyRequestTypeBox,
 } from "../../utils";
 import { getSdkChainsConfig } from "../../../common/chains";
+import { logger } from "../../../common/logger";
 import { ActionExecutorService } from "../../../services/action-executor";
 
 const Schema = {
@@ -177,6 +178,14 @@ export default {
 
     const actionExecutor = new ActionExecutorService();
     await actionExecutor.executeSolverRefund(message);
+
+    logger.info(
+      "tracking",
+      JSON.stringify({
+        msg: "Executed `solver-refund` action",
+        data: req.body,
+      })
+    );
 
     return reply.status(200).send({ message: "Success" });
   },

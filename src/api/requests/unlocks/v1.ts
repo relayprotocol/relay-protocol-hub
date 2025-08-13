@@ -6,6 +6,7 @@ import {
   FastifyReplyTypeBox,
   FastifyRequestTypeBox,
 } from "../../utils";
+import { logger } from "../../../common/logger";
 import { RequestHandlerService } from "../../../services/request-handler";
 
 const Schema = {
@@ -32,6 +33,14 @@ export default {
   ) => {
     const requestHandler = new RequestHandlerService();
     await requestHandler.handleUnlock(req.body);
+
+    logger.info(
+      "tracking",
+      JSON.stringify({
+        msg: "Executed `unlock` request",
+        data: req.body,
+      })
+    );
 
     return reply.status(200).send({ message: "Success" });
   },

@@ -6,6 +6,7 @@ import {
   FastifyReplyTypeBox,
   FastifyRequestTypeBox,
 } from "../../utils";
+import { logger } from "../../../common/logger";
 import { RequestHandlerService } from "../../../services/request-handler";
 
 const Schema = {
@@ -98,6 +99,15 @@ export default {
   ) => {
     const requestHandler = new RequestHandlerService();
     const result = await requestHandler.handleWithdrawal(req.body);
+
+    logger.info(
+      "tracking",
+      JSON.stringify({
+        msg: "Executed `withdrawal` request",
+        data: req.body,
+        result,
+      })
+    );
 
     return reply.status(200).send(result);
   },
