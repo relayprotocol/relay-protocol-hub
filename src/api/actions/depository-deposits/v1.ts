@@ -9,6 +9,7 @@ import {
   FastifyRequestTypeBox,
 } from "../../utils";
 import { getSdkChainsConfig } from "../../../common/chains";
+import { logger } from "../../../common/logger";
 import { ActionExecutorService } from "../../../services/action-executor";
 
 const Schema = {
@@ -106,6 +107,14 @@ export default {
 
     const actionExecutor = new ActionExecutorService();
     await actionExecutor.executeDepositoryDeposit(message);
+
+    logger.info(
+      "tracking",
+      JSON.stringify({
+        msg: "Executed `depository-deposit` action",
+        data: req.body,
+      })
+    );
 
     return reply.status(200).send({ message: "Success" });
   },
