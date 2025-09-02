@@ -11,10 +11,8 @@ import * as ecc from "tiny-secp256k1";
 import nacl from "tweetnacl";
 import {
   Address,
-  createPublicClient,
   createWalletClient,
   encodeFunctionData,
-  getContract,
   Hex,
   http,
   parseAbi,
@@ -29,6 +27,7 @@ import {
 } from "../../common/chains";
 import { db } from "../../common/db";
 import { externalError } from "../../common/error";
+import { getOnchainAllocator } from "../../common/onchain-allocator";
 import { config } from "../../config";
 import {
   getBalanceLock,
@@ -66,57 +65,6 @@ type WithdrawalSignatureRequest = {
 
 type UnlockRequest = {
   id: string;
-};
-
-const getOnchainAllocator = async () => {
-  if (!config.onchainAllocator || !config.onchainAllocatorSenderPk) {
-    throw externalError("Onchain allocator not configured");
-  }
-
-  const httpRpcUrl = "https://mainnet.aurora.dev";
-  const chain = {
-    id: 1313161554,
-    name: "Aurora",
-    nativeCurrency: {
-      name: "Ether",
-      symbol: "ETH",
-      decimals: 18,
-    },
-    rpcUrls: {
-      default: {
-        http: [httpRpcUrl],
-      },
-    },
-  };
-
-  const publicClient = createPublicClient({
-    chain,
-    transport: http(httpRpcUrl),
-  });
-  const walletClient = createWalletClient({
-    account: privateKeyToAccount(config.onchainAllocatorSenderPk as Hex),
-    chain,
-    transport: http(httpRpcUrl),
-  });
-
-  const PayloadParams =
-    "(uint256 chainId, string depository, string currency, uint256 amount, string spender, string receiver, bytes data)";
-  const GasSettings = "(uint64 signGas, uint64 callbackGas)";
-
-  return {
-    contract: getContract({
-      client: walletClient,
-      address: config.onchainAllocator as Address,
-      abi: parseAbi([
-        `function submitWithdrawRequest(${PayloadParams} params) returns (bytes32)`,
-        `function signWithdrawPayload(uint256 chainId, string depository, bytes32 payloadId, ${GasSettings} gasSettings)`,
-        `function payloads(bytes32 payloadId) view returns (${PayloadParams} params, bytes unsignedPayload)`,
-        `function payloadTimestamps(bytes32 payloadId) view returns (uint256 timestamp)`,
-      ]),
-    }),
-    publicClient,
-    walletClient,
-  };
 };
 
 export class RequestHandlerService {
