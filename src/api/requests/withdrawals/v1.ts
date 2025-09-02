@@ -11,6 +11,11 @@ import { RequestHandlerService } from "../../../services/request-handler";
 
 const Schema = {
   body: Type.Object({
+    mode: Type.Optional(
+      Type.Union([Type.Literal("offchain"), Type.Literal("onchain")], {
+        description: "Allocation mode to use",
+      })
+    ),
     ownerChainId: Type.String({ description: "The chain id of the owner" }),
     owner: Type.String({ description: "The address of the owner" }),
     chainId: Type.String({

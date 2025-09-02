@@ -43,6 +43,7 @@ type AdditionalDataBitcoinVm = {
 };
 
 type WithdrawalRequest = {
+  mode?: "offchain" | "onchain";
   ownerChainId: string;
   owner: string;
   chainId: string;
@@ -68,259 +69,271 @@ export class RequestHandlerService {
     const chain = await getChain(request.chainId);
     switch (chain.vmType) {
       case "ethereum-vm": {
-        expiration = Math.floor(Date.now() / 1000) + 5 * 60;
+        if (request.mode === "onchain") {
+          throw externalError("Onchain allocator mode not implemented");
+        } else {
+          expiration = Math.floor(Date.now() / 1000) + 5 * 60;
 
-        const data = {
-          calls:
-            request.currency === zeroAddress
-              ? [
-                  {
-                    to: request.recipient,
-                    data: "0x",
-                    value: request.amount,
-                    allowFailure: false,
-                  },
-                ]
-              : [
-                  {
-                    to: request.currency,
-                    data: encodeFunctionData({
-                      abi: parseAbi([
-                        "function transfer(address to, uint256 amount)",
-                      ]),
-                      functionName: "transfer",
-                      args: [
-                        request.recipient as Address,
-                        BigInt(request.amount),
-                      ],
-                    }),
-                    value: "0",
-                    allowFailure: false,
-                  },
-                ],
-          nonce: BigInt("0x" + randomBytes(32).toString("hex")).toString(),
-          expiration,
-        };
+          const data = {
+            calls:
+              request.currency === zeroAddress
+                ? [
+                    {
+                      to: request.recipient,
+                      data: "0x",
+                      value: request.amount,
+                      allowFailure: false,
+                    },
+                  ]
+                : [
+                    {
+                      to: request.currency,
+                      data: encodeFunctionData({
+                        abi: parseAbi([
+                          "function transfer(address to, uint256 amount)",
+                        ]),
+                        functionName: "transfer",
+                        args: [
+                          request.recipient as Address,
+                          BigInt(request.amount),
+                        ],
+                      }),
+                      value: "0",
+                      allowFailure: false,
+                    },
+                  ],
+            nonce: BigInt("0x" + randomBytes(32).toString("hex")).toString(),
+            expiration,
+          };
 
-        id = getDecodedWithdrawalId({
-          vmType: chain.vmType,
-          withdrawal: data,
-        });
+          id = getDecodedWithdrawalId({
+            vmType: chain.vmType,
+            withdrawal: data,
+          });
 
-        encodedData = encodeWithdrawal({
-          vmType: chain.vmType,
-          withdrawal: data,
-        });
+          encodedData = encodeWithdrawal({
+            vmType: chain.vmType,
+            withdrawal: data,
+          });
 
-        const eip712TypedData = {
-          domain: {
-            name: "RelayDepository",
-            version: "1",
-            chainId: (chain.metadata as ChainMetadataEthereumVm).chainId,
-            verifyingContract: chain.depository as Address,
-          },
-          types: {
-            CallRequest: [
-              { name: "calls", type: "Call[]" },
-              { name: "nonce", type: "uint256" },
-              { name: "expiration", type: "uint256" },
-            ],
-            Call: [
-              { name: "to", type: "address" },
-              { name: "data", type: "bytes" },
-              { name: "value", type: "uint256" },
-              { name: "allowFailure", type: "bool" },
-            ],
-          },
-          primaryType: "CallRequest",
-          message: {
-            calls: data.calls.map((c) => ({
-              to: c.to as Address,
-              data: c.data as Hex,
-              value: BigInt(c.value),
-              allowFailure: c.allowFailure,
-            })),
-            nonce: BigInt(data.nonce),
-            expiration: BigInt(data.expiration),
-          },
-        } as const;
+          const eip712TypedData = {
+            domain: {
+              name: "RelayDepository",
+              version: "1",
+              chainId: (chain.metadata as ChainMetadataEthereumVm).chainId,
+              verifyingContract: chain.depository as Address,
+            },
+            types: {
+              CallRequest: [
+                { name: "calls", type: "Call[]" },
+                { name: "nonce", type: "uint256" },
+                { name: "expiration", type: "uint256" },
+              ],
+              Call: [
+                { name: "to", type: "address" },
+                { name: "data", type: "bytes" },
+                { name: "value", type: "uint256" },
+                { name: "allowFailure", type: "bool" },
+              ],
+            },
+            primaryType: "CallRequest",
+            message: {
+              calls: data.calls.map((c) => ({
+                to: c.to as Address,
+                data: c.data as Hex,
+                value: BigInt(c.value),
+                allowFailure: c.allowFailure,
+              })),
+              nonce: BigInt(data.nonce),
+              expiration: BigInt(data.expiration),
+            },
+          } as const;
 
-        const walletClient = createWalletClient({
-          account: privateKeyToAccount(config.ecdsaPrivateKey as Hex),
-          // Viem will error if we pass no URL to the `http` transport, so here we
-          // just pass a mock URL, which isn't even going to be used since we only
-          // use `walletClient` for signing messages offchain
-          transport: http("http://localhost:1"),
-        });
+          const walletClient = createWalletClient({
+            account: privateKeyToAccount(config.ecdsaPrivateKey as Hex),
+            // Viem will error if we pass no URL to the `http` transport, so here we
+            // just pass a mock URL, which isn't even going to be used since we only
+            // use `walletClient` for signing messages offchain
+            transport: http("http://localhost:1"),
+          });
 
-        signature = await walletClient.signTypedData(eip712TypedData);
+          signature = await walletClient.signTypedData(eip712TypedData);
 
-        break;
+          break;
+        }
       }
 
       case "solana-vm": {
-        expiration = Math.floor(Date.now() / 1000) + 5 * 60;
+        if (request.mode === "onchain") {
+          throw externalError("Onchain allocator mode not implemented");
+        } else {
+          expiration = Math.floor(Date.now() / 1000) + 5 * 60;
 
-        const data = {
-          recipient: request.recipient,
-          token: request.currency,
-          amount: request.amount,
-          nonce: BigInt("0x" + randomBytes(8).toString("hex")).toString(),
-          expiration,
-        };
+          const data = {
+            recipient: request.recipient,
+            token: request.currency,
+            amount: request.amount,
+            nonce: BigInt("0x" + randomBytes(8).toString("hex")).toString(),
+            expiration,
+          };
 
-        id = getDecodedWithdrawalId({
-          vmType: chain.vmType,
-          withdrawal: data,
-        });
+          id = getDecodedWithdrawalId({
+            vmType: chain.vmType,
+            withdrawal: data,
+          });
 
-        encodedData = encodeWithdrawal({
-          vmType: chain.vmType,
-          withdrawal: data,
-        });
+          encodedData = encodeWithdrawal({
+            vmType: chain.vmType,
+            withdrawal: data,
+          });
 
-        signature =
-          "0x" +
-          Buffer.from(
-            nacl.sign.detached(
-              Buffer.from(id.slice(2), "hex"),
-              Keypair.fromSecretKey(bs58.decode(config.ed25519PrivateKey))
-                .secretKey
-            )
-          ).toString("hex");
+          signature =
+            "0x" +
+            Buffer.from(
+              nacl.sign.detached(
+                Buffer.from(id.slice(2), "hex"),
+                Keypair.fromSecretKey(bs58.decode(config.ed25519PrivateKey))
+                  .secretKey
+              )
+            ).toString("hex");
 
-        break;
+          break;
+        }
       }
 
       case "bitcoin-vm": {
-        const additionalData = request.additionalData?.["bitcoin-vm"];
-        if (!additionalData) {
-          throw externalError(
-            "Additional data is required for generating the withdrawal request"
-          );
-        }
-
-        // Dust threshold in satoshis
-        const MIN_UTXO_VALUE = 546n;
-
-        // Compute the allocator change
-        const totalAllocatorUtxosValue = additionalData.allocatorUtxos.reduce(
-          (acc, { value }) => acc + BigInt(value),
-          0n
-        );
-        const allocatorChange =
-          totalAllocatorUtxosValue - BigInt(request.amount);
-        if (allocatorChange > 0n && allocatorChange < MIN_UTXO_VALUE) {
-          throw externalError("Insufficient allocator UTXOs");
-        }
-
-        // Compute the relayer change
-        const totalRelayerUtxosValue = additionalData.relayerUtxos.reduce(
-          (acc, { value }) => acc + BigInt(value),
-          0n
-        );
-        const relayerChange =
-          BigInt(request.amount) +
-          totalRelayerUtxosValue -
-          BigInt(additionalData.transactionFee);
-        if (relayerChange < 0) {
-          throw externalError("Insufficient relayer UTXOs");
-        }
-
-        // Start constructing the PSBT
-        const psbt = new bitcoin.Psbt({ network: bitcoin.networks.bitcoin });
-
-        const allocator = await getAllocatorForChain(request.chainId);
-
-        // Add allocator input UTXOs
-        for (const utxo of additionalData.allocatorUtxos) {
-          psbt.addInput({
-            hash: utxo.txid,
-            index: utxo.vout,
-            // For enabling Replace-By-Fee
-            sequence: 0xfffffffd,
-            witnessUtxo: {
-              script: bitcoin.address.toOutputScript(
-                allocator,
-                bitcoin.networks.bitcoin
-              ),
-              value: Number(BigInt(utxo.value)),
-            },
-          });
-        }
-
-        // Add relayer input UTXOs
-        for (const utxo of additionalData.relayerUtxos) {
-          if (additionalData.relayer === allocator) {
+        if (request.mode === "onchain") {
+          throw externalError("Onchain allocator mode not implemented");
+        } else {
+          const additionalData = request.additionalData?.["bitcoin-vm"];
+          if (!additionalData) {
             throw externalError(
-              "The relayer must be different from the allocator"
+              "Additional data is required for generating the withdrawal request"
             );
           }
 
-          psbt.addInput({
-            hash: utxo.txid,
-            index: utxo.vout,
-            // For enabling Replace-By-Fee
-            sequence: 0xfffffffd,
-            witnessUtxo: {
-              script: bitcoin.address.toOutputScript(
-                additionalData.relayer,
-                bitcoin.networks.bitcoin
-              ),
-              value: Number(BigInt(utxo.value)),
+          // Dust threshold in satoshis
+          const MIN_UTXO_VALUE = 546n;
+
+          // Compute the allocator change
+          const totalAllocatorUtxosValue = additionalData.allocatorUtxos.reduce(
+            (acc, { value }) => acc + BigInt(value),
+            0n
+          );
+          const allocatorChange =
+            totalAllocatorUtxosValue - BigInt(request.amount);
+          if (allocatorChange > 0n && allocatorChange < MIN_UTXO_VALUE) {
+            throw externalError("Insufficient allocator UTXOs");
+          }
+
+          // Compute the relayer change
+          const totalRelayerUtxosValue = additionalData.relayerUtxos.reduce(
+            (acc, { value }) => acc + BigInt(value),
+            0n
+          );
+          const relayerChange =
+            BigInt(request.amount) +
+            totalRelayerUtxosValue -
+            BigInt(additionalData.transactionFee);
+          if (relayerChange < 0) {
+            throw externalError("Insufficient relayer UTXOs");
+          }
+
+          // Start constructing the PSBT
+          const psbt = new bitcoin.Psbt({ network: bitcoin.networks.bitcoin });
+
+          const allocator = await getAllocatorForChain(request.chainId);
+
+          // Add allocator input UTXOs
+          for (const utxo of additionalData.allocatorUtxos) {
+            psbt.addInput({
+              hash: utxo.txid,
+              index: utxo.vout,
+              // For enabling Replace-By-Fee
+              sequence: 0xfffffffd,
+              witnessUtxo: {
+                script: bitcoin.address.toOutputScript(
+                  allocator,
+                  bitcoin.networks.bitcoin
+                ),
+                value: Number(BigInt(utxo.value)),
+              },
+            });
+          }
+
+          // Add relayer input UTXOs
+          for (const utxo of additionalData.relayerUtxos) {
+            if (additionalData.relayer === allocator) {
+              throw externalError(
+                "The relayer must be different from the allocator"
+              );
+            }
+
+            psbt.addInput({
+              hash: utxo.txid,
+              index: utxo.vout,
+              // For enabling Replace-By-Fee
+              sequence: 0xfffffffd,
+              witnessUtxo: {
+                script: bitcoin.address.toOutputScript(
+                  additionalData.relayer,
+                  bitcoin.networks.bitcoin
+                ),
+                value: Number(BigInt(utxo.value)),
+              },
+            });
+          }
+
+          // Add allocator change
+          if (allocatorChange > 0n) {
+            psbt.addOutput({
+              address: allocator,
+              value: Number(allocatorChange),
+            });
+          }
+
+          // Add relayer change
+          if (relayerChange >= MIN_UTXO_VALUE) {
+            psbt.addOutput({
+              address: additionalData.relayer,
+              value: Number(relayerChange),
+            });
+          }
+
+          // Sign the PSBT using the allocator wallet
+          const ecdsaPk = config.ecdsaPrivateKey;
+          const keyPair = ECPairFactory(ecc).fromPrivateKey(
+            Buffer.from(
+              ecdsaPk.startsWith("0x") ? ecdsaPk.slice(2) : ecdsaPk,
+              "hex"
+            )
+          );
+          await psbt.signAllInputsAsync({
+            publicKey: Buffer.from(keyPair.publicKey),
+            sign: (hash: Buffer) => {
+              return Buffer.from(keyPair.sign(hash));
             },
           });
-        }
 
-        // Add allocator change
-        if (allocatorChange > 0n) {
-          psbt.addOutput({
-            address: allocator,
-            value: Number(allocatorChange),
+          id = getDecodedWithdrawalId({
+            vmType: chain.vmType,
+            withdrawal: {
+              psbt: psbt.toHex(),
+            },
           });
-        }
 
-        // Add relayer change
-        if (relayerChange >= MIN_UTXO_VALUE) {
-          psbt.addOutput({
-            address: additionalData.relayer,
-            value: Number(relayerChange),
+          encodedData = encodeWithdrawal({
+            vmType: chain.vmType,
+            withdrawal: {
+              psbt: psbt.toHex(),
+            },
           });
+
+          // The signature is bundled within the the encoded withdrawal data
+          signature = "0x";
+
+          break;
         }
-
-        // Sign the PSBT using the allocator wallet
-        const ecdsaPk = config.ecdsaPrivateKey;
-        const keyPair = ECPairFactory(ecc).fromPrivateKey(
-          Buffer.from(
-            ecdsaPk.startsWith("0x") ? ecdsaPk.slice(2) : ecdsaPk,
-            "hex"
-          )
-        );
-        await psbt.signAllInputsAsync({
-          publicKey: Buffer.from(keyPair.publicKey),
-          sign: (hash: Buffer) => {
-            return Buffer.from(keyPair.sign(hash));
-          },
-        });
-
-        id = getDecodedWithdrawalId({
-          vmType: chain.vmType,
-          withdrawal: {
-            psbt: psbt.toHex(),
-          },
-        });
-
-        encodedData = encodeWithdrawal({
-          vmType: chain.vmType,
-          withdrawal: {
-            psbt: psbt.toHex(),
-          },
-        });
-
-        // The signature is bundled within the the encoded withdrawal data
-        signature = "0x";
-
-        break;
       }
 
       default: {
