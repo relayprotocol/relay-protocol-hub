@@ -69,7 +69,7 @@ export const getOnchainAllocator = async () => {
   const { publicClient, walletClient } = getPublicAndWalletClients();
 
   const PayloadParams =
-    "(uint256 chainId, string depository, string currency, uint256 amount, string spender, string receiver, bytes data)";
+    "(uint256 chainId, string depository, string currency, uint256 amount, address spender, string receiver, bytes data)";
   const GasSettings = "(uint64 signGas, uint64 callbackGas)";
 
   return {
