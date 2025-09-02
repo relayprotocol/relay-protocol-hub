@@ -11,6 +11,7 @@ import * as ecc from "tiny-secp256k1";
 import nacl from "tweetnacl";
 import {
   Address,
+  createPublicClient,
   createWalletClient,
   encodeFunctionData,
   getContract,
@@ -34,7 +35,10 @@ import {
   saveBalanceLock,
   unlockBalanceLock,
 } from "../../models/balances";
-import { saveWithdrawalRequest } from "../../models/withdrawal-requests";
+import {
+  getWithdrawalRequest,
+  saveWithdrawalRequest,
+} from "../../models/withdrawal-requests";
 
 type AdditionalDataBitcoinVm = {
   allocatorUtxos: { txid: string; vout: number; value: string }[];
@@ -56,6 +60,10 @@ type WithdrawalRequest = {
   };
 };
 
+type WithdrawalSignatureRequest = {
+  id: string;
+};
+
 type UnlockRequest = {
   id: string;
 };
@@ -66,38 +74,48 @@ const getOnchainAllocator = async () => {
   }
 
   const httpRpcUrl = "https://mainnet.aurora.dev";
-  const walletClient = createWalletClient({
-    chain: {
-      id: 1313161554,
-      name: "Aurora",
-      nativeCurrency: {
-        name: "Ether",
-        symbol: "ETH",
-        decimals: 18,
-      },
-      rpcUrls: {
-        default: {
-          http: [httpRpcUrl],
-        },
+  const chain = {
+    id: 1313161554,
+    name: "Aurora",
+    nativeCurrency: {
+      name: "Ether",
+      symbol: "ETH",
+      decimals: 18,
+    },
+    rpcUrls: {
+      default: {
+        http: [httpRpcUrl],
       },
     },
+  };
+
+  const publicClient = createPublicClient({
+    chain,
+    transport: http(httpRpcUrl),
+  });
+  const walletClient = createWalletClient({
     account: privateKeyToAccount(config.onchainAllocatorSenderPk as Hex),
+    chain,
     transport: http(httpRpcUrl),
   });
 
   const PayloadParams =
     "(uint256 chainId, string depository, string currency, uint256 amount, string spender, string receiver, bytes data)";
+  const GasSettings = "(uint64 signGas, uint64 callbackGas)";
 
   return {
-    walletClient,
     contract: getContract({
       client: walletClient,
       address: config.onchainAllocator as Address,
       abi: parseAbi([
         `function submitWithdrawRequest(${PayloadParams} params) returns (bytes32)`,
+        `function signWithdrawPayload(uint256 chainId, string depository, bytes32 payloadId, ${GasSettings} gasSettings)`,
         `function payloads(bytes32 payloadId) view returns (${PayloadParams} params, bytes unsignedPayload)`,
+        `function payloadTimestamps(bytes32 payloadId) view returns (uint256 timestamp)`,
       ]),
     }),
+    publicClient,
+    walletClient,
   };
 };
 
@@ -115,9 +133,7 @@ export class RequestHandlerService {
 
           id = await contract.write.submitWithdrawRequest([
             {
-              chainId: BigInt(
-                (chain.metadata as ChainMetadataEthereumVm).chainId
-              ),
+              chainId: BigInt(chain.metadata.onchainId!),
               depository: chain.depository!,
               currency: request.currency,
               amount: BigInt(request.amount),
@@ -443,6 +459,38 @@ export class RequestHandlerService {
       // TODO: Return the correct signer
       signer: await getAllocatorForChain(request.chainId),
     };
+  }
+
+  public async handleWithdrawalSignature(request: WithdrawalSignatureRequest) {
+    const withdrawalRequest = await getWithdrawalRequest(request.id);
+    if (!withdrawalRequest) {
+      throw externalError("Could not find withdrawal request");
+    }
+
+    const { contract, publicClient } = await getOnchainAllocator();
+
+    const payloadTimestamp = await contract.read.payloadTimestamps([
+      request.id as Hex,
+    ]);
+    const allocatorTimestamp = await publicClient
+      .getBlock()
+      .then((b) => b.timestamp);
+    if (payloadTimestamp > allocatorTimestamp) {
+      throw externalError("Withdrawal not ready to be signed");
+    }
+
+    const chain = await getChain(withdrawalRequest.chainId);
+
+    await contract.write.signWithdrawPayload([
+      BigInt(chain.metadata.onchainId!),
+      chain.depository!,
+      request.id as Hex,
+      // These are both the default recommended values
+      {
+        signGas: 30_000_000_000_000n,
+        callbackGas: 10_000_000_000_000n,
+      },
+    ]);
   }
 
   public async handleUnlock(request: UnlockRequest) {

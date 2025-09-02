@@ -35,7 +35,7 @@ const Schema = {
           recipient: Type.String(),
           encodedData: Type.String(),
           signer: Type.String(),
-          signature: Type.String(),
+          signature: Type.Optional(Type.String()),
         }),
         {
           description: "Pending withdrawal requests owned by the queried owner",

@@ -17,6 +17,7 @@ import queriesWithdrawalRequestsV1 from "./queries/withdrawal-requests/v1";
 // Requests
 import requestsUnlocksV1 from "./requests/unlocks/v1";
 import requestsWithdrawalsV1 from "./requests/withdrawals/v1";
+import requestsWithdrawalsSignaturesV1 from "./requests/withdrawals-signatures/v1";
 
 const endpoints = [
   actionsDepositoryDepositsV1,
@@ -29,6 +30,7 @@ const endpoints = [
   queriesWithdrawalRequestsV1,
   requestsUnlocksV1,
   requestsWithdrawalsV1,
+  requestsWithdrawalsSignaturesV1,
 ] as Endpoint[];
 
 export const setupEndpoints = (app: FastifyInstance) => {
