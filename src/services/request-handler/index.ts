@@ -13,6 +13,7 @@ import {
   Address,
   createWalletClient,
   encodeFunctionData,
+  getContract,
   Hex,
   http,
   parseAbi,
@@ -59,20 +60,78 @@ type UnlockRequest = {
   id: string;
 };
 
+const getOnchainAllocator = async () => {
+  if (!config.onchainAllocator || !config.onchainAllocatorSenderPk) {
+    throw externalError("Onchain allocator not configured");
+  }
+
+  const httpRpcUrl = "https://mainnet.aurora.dev";
+  const walletClient = createWalletClient({
+    chain: {
+      id: 1313161554,
+      name: "Aurora",
+      nativeCurrency: {
+        name: "Ether",
+        symbol: "ETH",
+        decimals: 18,
+      },
+      rpcUrls: {
+        default: {
+          http: [httpRpcUrl],
+        },
+      },
+    },
+    account: privateKeyToAccount(config.onchainAllocatorSenderPk as Hex),
+    transport: http(httpRpcUrl),
+  });
+
+  const PayloadParams =
+    "(uint256 chainId, string depository, string currency, uint256 amount, string spender, string receiver, bytes data)";
+
+  return {
+    walletClient,
+    contract: getContract({
+      client: walletClient,
+      address: config.onchainAllocator as Address,
+      abi: parseAbi([
+        `function submitWithdrawRequest(${PayloadParams} params) returns (bytes32)`,
+        `function payloads(bytes32 payloadId) view returns (${PayloadParams} params, bytes unsignedPayload)`,
+      ]),
+    }),
+  };
+};
+
 export class RequestHandlerService {
   public async handleWithdrawal(request: WithdrawalRequest) {
     let id: string;
     let encodedData: string;
-    let signature: string;
-    let expiration: number | undefined;
+    let signature: string | undefined;
 
     const chain = await getChain(request.chainId);
     switch (chain.vmType) {
       case "ethereum-vm": {
         if (request.mode === "onchain") {
-          throw externalError("Onchain allocator mode not implemented");
+          const { contract, walletClient } = await getOnchainAllocator();
+
+          id = await contract.write.submitWithdrawRequest([
+            {
+              chainId: BigInt(
+                (chain.metadata as ChainMetadataEthereumVm).chainId
+              ),
+              depository: chain.depository!,
+              currency: request.currency,
+              amount: BigInt(request.amount),
+              spender: walletClient.account.address,
+              receiver: request.recipient,
+              data: "0x",
+            },
+          ]);
+
+          [, encodedData] = await contract.read.payloads([id as Hex]);
+
+          break;
         } else {
-          expiration = Math.floor(Date.now() / 1000) + 5 * 60;
+          const expiration = Math.floor(Date.now() / 1000) + 5 * 60;
 
           const data = {
             calls:
@@ -167,7 +226,7 @@ export class RequestHandlerService {
         if (request.mode === "onchain") {
           throw externalError("Onchain allocator mode not implemented");
         } else {
-          expiration = Math.floor(Date.now() / 1000) + 5 * 60;
+          const expiration = Math.floor(Date.now() / 1000) + 5 * 60;
 
           const data = {
             recipient: request.recipient,
@@ -351,7 +410,6 @@ export class RequestHandlerService {
           currencyChainId: request.chainId,
           currency: request.currency,
           amount: request.amount,
-          expiration,
         },
         { tx }
       );
@@ -382,6 +440,7 @@ export class RequestHandlerService {
       id,
       encodedData,
       signature,
+      // TODO: Return the correct signer
       signer: await getAllocatorForChain(request.chainId),
     };
   }
