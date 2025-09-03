@@ -365,20 +365,25 @@ export class RequestHandlerService {
     }
 
     await db.tx(async (tx) => {
-      const newBalance = await saveBalanceLock(
-        {
-          id,
-          source: "withdrawal",
-          ownerChainId: request.ownerChainId,
-          owner: request.owner,
-          currencyChainId: request.chainId,
-          currency: request.currency,
-          amount: request.amount,
-        },
-        { tx }
-      );
-      if (!newBalance) {
-        throw externalError("Failed to save balance lock");
+      // When using "onchain" mode, the balance lock will be done right before
+      // triggering the signing process using the "withdrawals-signature" API.
+      // This is to ensure atomicity with balance locking.
+      if (request.mode !== "onchain") {
+        const newBalance = await saveBalanceLock(
+          {
+            id,
+            source: "withdrawal",
+            ownerChainId: request.ownerChainId,
+            owner: request.owner,
+            currencyChainId: request.chainId,
+            currency: request.currency,
+            amount: request.amount,
+          },
+          { tx }
+        );
+        if (!newBalance) {
+          throw externalError("Failed to save balance lock");
+        }
       }
 
       const withdrawalRequest = await saveWithdrawalRequest(
@@ -429,6 +434,25 @@ export class RequestHandlerService {
 
     const chain = await getChain(withdrawalRequest.chainId);
 
+    // Lock the balance (if we don't already have a lock on it)
+    if (!(await getBalanceLock(withdrawalRequest.id))) {
+      const newBalance = await saveBalanceLock({
+        id: withdrawalRequest.id,
+        source: "withdrawal",
+        ownerChainId: withdrawalRequest.ownerChainId,
+        owner: withdrawalRequest.owner,
+        currencyChainId: withdrawalRequest.chainId,
+        currency: withdrawalRequest.currency,
+        amount: withdrawalRequest.amount,
+      });
+      if (!newBalance) {
+        throw externalError("Failed to save balance lock");
+      }
+    }
+
+    // TODO: Add check here to ensure we didn't already start the signing process
+
+    // Trigger the signing process
     await contract.write.signWithdrawPayload([
       BigInt(chain.metadata.onchainId!),
       chain.depository!,
