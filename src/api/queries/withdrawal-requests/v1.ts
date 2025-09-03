@@ -66,7 +66,7 @@ export default {
         withdrawalRequests.map(async (w) => {
           let signer: string;
           let signature: string | undefined;
-          if (w.signature) {
+          if (!w.signature) {
             // Signed using "onchain" mode, signature might be available onchain
             signer = config.onchainAllocator!;
             signature = await getSignature(w.id);
