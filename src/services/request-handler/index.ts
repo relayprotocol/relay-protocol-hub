@@ -482,7 +482,7 @@ export class RequestHandlerService {
       // These are both the default recommended values
       {
         signGas: 30_000_000_000_000n,
-        callbackGas: 10_000_000_000_000n,
+        callbackGas: 20_000_000_000_000n,
       },
     ]);
   }
