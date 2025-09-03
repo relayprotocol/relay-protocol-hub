@@ -419,6 +419,9 @@ export class RequestHandlerService {
     if (!withdrawalRequest) {
       throw externalError("Could not find withdrawal request");
     }
+    if (withdrawalRequest.signature) {
+      throw externalError("Withdrawal request not using 'onchain' mode");
+    }
 
     const { contract, publicClient } = await getOnchainAllocator();
 
