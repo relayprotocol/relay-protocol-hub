@@ -116,7 +116,7 @@ export const getSignature = async (id: string) => {
   const hashesToSign = await payloadBuilder.contract.read.hashesToSign([
     BigInt(chain.metadata.onchainId),
     chain.depository,
-    id as Hex,
+    withdrawalRequest.encodedData as Hex,
   ]);
 
   switch (chain.vmType) {
