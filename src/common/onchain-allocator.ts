@@ -2,6 +2,7 @@ import {
   Address,
   createPublicClient,
   createWalletClient,
+  fromHex,
   getContract,
   Hex,
   http,
@@ -45,7 +46,7 @@ const getPublicAndWalletClients = () => {
   return { publicClient, walletClient };
 };
 
-export const getPayloadBuilder = async (address: string) => {
+const getPayloadBuilder = async (address: string) => {
   const { publicClient, walletClient } = getPublicAndWalletClients();
 
   return {
@@ -90,6 +91,24 @@ export const getOnchainAllocator = async () => {
   };
 };
 
+const extractEcdsaSignature = (
+  signature: string
+): { r: string; s: string; v: number } => {
+  const parsedSignature = JSON.parse(fromHex(signature as Hex, "string"));
+
+  const {
+    big_r: { affine_point },
+    s: { scalar },
+    recovery_id,
+  } = parsedSignature;
+
+  const r = affine_point.substring(2);
+  const s = scalar;
+  const v = recovery_id + 27;
+
+  return { r, s, v };
+};
+
 export const getSignature = async (id: string) => {
   const withdrawalRequest = await getWithdrawalRequest(id);
   if (!withdrawalRequest) {
@@ -130,7 +149,8 @@ export const getSignature = async (id: string) => {
       if (signature === "0x") {
         return undefined;
       } else {
-        return signature;
+        const { v, r, s } = extractEcdsaSignature(signature);
+        return `0x${r}${s}${v.toString(16).padStart(2, "0")}`.toLowerCase();
       }
     }
 
