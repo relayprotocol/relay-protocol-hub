@@ -77,9 +77,10 @@ export class RequestHandlerService {
     switch (chain.vmType) {
       case "ethereum-vm": {
         if (request.mode === "onchain") {
-          const { contract, walletClient } = await getOnchainAllocator();
+          const { contract, publicClient, walletClient } =
+            await getOnchainAllocator();
 
-          id = await contract.write.submitWithdrawRequest([
+          const txHash = await contract.write.submitWithdrawRequest([
             {
               chainId: BigInt(chain.metadata.onchainId!),
               depository: chain.depository!,
@@ -90,6 +91,24 @@ export class RequestHandlerService {
               data: "0x",
             },
           ]);
+          const payloadId = await publicClient
+            .waitForTransactionReceipt({ hash: txHash })
+            .then(
+              (receipt) =>
+                receipt.logs.find(
+                  (l) =>
+                    l.address.toLowerCase() ===
+                      contract.address.toLowerCase() &&
+                    // We need the "PayloadBuild" event
+                    l.topics[0] ===
+                      "0x007d52d35e656ce646ba5807d55724e47d53e72435a328e89eb6ce56b0e95d6a"
+                )?.topics[1]
+            );
+          if (!payloadId) {
+            throw externalError("Could not submit withdrawal request");
+          }
+
+          id = payloadId as Hex;
 
           [, encodedData] = await contract.read.payloads([id as Hex]);
 
