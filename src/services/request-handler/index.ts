@@ -1,6 +1,7 @@
 import {
   encodeWithdrawal,
   getDecodedWithdrawalId,
+  getVmTypeNativeCurrency,
 } from "@reservoir0x/relay-protocol-sdk";
 import { Keypair } from "@solana/web3.js";
 import * as bitcoin from "bitcoinjs-lib";
@@ -19,9 +20,11 @@ import {
   zeroAddress,
 } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
+import TronWeb from "tronweb";
 
 import {
   ChainMetadataEthereumVm,
+  ChainMetadataTronVm,
   getAllocatorForChain,
   getChain,
 } from "../../common/chains";
@@ -319,6 +322,82 @@ export class RequestHandlerService {
 
         // The signature is bundled within the the encoded withdrawal data
         signature = "0x";
+
+        break;
+      }
+
+      case "tron-vm": {
+        expiration = Math.floor(Date.now() / 1000) + 5 * 60;
+        const tronZeroAddress = getVmTypeNativeCurrency(chain.vmType,);
+        const data = {
+          calls:
+            request.currency === tronZeroAddress
+              ? [
+                {
+                  to: TronWeb.utils.address.toHex(request.recipient),
+                  data: "0x",
+                  value: request.amount,
+                  allowFailure: false,
+                },
+              ]
+              : [
+                {
+                  to: TronWeb.utils.address.toHex(request.currency),
+                  data: 
+                    new TronWeb.utils.ethersUtils.Interface(
+                      ["function transfer(address to, uint256 amount)"]
+                    )
+                    .encodeFunctionData(
+                      "transfer", 
+                      [
+                        TronWeb.utils.address.toHex(request.recipient).replace(TronWeb.utils.address.ADDRESS_PREFIX_REGEX, '0x'),
+                        request.amount
+                      ]
+                    ),
+                  value: "0",
+                  allowFailure: false,
+                },
+              ],
+          nonce: BigInt("0x" + randomBytes(32).toString("hex")).toString(),
+          expiration,
+        };
+
+        id = getDecodedWithdrawalId({
+          vmType: chain.vmType,
+          withdrawal: data,
+        });
+
+        encodedData = encodeWithdrawal({
+          vmType: chain.vmType,
+          withdrawal: data,
+        });
+
+        const domain = {
+          name: 'RelayDepository',
+          version: '1',
+          chainId: (chain.metadata as ChainMetadataTronVm).chainId,
+          verifyingContract: TronWeb.utils.address.toHex(chain.depository!),
+        };
+
+        const types = {
+          CallRequest: [
+            { name: 'calls', type: 'Call[]' },
+            { name: 'nonce', type: 'uint256' },
+            { name: 'expiration', type: 'uint256' }
+          ],
+          Call: [
+            { name: 'to', type: 'address' },
+            { name: 'data', type: 'bytes' },
+            { name: 'value', type: 'uint256' },
+            { name: 'allowFailure', type: 'bool' }
+          ]
+        };
+
+        const privateKey = config.ecdsaPrivateKey.startsWith("0x") 
+          ? config.ecdsaPrivateKey.slice(2) 
+          : config.ecdsaPrivateKey;
+
+        signature = await TronWeb.Trx._signTypedData(domain, types, data, privateKey);
 
         break;
       }

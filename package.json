@@ -32,6 +32,7 @@
     "pg-promise": "^11.10.2",
     "pg-query-stream": "^4.7.1",
     "tiny-secp256k1": "^2.2.4",
+    "tronweb": "^6.0.4",
     "tweetnacl": "^1.0.3",
     "viem": "^2.22.8",
     "winston": "^3.17.0",
