@@ -12,6 +12,9 @@ import * as bitcoin from "bitcoinjs-lib";
 import { ECPairFactory } from "ecpair";
 import * as ecc from "tiny-secp256k1";
 
+// For "tron-vm" allocator logic
+import TronWeb from "tronweb";
+
 import { db } from "./db";
 import { externalError } from "./error";
 import { config } from "../config";
@@ -27,7 +30,7 @@ export type ChainMetadataEthereumVm = ChainMetadata & { chainId: number };
 export type ChainMetadataHyperliquidVm = ChainMetadata & {};
 export type ChainMetadataSolanaVm = ChainMetadata & {};
 export type ChainMetadataSuiVm = ChainMetadata & {};
-export type ChainMetadataTronVm = ChainMetadata & {};
+export type ChainMetadataTronVm = ChainMetadata & { chainId: number };
 export type ChainMetadataTonVm = ChainMetadata & {};
 
 export type Chain = {
@@ -100,6 +103,17 @@ export const getAllocatorForChain = async (chainId: string) => {
         pubkey: Buffer.from(keyPair.publicKey),
         network: bitcoin.networks.bitcoin,
       });
+      if (!address) {
+        throw new Error("Failed to retrieve address");
+      }
+
+      return address;
+    }
+
+    case "tron-vm": {
+      const address = TronWeb.utils.address.fromPrivateKey(
+        ecdsaPk.startsWith("0x") ? ecdsaPk.slice(2) : ecdsaPk
+      );
       if (!address) {
         throw new Error("Failed to retrieve address");
       }

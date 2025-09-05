@@ -1,6 +1,7 @@
 import { VmType } from "@reservoir0x/relay-protocol-sdk";
 import { PublicKey } from "@solana/web3.js";
 import * as bitcoin from "bitcoinjs-lib";
+import TronWeb from "tronweb";
 
 import { externalError } from "../common/error";
 
@@ -67,6 +68,18 @@ export const nvAddress = (address: string, vmType: VmType) => {
       return result;
     }
 
+    case "tron-vm": {
+      try {
+        if (TronWeb.utils.address.isAddress(address)) {
+          return address;
+        } else {
+          throw externalError(`Invalid address: ${address}`);
+        }
+      } catch {
+        throw externalError(`Invalid address: ${address}`);
+      }
+    }
+
     default: {
       throw externalError("Vm type not implemented");
     }
@@ -115,6 +128,18 @@ export const nvCurrency = (currency: string, vmType: VmType) => {
       return result;
     }
 
+    case "tron-vm": {
+      try {
+        if (TronWeb.utils.address.isAddress(currency)) {
+          return currency;
+        } else {
+          throw externalError(`Invalid currency: ${currency}`);
+        }
+      } catch {
+        throw externalError(`Invalid currency: ${currency}`);
+      }
+    }
+
     default: {
       throw externalError("Vm type not implemented");
     }
@@ -152,12 +177,30 @@ export const nvTransactionId = (transactionId: string, vmType: VmType) => {
 
     case "bitcoin-vm": {
       const requiredLengthInBytes = 32;
+
       const hexString = nvBytes(`0x${transactionId}`, requiredLengthInBytes);
       if (hexString.length !== 2 + requiredLengthInBytes * 2) {
         throw externalError(`Invalid transaction id: ${transactionId}`);
       }
 
       return hexString.slice(2);
+    }
+
+    case "tron-vm": {
+      const requiredLengthInBytes = 32;
+
+      // If it doesn't start with 0x, add it for validation
+      let hexString = transactionId;
+      if (!hexString.startsWith("0x")) {
+        hexString = "0x" + hexString;
+      }
+
+      const validatedHex = nvBytes(hexString, requiredLengthInBytes);
+      if (validatedHex.length !== 2 + requiredLengthInBytes * 2) {
+        throw externalError(`Invalid transaction id: ${transactionId}`);
+      }
+
+      return validatedHex.slice(2);
     }
 
     default: {
