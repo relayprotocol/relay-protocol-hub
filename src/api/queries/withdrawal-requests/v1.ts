@@ -7,6 +7,8 @@ import {
   FastifyRequestTypeBox,
 } from "../../utils";
 import { getAllocatorForChain } from "../../../common/chains";
+import { getSignature } from "../../../common/onchain-allocator";
+import { config } from "../../../config";
 import { getPendingWithdrawalRequestsByOwner } from "../../../models/withdrawal-requests";
 
 const Schema = {
@@ -35,7 +37,7 @@ const Schema = {
           recipient: Type.String(),
           encodedData: Type.String(),
           signer: Type.String(),
-          signature: Type.String(),
+          signature: Type.Optional(Type.String()),
         }),
         {
           description: "Pending withdrawal requests owned by the queried owner",
@@ -61,18 +63,32 @@ export default {
 
     return reply.status(200).send({
       withdrawalRequests: await Promise.all(
-        withdrawalRequests.map(async (w) => ({
-          id: w.id,
-          ownerChainId: w.ownerChainId,
-          owner: w.owner,
-          chainId: w.chainId,
-          currency: w.currency,
-          amount: w.amount,
-          recipient: w.recipient,
-          encodedData: w.encodedData,
-          signer: await getAllocatorForChain(w.chainId),
-          signature: w.signature,
-        }))
+        withdrawalRequests.map(async (w) => {
+          let signer: string;
+          let signature: string | undefined;
+          if (!w.signature) {
+            // Signed using "onchain" mode, signature might be available onchain
+            signer = config.onchainAllocator!;
+            signature = await getSignature(w.id);
+          } else {
+            // Signed using "offchain" mode, signature already available
+            signer = await getAllocatorForChain(w.chainId);
+            signature = w.signature;
+          }
+
+          return {
+            id: w.id,
+            ownerChainId: w.ownerChainId,
+            owner: w.owner,
+            chainId: w.chainId,
+            currency: w.currency,
+            amount: w.amount,
+            recipient: w.recipient,
+            encodedData: w.encodedData,
+            signer,
+            signature,
+          };
+        })
       ),
     });
   },

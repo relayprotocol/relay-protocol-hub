@@ -1,3 +1,5 @@
+import "./monkey-patches";
+
 // Initialize http and ws servers
 import "./http-server";
 

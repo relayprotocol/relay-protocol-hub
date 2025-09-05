@@ -9,7 +9,7 @@ CREATE TABLE "withdrawal_requests" (
   "amount" NUMERIC(78, 0) NOT NULL,
   "recipient" TEXT NOT NULL,
   "encoded_data" TEXT NOT NULL,
-  "signature" TEXT NOT NULL,
+  "signature" TEXT,
   "executed" BOOLEAN NOT NULL DEFAULT FALSE,
   "created_at" TIMESTAMPTZ NOT NULL DEFAULT now(),
   "updated_at" TIMESTAMPTZ NOT NULL DEFAULT now()

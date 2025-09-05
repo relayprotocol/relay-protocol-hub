@@ -19,14 +19,19 @@ import { db } from "./db";
 import { externalError } from "./error";
 import { config } from "../config";
 
+// Global chain metadata
+export type ChainMetadata = {
+  onchainId?: string;
+};
+
 // VM-specific chain metadata
-export type ChainMetadataBitcoinVm = {};
-export type ChainMetadataEthereumVm = { chainId: number };
-export type ChainMetadataHyperliquidVm = {};
-export type ChainMetadataSolanaVm = {};
-export type ChainMetadataSuiVm = {};
-export type ChainMetadataTronVm = { chainId: string };
-export type ChainMetadataTonVm = {};
+export type ChainMetadataBitcoinVm = ChainMetadata & {};
+export type ChainMetadataEthereumVm = ChainMetadata & { chainId: number };
+export type ChainMetadataHyperliquidVm = ChainMetadata & {};
+export type ChainMetadataSolanaVm = ChainMetadata & {};
+export type ChainMetadataSuiVm = ChainMetadata & {};
+export type ChainMetadataTronVm = ChainMetadata & { chainId: number };
+export type ChainMetadataTonVm = ChainMetadata & {};
 
 export type Chain = {
   id: string;
@@ -106,10 +111,14 @@ export const getAllocatorForChain = async (chainId: string) => {
     }
 
     case "tron-vm": {
-      const privateKey = ecdsaPk.startsWith("0x") ? ecdsaPk.slice(2) : ecdsaPk;
-      const address = TronWeb.utils.address.fromPrivateKey(privateKey);
-      if (!address) throw new Error("Failed to retrieve address");
-      return address
+      const address = TronWeb.utils.address.fromPrivateKey(
+        ecdsaPk.startsWith("0x") ? ecdsaPk.slice(2) : ecdsaPk
+      );
+      if (!address) {
+        throw new Error("Failed to retrieve address");
+      }
+
+      return address;
     }
 
     default: {
