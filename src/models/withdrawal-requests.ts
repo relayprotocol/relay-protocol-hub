@@ -12,7 +12,7 @@ export type WithdrawalRequest = {
   amount: string;
   recipient: string;
   encodedData: string;
-  signature: string;
+  signature?: string;
   executed?: boolean;
 };
 
@@ -147,7 +147,7 @@ export const saveWithdrawalRequest = async (
       amount: withdrawalRequest.amount,
       recipient: withdrawalRequest.recipient,
       encodedData: withdrawalRequest.encodedData,
-      signature: withdrawalRequest.signature,
+      signature: withdrawalRequest.signature ?? null,
     }
   );
   if (!result) {

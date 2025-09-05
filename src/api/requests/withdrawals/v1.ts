@@ -11,6 +11,11 @@ import { RequestHandlerService } from "../../../services/request-handler";
 
 const Schema = {
   body: Type.Object({
+    mode: Type.Optional(
+      Type.Union([Type.Literal("offchain"), Type.Literal("onchain")], {
+        description: "Allocation mode to use",
+      })
+    ),
     ownerChainId: Type.String({ description: "The chain id of the owner" }),
     owner: Type.String({ description: "The address of the owner" }),
     chainId: Type.String({
@@ -81,9 +86,11 @@ const Schema = {
           "The withdrawal data (encoded based on the withdrawing chain's vm type)",
       }),
       signer: Type.String({ description: "The signer of the withdrawal" }),
-      signature: Type.String({
-        description: "The allocator signature for the withdrawal",
-      }),
+      signature: Type.Optional(
+        Type.String({
+          description: "The allocator signature for the withdrawal",
+        })
+      ),
     }),
     ...ErrorResponse,
   },
