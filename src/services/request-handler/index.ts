@@ -92,6 +92,7 @@ export class RequestHandlerService {
               spender: walletClient.account.address,
               receiver: request.recipient,
               data: "0x",
+              nonce: `0x${randomBytes(32).toString()}`,
             },
           ]);
           const payloadId = await publicClient
@@ -542,8 +543,6 @@ export class RequestHandlerService {
       throw externalError("Withdrawal not ready to be signed");
     }
 
-    const chain = await getChain(withdrawalRequest.chainId);
-
     // Lock the balance (if we don't already have a lock on it)
     if (!(await getBalanceLock(withdrawalRequest.id))) {
       const newBalance = await saveBalanceLock({
@@ -564,9 +563,8 @@ export class RequestHandlerService {
 
     // Trigger the signing process
     await contract.write.signWithdrawPayload([
-      BigInt(chain.metadata.onchainId!),
-      chain.depository!,
       request.id as Hex,
+      "0x",
       // These are both the default recommended values
       {
         signGas: 30_000_000_000_000n,
