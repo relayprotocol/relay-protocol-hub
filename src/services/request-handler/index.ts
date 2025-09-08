@@ -92,7 +92,7 @@ export class RequestHandlerService {
               spender: walletClient.account.address,
               receiver: request.recipient,
               data: "0x",
-              nonce: `0x${randomBytes(32).toString()}`,
+              nonce: `0x${randomBytes(32).toString("hex")}`,
             },
           ]);
           const payloadId = await publicClient
