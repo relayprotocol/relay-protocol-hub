@@ -20,7 +20,10 @@ import {
   unlockBalanceLock,
 } from "../../models/balances";
 import { saveOnchainEntryWithBalanceUpdate } from "../../models/onchain-entries";
-import { markWithdrawalRequestAsExecuted } from "../../models/withdrawal-requests";
+import {
+  getWithdrawalRequest,
+  markWithdrawalRequestAsExecuted,
+} from "../../models/withdrawal-requests";
 
 export class ActionExecutorService {
   public async executeDepositoryDeposit(
@@ -79,6 +82,12 @@ export class ActionExecutorService {
     // Very important to guarantee atomic execution
     await db.tx(async (tx) => {
       // Step 1:
+      // Ensure the withdrawal request exists in the first place
+      if (!(await getWithdrawalRequest(message.result.withdrawalId, { tx }))) {
+        throw externalError("Withdrawal request does not exist");
+      }
+
+      // Step 2:
       // Mark the corresponding withdrawal request as executed
       const executeResult = await markWithdrawalRequestAsExecuted(
         message.result.withdrawalId,
@@ -90,7 +99,7 @@ export class ActionExecutorService {
         );
       }
 
-      // Step 2:
+      // Step 3:
       // Unlock and reduce the balance
       const unlockResult = await (async () => {
         const balanceLock = await getBalanceLock(message.result.withdrawalId, {
