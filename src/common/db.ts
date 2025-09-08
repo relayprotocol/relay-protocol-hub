@@ -29,7 +29,12 @@ const parseUrl = (url: string) : DBUrl => {
   }
 }
 
+const CACHE_TTL_MS = 600000;
+
 const databaseUrlPgOptions = (url: string) => {
+  let cachedToken: string | null = null;
+  let cachedAt = 0;
+
   const databaseUrl = parseUrl(url);
   return {
     host: databaseUrl.host,
@@ -37,13 +42,24 @@ const databaseUrlPgOptions = (url: string) => {
     user: databaseUrl.user,
     database: databaseUrl.database,
     password : async () => {
-      return  databaseUrl.password ? databaseUrl.password :
-        await getIamToken({
-          host: databaseUrl.host,
-          port: databaseUrl.port,
-          user: databaseUrl.user,
-          region: process.env.AWS_REGION,
-        });
+      const now = Date.now();
+
+      if (cachedToken && now - cachedAt < CACHE_TTL_MS) {
+        return cachedToken;
+      }
+
+      cachedToken = databaseUrl.password
+        ? databaseUrl.password
+        : await getIamToken({
+            host: databaseUrl.host,
+            port: databaseUrl.port,
+            user: databaseUrl.user,
+            region: process.env.AWS_REGION,
+          });
+
+      cachedAt = now;
+
+      return cachedToken;
     }
   };
 }
