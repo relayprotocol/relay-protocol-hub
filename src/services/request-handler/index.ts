@@ -27,7 +27,10 @@ import {
 } from "../../common/chains";
 import { db } from "../../common/db";
 import { externalError } from "../../common/error";
-import { getOnchainAllocator } from "../../common/onchain-allocator";
+import {
+  getOnchainAllocator,
+  getSignature,
+} from "../../common/onchain-allocator";
 import { config } from "../../config";
 import {
   getBalanceLock,
@@ -78,7 +81,7 @@ export class RequestHandlerService {
       case "ethereum-vm": {
         if (request.mode === "onchain") {
           const { contract, publicClient, walletClient } =
-            await getOnchainAllocator();
+            getOnchainAllocator();
 
           const txHash = await contract.write.submitWithdrawRequest([
             {
@@ -443,7 +446,7 @@ export class RequestHandlerService {
       throw externalError("Withdrawal request not using 'onchain' mode");
     }
 
-    const { contract, publicClient } = await getOnchainAllocator();
+    const { contract, publicClient } = getOnchainAllocator();
 
     const payloadTimestamp = await contract.read.payloadTimestamps([
       request.id as Hex,
@@ -471,18 +474,19 @@ export class RequestHandlerService {
       }
     }
 
-    // TODO: Add check here to ensure we didn't already start the signing process
-
-    // Trigger the signing process
-    await contract.write.signWithdrawPayload([
-      request.id as Hex,
-      "0x",
-      // These are both the default recommended values
-      {
-        signGas: 30_000_000_000_000n,
-        callbackGas: 20_000_000_000_000n,
-      },
-    ]);
+    // Only trigger the signing process if we don't already have a valid signature
+    const signature = await getSignature(request.id);
+    if (!signature) {
+      await contract.write.signWithdrawPayload([
+        request.id as Hex,
+        "0x",
+        // These are both the default recommended values
+        {
+          signGas: 30_000_000_000_000n,
+          callbackGas: 20_000_000_000_000n,
+        },
+      ]);
+    }
   }
 
   public async handleUnlock(request: UnlockRequest) {
