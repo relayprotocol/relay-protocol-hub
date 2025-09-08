@@ -70,7 +70,7 @@ export const getOnchainAllocator = async () => {
   const { publicClient, walletClient } = getPublicAndWalletClients();
 
   const PayloadParams =
-    "(uint256 chainId, string depository, string currency, uint256 amount, address spender, string receiver, bytes data)";
+    "(uint256 chainId, string depository, string currency, uint256 amount, address spender, string receiver, bytes data, bytes32 nonce)";
   const GasSettings = "(uint64 signGas, uint64 callbackGas)";
 
   return {
@@ -79,7 +79,7 @@ export const getOnchainAllocator = async () => {
       address: config.onchainAllocator as Address,
       abi: parseAbi([
         `function submitWithdrawRequest(${PayloadParams} params) returns (bytes32)`,
-        `function signWithdrawPayload(uint256 chainId, string depository, bytes32 payloadId, ${GasSettings} gasSettings)`,
+        `function signWithdrawPayload(bytes32 payloadId, bytes signature, ${GasSettings} gasSettings)`,
         `function payloads(bytes32 payloadId) view returns (${PayloadParams} params, bytes unsignedPayload)`,
         `function payloadTimestamps(bytes32 payloadId) view returns (uint256 timestamp)`,
         `function payloadBuilders(uint256 chainId, string depository) view returns (address)`,
