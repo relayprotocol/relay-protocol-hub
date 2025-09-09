@@ -46,7 +46,7 @@ const getPublicAndWalletClients = () => {
   return { publicClient, walletClient };
 };
 
-const getPayloadBuilder = async (address: string) => {
+const getPayloadBuilder = (address: string) => {
   const { publicClient, walletClient } = getPublicAndWalletClients();
 
   return {
@@ -62,7 +62,7 @@ const getPayloadBuilder = async (address: string) => {
   };
 };
 
-export const getOnchainAllocator = async () => {
+export const getOnchainAllocator = () => {
   if (!config.onchainAllocator || !config.onchainAllocatorSenderPk) {
     throw externalError("Onchain allocator not configured");
   }
@@ -120,7 +120,7 @@ export const getSignature = async (id: string) => {
     throw externalError("Depository or onchain id not configured for chain");
   }
 
-  const onchainAllocator = await getOnchainAllocator();
+  const onchainAllocator = getOnchainAllocator();
   const payloadBuilderAddress =
     await onchainAllocator.contract.read.payloadBuilders([
       BigInt(chain.metadata.onchainId),
@@ -130,7 +130,7 @@ export const getSignature = async (id: string) => {
     throw externalError("No payload builder configured for chain");
   }
 
-  const payloadBuilder = await getPayloadBuilder(payloadBuilderAddress);
+  const payloadBuilder = getPayloadBuilder(payloadBuilderAddress);
 
   const hashesToSign = await payloadBuilder.contract.read.hashesToSign([
     BigInt(chain.metadata.onchainId),
@@ -143,7 +143,7 @@ export const getSignature = async (id: string) => {
       const hashToSign = hashesToSign[0];
 
       const signature = await onchainAllocator.contract.read.signedPayloads([
-        id as Hex,
+        withdrawalRequest.payloadId as Hex,
         hashToSign,
       ]);
       if (signature === "0x") {
