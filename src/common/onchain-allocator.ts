@@ -143,7 +143,7 @@ export const getSignature = async (id: string) => {
       const hashToSign = hashesToSign[0];
 
       const signature = await onchainAllocator.contract.read.signedPayloads([
-        id as Hex,
+        withdrawalRequest.payloadId as Hex,
         hashToSign,
       ]);
       if (signature === "0x") {

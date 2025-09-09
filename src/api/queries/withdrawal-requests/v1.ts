@@ -69,7 +69,7 @@ export default {
           if (w.payloadId) {
             // Signed using "onchain" mode, signature might be available onchain
             signer = config.onchainAllocator!;
-            signature = await getSignature(w.payloadId);
+            signature = await getSignature(w.id);
           } else {
             // Signed using "offchain" mode, signature already available
             signer = await getAllocatorForChain(w.chainId);
