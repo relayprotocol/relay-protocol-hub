@@ -189,18 +189,12 @@ export const nvTransactionId = (transactionId: string, vmType: VmType) => {
     case "tron-vm": {
       const requiredLengthInBytes = 32;
 
-      // If it doesn't start with 0x, add it for validation
-      let hexString = transactionId;
-      if (!hexString.startsWith("0x")) {
-        hexString = "0x" + hexString;
-      }
-
-      const validatedHex = nvBytes(hexString, requiredLengthInBytes);
-      if (validatedHex.length !== 2 + requiredLengthInBytes * 2) {
+      const hexString = nvBytes(transactionId, requiredLengthInBytes);
+      if (hexString.length !== 2 + requiredLengthInBytes * 2) {
         throw externalError(`Invalid transaction id: ${transactionId}`);
       }
 
-      return validatedHex.slice(2);
+      return hexString;
     }
 
     default: {
