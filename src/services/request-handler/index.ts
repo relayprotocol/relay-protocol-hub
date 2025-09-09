@@ -480,7 +480,7 @@ export class RequestHandlerService {
     }
 
     // Only trigger the signing process if we don't already have a valid signature
-    const signature = await getSignature(withdrawalRequest.payloadId);
+    const signature = await getSignature(withdrawalRequest.id);
     if (!signature) {
       await contract.write.signWithdrawPayload([
         withdrawalRequest.payloadId as Hex,
