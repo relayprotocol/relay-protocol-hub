@@ -14,6 +14,7 @@ export type WithdrawalRequest = {
   encodedData: string;
   signature?: string;
   executed?: boolean;
+  payloadId?: string;
 };
 
 const resultToWithdrawalRequest = (
@@ -27,8 +28,9 @@ const resultToWithdrawalRequest = (
   amount: result.amount,
   recipient: result.recipient,
   encodedData: result.encoded_data,
-  signature: result.signature,
-  executed: result.executed,
+  signature: result.signature ?? undefined,
+  executed: result.executed ?? undefined,
+  payloadId: result.payload_id ?? undefined,
   createdAt: result.created_at,
   updatedAt: result.updated_at,
 });
@@ -52,6 +54,7 @@ export const getWithdrawalRequest = async (
         withdrawal_requests.encoded_data,
         withdrawal_requests.signature,
         withdrawal_requests.executed,
+        withdrawal_requests.payload_id,
         withdrawal_requests.created_at,
         withdrawal_requests.updated_at
       FROM withdrawal_requests
@@ -88,6 +91,7 @@ export const getPendingWithdrawalRequestsByOwner = async (
         withdrawal_requests.encoded_data,
         withdrawal_requests.signature,
         withdrawal_requests.executed,
+        withdrawal_requests.payload_id,
         withdrawal_requests.created_at,
         withdrawal_requests.updated_at
       FROM withdrawal_requests
@@ -124,7 +128,8 @@ export const saveWithdrawalRequest = async (
         amount,
         recipient,
         encoded_data,
-        signature
+        signature,
+        payload_id
       ) VALUES (
         $/id/,
         $/ownerChainId/,
@@ -134,7 +139,8 @@ export const saveWithdrawalRequest = async (
         $/amount/,
         $/recipient/,
         $/encodedData/,
-        $/signature/
+        $/signature/,
+        $/payloadId/
       ) ON CONFLICT DO NOTHING
       RETURNING *
     `,
@@ -148,6 +154,7 @@ export const saveWithdrawalRequest = async (
       recipient: withdrawalRequest.recipient,
       encodedData: withdrawalRequest.encodedData,
       signature: withdrawalRequest.signature ?? null,
+      payloadId: withdrawalRequest.payloadId ?? null,
     }
   );
   if (!result) {

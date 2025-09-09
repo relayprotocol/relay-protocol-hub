@@ -11,6 +11,7 @@ CREATE TABLE "withdrawal_requests" (
   "encoded_data" TEXT NOT NULL,
   "signature" TEXT,
   "executed" BOOLEAN NOT NULL DEFAULT FALSE,
+  "payload_id" TEXT,
   "created_at" TIMESTAMPTZ NOT NULL DEFAULT now(),
   "updated_at" TIMESTAMPTZ NOT NULL DEFAULT now()
 );
