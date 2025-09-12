@@ -116,14 +116,16 @@ export const getSignature = async (id: string) => {
   }
 
   const chain = await getChain(withdrawalRequest.chainId);
-  if (!chain.depository || !chain.metadata.onchainId) {
-    throw externalError("Depository or onchain id not configured for chain");
+  if (!chain.depository || !chain.metadata.allocatorChainId) {
+    throw externalError(
+      "Depository or allocator chain id not configured for chain"
+    );
   }
 
   const onchainAllocator = getOnchainAllocator();
   const payloadBuilderAddress =
     await onchainAllocator.contract.read.payloadBuilders([
-      BigInt(chain.metadata.onchainId),
+      BigInt(chain.metadata.allocatorChainId),
       chain.depository,
     ]);
   if (payloadBuilderAddress === zeroAddress) {
@@ -133,7 +135,7 @@ export const getSignature = async (id: string) => {
   const payloadBuilder = getPayloadBuilder(payloadBuilderAddress);
 
   const hashesToSign = await payloadBuilder.contract.read.hashesToSign([
-    BigInt(chain.metadata.onchainId),
+    BigInt(chain.metadata.allocatorChainId),
     chain.depository,
     withdrawalRequest.encodedData as Hex,
   ]);
