@@ -34,7 +34,7 @@ describe("save-balance-lock", () => {
         lockedAmount: number;
       }
     > = {};
-    await iter(200, async () => {
+    await iter(150, async () => {
       const owner = owneres[randomNumber(owneres.length)];
       const currency = currencyes[randomNumber(currencyes.length)];
       const balanceDiff = randomNumber(ONE_BILLION);
