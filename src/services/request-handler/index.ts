@@ -4,7 +4,7 @@ import {
   getDecodedWithdrawalId,
   getVmTypeNativeCurrency,
 } from "@reservoir0x/relay-protocol-sdk";
-import { Keypair } from "@solana/web3.js";
+import { PublicKey, Keypair } from "@solana/web3.js";
 import * as bitcoin from "bitcoinjs-lib";
 import bs58 from "bs58";
 import { randomBytes } from "crypto";
@@ -221,14 +221,21 @@ export class RequestHandlerService {
           const { contract, publicClient, walletClient } =
             getOnchainAllocator();
 
+          // The "solana-vm" payload builder expects addresses to be hex-encoded
+          const toHexString = (address: string) =>
+            new PublicKey(address).toBuffer().toString("hex");
+
           const txHash = await contract.write.submitWithdrawRequest([
             {
               chainId: BigInt(chain.metadata.allocatorChainId!),
-              depository: chain.depository!,
-              currency: request.currency,
+              depository: toHexString(chain.depository!),
+              currency:
+                request.currency === getVmTypeNativeCurrency(chain.vmType)
+                  ? ""
+                  : toHexString(request.currency),
               amount: BigInt(request.amount),
               spender: walletClient.account.address,
-              receiver: request.recipient,
+              receiver: toHexString(request.recipient),
               data: "0x",
               nonce: `0x${randomBytes(32).toString("hex")}`,
             },
