@@ -148,7 +148,7 @@ export const getSigner = async (chainId: string) => {
   };
 
   const nearRpc = new JsonRpcProvider({
-    url: "https://api.near.org",
+    url: "https://free.rpc.fastnear.com",
   });
   const result = await nearRpc.callFunction(
     "v1.signer",
