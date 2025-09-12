@@ -7,8 +7,7 @@ import {
   FastifyRequestTypeBox,
 } from "../../utils";
 import { getAllocatorForChain } from "../../../common/chains";
-import { getSignature } from "../../../common/onchain-allocator";
-import { config } from "../../../config";
+import { getSignature, getSigner } from "../../../utils/onchain-allocator";
 import { getPendingWithdrawalRequestsByOwner } from "../../../models/withdrawal-requests";
 
 const Schema = {
@@ -68,7 +67,7 @@ export default {
           let signature: string | undefined;
           if (w.payloadId) {
             // Signed using "onchain" mode, signature might be available onchain
-            signer = config.onchainAllocator!;
+            signer = await getSigner(w.chainId);
             signature = await getSignature(w.id);
           } else {
             // Signed using "offchain" mode, signature already available
