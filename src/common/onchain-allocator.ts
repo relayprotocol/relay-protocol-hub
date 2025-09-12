@@ -156,6 +156,21 @@ export const getSignature = async (id: string) => {
       }
     }
 
+    case "solana-vm": {
+      const hashToSign = hashesToSign[0];
+
+      const signature = await onchainAllocator.contract.read.signedPayloads([
+        withdrawalRequest.payloadId as Hex,
+        hashToSign,
+      ]);
+      if (signature === "0x") {
+        return undefined;
+      } else {
+        // Temporary value
+        return "0x12";
+      }
+    }
+
     default: {
       throw externalError("Vm type not implemented");
     }
