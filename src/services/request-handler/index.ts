@@ -34,7 +34,7 @@ import { externalError } from "../../common/error";
 import {
   getOnchainAllocator,
   getSignature,
-} from "../../common/onchain-allocator";
+} from "../../utils/onchain-allocator";
 import { config } from "../../config";
 import {
   getBalanceLock,

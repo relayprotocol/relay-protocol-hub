@@ -1,3 +1,5 @@
+import { JsonRpcProvider } from "@near-js/providers";
+import bs58 from "bs58";
 import {
   Address,
   createPublicClient,
@@ -9,12 +11,12 @@ import {
   parseAbi,
   zeroAddress,
 } from "viem";
-import { privateKeyToAccount } from "viem/accounts";
+import { privateKeyToAccount, publicKeyToAddress } from "viem/accounts";
 
-import { externalError } from "./error";
+import { getChain } from "../common/chains";
+import { externalError } from "../common/error";
 import { config } from "../config";
 import { getWithdrawalRequest } from "../models/withdrawal-requests";
-import { getChain } from "./chains";
 
 const getPublicAndWalletClients = () => {
   const httpRpcUrl = "https://mainnet.aurora.dev";
@@ -117,6 +119,59 @@ const extractEddsaSignature = (rawNearSignature: string): string => {
   const { signature } = parsedSignature;
 
   return `0x${Buffer.from(signature).toString("hex")}`.toLowerCase();
+};
+
+export const getSigner = async (chainId: string) => {
+  const vmType = await getChain(chainId).then((c) => c.vmType);
+
+  let domainId: number | undefined;
+  switch (vmType) {
+    case "ethereum-vm":
+      domainId = 0;
+      break;
+
+    case "solana-vm":
+      domainId = 1;
+      break;
+
+    default: {
+      throw externalError("Vm type not implemented");
+    }
+  }
+
+  const { contract } = getOnchainAllocator();
+
+  const args = {
+    domain_id: domainId,
+    path: contract.address.toLowerCase(),
+    predecessor: `${contract.address.slice(2).toLowerCase()}.aurora`,
+  };
+
+  const nearRpc = new JsonRpcProvider({
+    url: "https://api.near.org",
+  });
+  const result = await nearRpc.callFunction(
+    "v1.signer",
+    "derived_public_key",
+    args
+  );
+
+  const [, publicKey] = result!.toString().split(":");
+  switch (vmType) {
+    case "ethereum-vm": {
+      return publicKeyToAddress(
+        `0x04${Buffer.from(bs58.decode(publicKey)).toString("hex")}`
+      ).toLowerCase();
+    }
+
+    case "solana-vm": {
+      return publicKey;
+    }
+
+    default: {
+      throw externalError("Vm type not implemented");
+    }
+  }
 };
 
 export const getSignature = async (id: string) => {
