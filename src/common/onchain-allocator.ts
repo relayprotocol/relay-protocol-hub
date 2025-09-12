@@ -91,10 +91,10 @@ export const getOnchainAllocator = () => {
   };
 };
 
-const extractEcdsaSignature = (
-  signature: string
-): { r: string; s: string; v: number } => {
-  const parsedSignature = JSON.parse(fromHex(signature as Hex, "string"));
+const extractEcdsaSignature = (rawNearSignature: string): string => {
+  const parsedSignature = JSON.parse(
+    fromHex(rawNearSignature as Hex, "string")
+  );
 
   const {
     big_r: { affine_point },
@@ -106,7 +106,17 @@ const extractEcdsaSignature = (
   const s = scalar;
   const v = recovery_id + 27;
 
-  return { r, s, v };
+  return `0x${r}${s}${v.toString(16).padStart(2, "0")}`.toLowerCase();
+};
+
+const extractEddsaSignature = (rawNearSignature: string): string => {
+  const parsedSignature = JSON.parse(
+    fromHex(rawNearSignature as Hex, "string")
+  );
+
+  const { signature } = parsedSignature;
+
+  return `0x${Buffer.from(signature).toString("hex")}`.toLowerCase();
 };
 
 export const getSignature = async (id: string) => {
@@ -151,8 +161,7 @@ export const getSignature = async (id: string) => {
       if (signature === "0x") {
         return undefined;
       } else {
-        const { v, r, s } = extractEcdsaSignature(signature);
-        return `0x${r}${s}${v.toString(16).padStart(2, "0")}`.toLowerCase();
+        return extractEcdsaSignature(signature);
       }
     }
 
@@ -166,8 +175,7 @@ export const getSignature = async (id: string) => {
       if (signature === "0x") {
         return undefined;
       } else {
-        // Temporary value
-        return "0x12";
+        return extractEddsaSignature(signature);
       }
     }
 
