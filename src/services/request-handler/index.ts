@@ -4,7 +4,7 @@ import {
   getDecodedWithdrawalId,
   getVmTypeNativeCurrency,
 } from "@reservoir0x/relay-protocol-sdk";
-import { Keypair } from "@solana/web3.js";
+import { PublicKey, Keypair } from "@solana/web3.js";
 import * as bitcoin from "bitcoinjs-lib";
 import bs58 from "bs58";
 import { randomBytes } from "crypto";
@@ -34,7 +34,7 @@ import { externalError } from "../../common/error";
 import {
   getOnchainAllocator,
   getSignature,
-} from "../../common/onchain-allocator";
+} from "../../utils/onchain-allocator";
 import { config } from "../../config";
 import {
   getBalanceLock,
@@ -90,7 +90,7 @@ export class RequestHandlerService {
 
           const txHash = await contract.write.submitWithdrawRequest([
             {
-              chainId: BigInt(chain.metadata.onchainId!),
+              chainId: BigInt(chain.metadata.allocatorChainId!),
               depository: chain.depository!,
               currency: request.currency,
               amount: BigInt(request.amount),
@@ -218,7 +218,52 @@ export class RequestHandlerService {
 
       case "solana-vm": {
         if (request.mode === "onchain") {
-          throw externalError("Onchain allocator mode not implemented");
+          const { contract, publicClient, walletClient } =
+            getOnchainAllocator();
+
+          // The "solana-vm" payload builder expects addresses to be hex-encoded
+          const toHexString = (address: string) =>
+            new PublicKey(address).toBuffer().toString("hex");
+
+          const txHash = await contract.write.submitWithdrawRequest([
+            {
+              chainId: BigInt(chain.metadata.allocatorChainId!),
+              depository: chain.depository!,
+              currency:
+                request.currency === getVmTypeNativeCurrency(chain.vmType)
+                  ? ""
+                  : toHexString(request.currency),
+              amount: BigInt(request.amount),
+              spender: walletClient.account.address,
+              receiver: toHexString(request.recipient),
+              data: "0x",
+              nonce: `0x${randomBytes(32).toString("hex")}`,
+            },
+          ]);
+          payloadId = await publicClient
+            .waitForTransactionReceipt({ hash: txHash })
+            .then(
+              (receipt) =>
+                receipt.logs.find(
+                  (l) =>
+                    l.address.toLowerCase() ===
+                      contract.address.toLowerCase() &&
+                    // We need the "PayloadBuild" event
+                    l.topics[0] ===
+                      "0x007d52d35e656ce646ba5807d55724e47d53e72435a328e89eb6ce56b0e95d6a"
+                )?.topics[1]
+            );
+          if (!payloadId) {
+            throw externalError("Could not submit withdrawal request");
+          }
+
+          [, encodedData] = await contract.read.payloads([payloadId as Hex]);
+
+          id = getDecodedWithdrawalId(
+            decodeWithdrawal(encodedData, chain.vmType)
+          );
+
+          break;
         } else {
           const expiration = Math.floor(Date.now() / 1000) + 5 * 60;
 

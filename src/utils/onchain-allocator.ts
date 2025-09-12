@@ -1,3 +1,5 @@
+import { JsonRpcProvider } from "@near-js/providers";
+import bs58 from "bs58";
 import {
   Address,
   createPublicClient,
@@ -9,12 +11,12 @@ import {
   parseAbi,
   zeroAddress,
 } from "viem";
-import { privateKeyToAccount } from "viem/accounts";
+import { privateKeyToAccount, publicKeyToAddress } from "viem/accounts";
 
-import { externalError } from "./error";
+import { getChain } from "../common/chains";
+import { externalError } from "../common/error";
 import { config } from "../config";
 import { getWithdrawalRequest } from "../models/withdrawal-requests";
-import { getChain } from "./chains";
 
 const getPublicAndWalletClients = () => {
   const httpRpcUrl = "https://mainnet.aurora.dev";
@@ -91,10 +93,10 @@ export const getOnchainAllocator = () => {
   };
 };
 
-const extractEcdsaSignature = (
-  signature: string
-): { r: string; s: string; v: number } => {
-  const parsedSignature = JSON.parse(fromHex(signature as Hex, "string"));
+const extractEcdsaSignature = (rawNearSignature: string): string => {
+  const parsedSignature = JSON.parse(
+    fromHex(rawNearSignature as Hex, "string")
+  );
 
   const {
     big_r: { affine_point },
@@ -106,7 +108,70 @@ const extractEcdsaSignature = (
   const s = scalar;
   const v = recovery_id + 27;
 
-  return { r, s, v };
+  return `0x${r}${s}${v.toString(16).padStart(2, "0")}`.toLowerCase();
+};
+
+const extractEddsaSignature = (rawNearSignature: string): string => {
+  const parsedSignature = JSON.parse(
+    fromHex(rawNearSignature as Hex, "string")
+  );
+
+  const { signature } = parsedSignature;
+
+  return `0x${Buffer.from(signature).toString("hex")}`.toLowerCase();
+};
+
+export const getSigner = async (chainId: string) => {
+  const vmType = await getChain(chainId).then((c) => c.vmType);
+
+  let domainId: number | undefined;
+  switch (vmType) {
+    case "ethereum-vm":
+      domainId = 0;
+      break;
+
+    case "solana-vm":
+      domainId = 1;
+      break;
+
+    default: {
+      throw externalError("Vm type not implemented");
+    }
+  }
+
+  const { contract } = getOnchainAllocator();
+
+  const args = {
+    domain_id: domainId,
+    path: contract.address.toLowerCase(),
+    predecessor: `${contract.address.slice(2).toLowerCase()}.aurora`,
+  };
+
+  const nearRpc = new JsonRpcProvider({
+    url: "https://free.rpc.fastnear.com",
+  });
+  const result = await nearRpc.callFunction(
+    "v1.signer",
+    "derived_public_key",
+    args
+  );
+
+  const [, publicKey] = result!.toString().split(":");
+  switch (vmType) {
+    case "ethereum-vm": {
+      return publicKeyToAddress(
+        `0x04${Buffer.from(bs58.decode(publicKey)).toString("hex")}`
+      ).toLowerCase();
+    }
+
+    case "solana-vm": {
+      return publicKey;
+    }
+
+    default: {
+      throw externalError("Vm type not implemented");
+    }
+  }
 };
 
 export const getSignature = async (id: string) => {
@@ -116,14 +181,16 @@ export const getSignature = async (id: string) => {
   }
 
   const chain = await getChain(withdrawalRequest.chainId);
-  if (!chain.depository || !chain.metadata.onchainId) {
-    throw externalError("Depository or onchain id not configured for chain");
+  if (!chain.depository || !chain.metadata.allocatorChainId) {
+    throw externalError(
+      "Depository or allocator chain id not configured for chain"
+    );
   }
 
   const onchainAllocator = getOnchainAllocator();
   const payloadBuilderAddress =
     await onchainAllocator.contract.read.payloadBuilders([
-      BigInt(chain.metadata.onchainId),
+      BigInt(chain.metadata.allocatorChainId),
       chain.depository,
     ]);
   if (payloadBuilderAddress === zeroAddress) {
@@ -133,7 +200,7 @@ export const getSignature = async (id: string) => {
   const payloadBuilder = getPayloadBuilder(payloadBuilderAddress);
 
   const hashesToSign = await payloadBuilder.contract.read.hashesToSign([
-    BigInt(chain.metadata.onchainId),
+    BigInt(chain.metadata.allocatorChainId),
     chain.depository,
     withdrawalRequest.encodedData as Hex,
   ]);
@@ -149,8 +216,21 @@ export const getSignature = async (id: string) => {
       if (signature === "0x") {
         return undefined;
       } else {
-        const { v, r, s } = extractEcdsaSignature(signature);
-        return `0x${r}${s}${v.toString(16).padStart(2, "0")}`.toLowerCase();
+        return extractEcdsaSignature(signature);
+      }
+    }
+
+    case "solana-vm": {
+      const hashToSign = hashesToSign[0];
+
+      const signature = await onchainAllocator.contract.read.signedPayloads([
+        withdrawalRequest.payloadId as Hex,
+        hashToSign,
+      ]);
+      if (signature === "0x") {
+        return undefined;
+      } else {
+        return extractEddsaSignature(signature);
       }
     }
 

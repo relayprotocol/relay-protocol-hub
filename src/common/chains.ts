@@ -21,7 +21,8 @@ import { config } from "../config";
 
 // Global chain metadata
 export type ChainMetadata = {
-  onchainId?: string;
+  // The numeric chain id in the onchain allocator contract
+  allocatorChainId?: string;
 };
 
 // VM-specific chain metadata
