@@ -228,7 +228,7 @@ export class RequestHandlerService {
           const txHash = await contract.write.submitWithdrawRequest([
             {
               chainId: BigInt(chain.metadata.allocatorChainId!),
-              depository: toHexString(chain.depository!),
+              depository: chain.depository!,
               currency:
                 request.currency === getVmTypeNativeCurrency(chain.vmType)
                   ? ""
