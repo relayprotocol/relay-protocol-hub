@@ -44,9 +44,7 @@ const resultToWithdrawalRequest = (
   signature: result.signature ?? undefined,
   executed: result.executed ?? undefined,
   payloadId: result.payload_id ?? undefined,
-  payloadParams: result.payload_params
-    ? JSON.parse(result.payload_params)
-    : undefined,
+  payloadParams: result.payload_params ?? undefined,
   createdAt: result.created_at,
   updatedAt: result.updated_at,
 });
