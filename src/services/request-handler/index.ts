@@ -123,7 +123,7 @@ export class RequestHandlerService {
             throw externalError("Could not submit withdrawal request");
           }
 
-          [, encodedData] = await contract.read.payloads([payloadId as Hex]);
+          encodedData = await contract.read.payloads([payloadId as Hex]);
 
           id = getDecodedWithdrawalId(
             decodeWithdrawal(encodedData, chain.vmType)
@@ -265,7 +265,7 @@ export class RequestHandlerService {
             throw externalError("Could not submit withdrawal request");
           }
 
-          [, encodedData] = await contract.read.payloads([payloadId as Hex]);
+          encodedData = await contract.read.payloads([payloadId as Hex]);
 
           id = getDecodedWithdrawalId(
             decodeWithdrawal(encodedData, chain.vmType)
