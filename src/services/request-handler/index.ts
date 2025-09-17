@@ -34,6 +34,7 @@ import { externalError } from "../../common/error";
 import {
   getOnchainAllocator,
   getSignature,
+  getSigner,
 } from "../../utils/onchain-allocator";
 import { config } from "../../config";
 import {
@@ -43,6 +44,7 @@ import {
 } from "../../models/balances";
 import {
   getWithdrawalRequest,
+  PayloadParams,
   saveWithdrawalRequest,
 } from "../../models/withdrawal-requests";
 
@@ -79,7 +81,9 @@ export class RequestHandlerService {
     let id: string;
     let encodedData: string;
     let signature: string | undefined;
+
     let payloadId: string | undefined;
+    let payloadParams: PayloadParams | undefined;
 
     const chain = await getChain(request.chainId);
     switch (chain.vmType) {
@@ -88,17 +92,19 @@ export class RequestHandlerService {
           const { contract, publicClient, walletClient } =
             getOnchainAllocator();
 
+          payloadParams = {
+            chainId: Number(chain.metadata.allocatorChainId!),
+            depository: chain.depository!.toLowerCase(),
+            currency: request.currency.toLowerCase(),
+            amount: request.amount,
+            spender: walletClient.account.address.toLowerCase(),
+            receiver: request.recipient.toLowerCase(),
+            data: "0x",
+            nonce: `0x${randomBytes(32).toString("hex")}`,
+          };
+
           const txHash = await contract.write.submitWithdrawRequest([
-            {
-              chainId: BigInt(chain.metadata.allocatorChainId!),
-              depository: chain.depository!,
-              currency: request.currency,
-              amount: BigInt(request.amount),
-              spender: walletClient.account.address,
-              receiver: request.recipient,
-              data: "0x",
-              nonce: `0x${randomBytes(32).toString("hex")}`,
-            },
+            payloadParams as any,
           ]);
           payloadId = await publicClient
             .waitForTransactionReceipt({ hash: txHash })
@@ -117,7 +123,7 @@ export class RequestHandlerService {
             throw externalError("Could not submit withdrawal request");
           }
 
-          [, encodedData] = await contract.read.payloads([payloadId as Hex]);
+          encodedData = await contract.read.payloads([payloadId as Hex]);
 
           id = getDecodedWithdrawalId(
             decodeWithdrawal(encodedData, chain.vmType)
@@ -225,20 +231,22 @@ export class RequestHandlerService {
           const toHexString = (address: string) =>
             new PublicKey(address).toBuffer().toString("hex");
 
+          payloadParams = {
+            chainId: Number(chain.metadata.allocatorChainId!),
+            depository: chain.depository!,
+            currency:
+              request.currency === getVmTypeNativeCurrency(chain.vmType)
+                ? ""
+                : toHexString(request.currency),
+            amount: request.amount,
+            spender: walletClient.account.address.toLowerCase(),
+            receiver: toHexString(request.recipient),
+            data: "0x",
+            nonce: `0x${randomBytes(32).toString("hex")}`,
+          };
+
           const txHash = await contract.write.submitWithdrawRequest([
-            {
-              chainId: BigInt(chain.metadata.allocatorChainId!),
-              depository: chain.depository!,
-              currency:
-                request.currency === getVmTypeNativeCurrency(chain.vmType)
-                  ? ""
-                  : toHexString(request.currency),
-              amount: BigInt(request.amount),
-              spender: walletClient.account.address,
-              receiver: toHexString(request.recipient),
-              data: "0x",
-              nonce: `0x${randomBytes(32).toString("hex")}`,
-            },
+            payloadParams as any,
           ]);
           payloadId = await publicClient
             .waitForTransactionReceipt({ hash: txHash })
@@ -257,7 +265,7 @@ export class RequestHandlerService {
             throw externalError("Could not submit withdrawal request");
           }
 
-          [, encodedData] = await contract.read.payloads([payloadId as Hex]);
+          encodedData = await contract.read.payloads([payloadId as Hex]);
 
           id = getDecodedWithdrawalId(
             decodeWithdrawal(encodedData, chain.vmType)
@@ -558,6 +566,7 @@ export class RequestHandlerService {
           encodedData,
           signature,
           payloadId,
+          payloadParams,
         },
         { tx }
       );
@@ -570,8 +579,10 @@ export class RequestHandlerService {
       id,
       encodedData,
       signature,
-      // TODO: Return the correct signer
-      signer: await getAllocatorForChain(request.chainId),
+      signer:
+        request.mode === "onchain"
+          ? await getSigner(request.chainId)
+          : await getAllocatorForChain(request.chainId),
     };
   }
 
@@ -580,7 +591,7 @@ export class RequestHandlerService {
     if (!withdrawalRequest) {
       throw externalError("Could not find withdrawal request");
     }
-    if (!withdrawalRequest.payloadId) {
+    if (!withdrawalRequest.payloadId || !withdrawalRequest.payloadParams) {
       throw externalError("Withdrawal request not using 'onchain' mode");
     }
 
@@ -616,7 +627,7 @@ export class RequestHandlerService {
     const signature = await getSignature(withdrawalRequest.id);
     if (!signature) {
       await contract.write.signWithdrawPayload([
-        withdrawalRequest.payloadId as Hex,
+        withdrawalRequest.payloadParams as any,
         "0x",
         // These are both the default recommended values
         {

@@ -3,6 +3,17 @@ import { ITask } from "pg-promise";
 import { DbEntry } from "./utils";
 import { db } from "../common/db";
 
+export type PayloadParams = {
+  chainId: number;
+  depository: string;
+  currency: string;
+  amount: string;
+  spender: string;
+  receiver: string;
+  data: string;
+  nonce: string;
+};
+
 export type WithdrawalRequest = {
   id: string;
   ownerChainId: string;
@@ -14,7 +25,9 @@ export type WithdrawalRequest = {
   encodedData: string;
   signature?: string;
   executed?: boolean;
+  // These are only used when using "onchain" allocator mode
   payloadId?: string;
+  payloadParams?: PayloadParams;
 };
 
 const resultToWithdrawalRequest = (
@@ -31,6 +44,9 @@ const resultToWithdrawalRequest = (
   signature: result.signature ?? undefined,
   executed: result.executed ?? undefined,
   payloadId: result.payload_id ?? undefined,
+  payloadParams: result.payload_params
+    ? JSON.parse(result.payload_params)
+    : undefined,
   createdAt: result.created_at,
   updatedAt: result.updated_at,
 });
@@ -55,6 +71,7 @@ export const getWithdrawalRequest = async (
         withdrawal_requests.signature,
         withdrawal_requests.executed,
         withdrawal_requests.payload_id,
+        withdrawal_requests.payload_params,
         withdrawal_requests.created_at,
         withdrawal_requests.updated_at
       FROM withdrawal_requests
@@ -92,6 +109,7 @@ export const getPendingWithdrawalRequestsByOwner = async (
         withdrawal_requests.signature,
         withdrawal_requests.executed,
         withdrawal_requests.payload_id,
+        withdrawal_requests.payload_params,
         withdrawal_requests.created_at,
         withdrawal_requests.updated_at
       FROM withdrawal_requests
@@ -129,7 +147,8 @@ export const saveWithdrawalRequest = async (
         recipient,
         encoded_data,
         signature,
-        payload_id
+        payload_id,
+        payload_params
       ) VALUES (
         $/id/,
         $/ownerChainId/,
@@ -140,7 +159,8 @@ export const saveWithdrawalRequest = async (
         $/recipient/,
         $/encodedData/,
         $/signature/,
-        $/payloadId/
+        $/payloadId/,
+        $/payloadParams/
       ) ON CONFLICT DO NOTHING
       RETURNING *
     `,
@@ -155,6 +175,7 @@ export const saveWithdrawalRequest = async (
       encodedData: withdrawalRequest.encodedData,
       signature: withdrawalRequest.signature ?? null,
       payloadId: withdrawalRequest.payloadId ?? null,
+      payloadParams: withdrawalRequest.payloadParams ?? null,
     }
   );
   if (!result) {
