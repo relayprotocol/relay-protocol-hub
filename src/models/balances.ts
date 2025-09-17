@@ -38,9 +38,9 @@ const resultToBalance = (result: any): DbEntry<Balance> => ({
   updatedAt: result.updated_at,
 });
 
-// If the balance lock has no explicit expiration, it defaults to 5 days from the moment of creation
-const DEFAULT_BALANCE_LOCK_EXPIRATION_PG = "5 days";
-const DEFAULT_BALANCE_LOCK_EXPIRATION = 5 * 24 * 60 * 60;
+// If the balance lock has no explicit expiration, it defaults to 3 days from the moment of creation
+const DEFAULT_BALANCE_LOCK_EXPIRATION_PG = "3 days";
+const DEFAULT_BALANCE_LOCK_EXPIRATION = 3 * 24 * 60 * 60;
 
 const resultToBalanceLock = (result: any): DbEntry<BalanceLock> => ({
   id: result.id,
