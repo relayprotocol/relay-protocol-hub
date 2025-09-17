@@ -160,7 +160,7 @@ export const saveWithdrawalRequest = async (
         $/encodedData/,
         $/signature/,
         $/payloadId/,
-        $/payloadParams/
+        $/payloadParams:json/
       ) ON CONFLICT DO NOTHING
       RETURNING *
     `,
