@@ -93,7 +93,7 @@ export class RequestHandlerService {
             getOnchainAllocator();
 
           payloadParams = {
-            chainId: Number(chain.metadata.allocatorChainId!),
+            chainId: chain.metadata.allocatorChainId!,
             depository: chain.depository!.toLowerCase(),
             currency: request.currency.toLowerCase(),
             amount: request.amount,
@@ -232,7 +232,7 @@ export class RequestHandlerService {
             new PublicKey(address).toBuffer().toString("hex");
 
           payloadParams = {
-            chainId: Number(chain.metadata.allocatorChainId!),
+            chainId: chain.metadata.allocatorChainId!,
             depository: chain.depository!,
             currency:
               request.currency === getVmTypeNativeCurrency(chain.vmType)

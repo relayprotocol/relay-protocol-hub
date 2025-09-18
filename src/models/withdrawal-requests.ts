@@ -4,7 +4,7 @@ import { DbEntry } from "./utils";
 import { db } from "../common/db";
 
 export type PayloadParams = {
-  chainId: number;
+  chainId: string;
   depository: string;
   currency: string;
   amount: string;
