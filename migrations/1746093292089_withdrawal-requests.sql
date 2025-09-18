@@ -12,6 +12,7 @@ CREATE TABLE "withdrawal_requests" (
   "signature" TEXT,
   "executed" BOOLEAN NOT NULL DEFAULT FALSE,
   "payload_id" TEXT,
+  "payload_params" JSONB,
   "created_at" TIMESTAMPTZ NOT NULL DEFAULT now(),
   "updated_at" TIMESTAMPTZ NOT NULL DEFAULT now()
 );
