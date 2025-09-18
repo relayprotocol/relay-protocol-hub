@@ -31,6 +31,14 @@ export default {
     req: FastifyRequestTypeBox<typeof Schema>,
     reply: FastifyReplyTypeBox<typeof Schema>
   ) => {
+    logger.info(
+      "tracking",
+      JSON.stringify({
+        msg: "Executing `unlock` request",
+        request: req.body,
+      })
+    );
+
     const requestHandler = new RequestHandlerService();
     await requestHandler.handleUnlock(req.body);
 
@@ -38,7 +46,7 @@ export default {
       "tracking",
       JSON.stringify({
         msg: "Executed `unlock` request",
-        data: req.body,
+        request: req.body,
       })
     );
 
