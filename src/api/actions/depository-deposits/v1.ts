@@ -105,6 +105,14 @@ export default {
       }
     }
 
+    logger.info(
+      "tracking",
+      JSON.stringify({
+        msg: "Executing `depository-deposit` action",
+        action: message,
+      })
+    );
+
     const actionExecutor = new ActionExecutorService();
     await actionExecutor.executeDepositoryDeposit(message);
 
@@ -112,7 +120,7 @@ export default {
       "tracking",
       JSON.stringify({
         msg: "Executed `depository-deposit` action",
-        data: req.body,
+        action: message,
       })
     );
 

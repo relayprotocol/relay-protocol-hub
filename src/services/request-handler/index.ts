@@ -31,6 +31,7 @@ import {
 } from "../../common/chains";
 import { db } from "../../common/db";
 import { externalError } from "../../common/error";
+import { logger } from "../../common/logger";
 import {
   getOnchainAllocator,
   getSignature,
@@ -552,6 +553,15 @@ export class RequestHandlerService {
         if (!newBalance) {
           throw externalError("Failed to save balance lock");
         }
+
+        logger.info(
+          "tracking",
+          JSON.stringify({
+            msg: "Executing `withdrawal` request",
+            request,
+            newBalance: newBalance ?? null,
+          })
+        );
       }
 
       const withdrawalRequest = await saveWithdrawalRequest(
@@ -573,6 +583,15 @@ export class RequestHandlerService {
       if (!withdrawalRequest) {
         throw externalError("Failed to save withdrawal request");
       }
+
+      logger.info(
+        "tracking",
+        JSON.stringify({
+          msg: "Executing `withdrawal` request",
+          request,
+          withdrawalRequest: withdrawalRequest ?? null,
+        })
+      );
     });
 
     return {
@@ -621,6 +640,15 @@ export class RequestHandlerService {
       if (!newBalance) {
         throw externalError("Failed to save balance lock");
       }
+
+      logger.info(
+        "tracking",
+        JSON.stringify({
+          msg: "Executing `withdrawal-signature` request",
+          request,
+          newBalance: newBalance ?? null,
+        })
+      );
     }
 
     // Only trigger the signing process if we don't already have a valid signature
@@ -655,5 +683,14 @@ export class RequestHandlerService {
     if (!newBalance) {
       throw externalError("Failed to unlock balance");
     }
+
+    logger.info(
+      "tracking",
+      JSON.stringify({
+        msg: "Executing `unlock` request",
+        request,
+        newBalance: newBalance ?? null,
+      })
+    );
   }
 }
