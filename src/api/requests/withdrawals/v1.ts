@@ -104,6 +104,14 @@ export default {
     req: FastifyRequestTypeBox<typeof Schema>,
     reply: FastifyReplyTypeBox<typeof Schema>
   ) => {
+    logger.info(
+      "tracking",
+      JSON.stringify({
+        msg: "Executing `withdrawal` request",
+        request: req.body,
+      })
+    );
+
     const requestHandler = new RequestHandlerService();
     const result = await requestHandler.handleWithdrawal(req.body);
 
@@ -111,7 +119,7 @@ export default {
       "tracking",
       JSON.stringify({
         msg: "Executed `withdrawal` request",
-        data: req.body,
+        request: req.body,
         result,
       })
     );

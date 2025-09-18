@@ -29,6 +29,14 @@ export default {
     req: FastifyRequestTypeBox<typeof Schema>,
     reply: FastifyReplyTypeBox<typeof Schema>
   ) => {
+    logger.info(
+      "tracking",
+      JSON.stringify({
+        msg: "Executing `withdrawal-signature` request",
+        data: req.body,
+      })
+    );
+
     const requestHandler = new RequestHandlerService();
     const result = await requestHandler.handleWithdrawalSignature(req.body);
 
