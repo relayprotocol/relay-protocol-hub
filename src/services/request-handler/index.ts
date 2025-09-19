@@ -36,6 +36,7 @@ import {
   getOnchainAllocator,
   getSignature,
   getSigner,
+  handleOneTimeApproval,
 } from "../../utils/onchain-allocator";
 import { config } from "../../config";
 import {
@@ -103,6 +104,9 @@ export class RequestHandlerService {
             data: "0x",
             nonce: `0x${randomBytes(32).toString("hex")}`,
           };
+
+          // This is needed before being able to submit withdraw requests
+          await handleOneTimeApproval();
 
           const txHash = await contract.write.submitWithdrawRequest([
             payloadParams as any,
@@ -245,6 +249,9 @@ export class RequestHandlerService {
             data: "0x",
             nonce: `0x${randomBytes(32).toString("hex")}`,
           };
+
+          // This is needed before being able to submit withdraw requests
+          await handleOneTimeApproval();
 
           const txHash = await contract.write.submitWithdrawRequest([
             payloadParams as any,
