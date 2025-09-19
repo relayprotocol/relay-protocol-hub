@@ -142,8 +142,7 @@ export default {
         signature: req.body.signature as Hex,
       });
       if (!isSignatureValid) {
-        // throw externalError("Invalid signature", "INVALID_SIGNATURE");
-        logger.error("debug", JSON.stringify({ msg: "Invalid signature" }));
+        throw externalError("Invalid signature", "INVALID_SIGNATURE");
       }
     }
 
