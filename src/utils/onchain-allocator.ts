@@ -86,7 +86,7 @@ const getPayloadBuilder = async (address: string) => {
 };
 
 export const getOnchainAllocator = async () => {
-  if (!config.onchainAllocator || !config.onchainAllocatorSenderPk) {
+  if (!config.onchainAllocator) {
     throw externalError("Onchain allocator not configured");
   }
 
