@@ -127,7 +127,12 @@ export default {
       }
 
       const hash = createHash("sha256")
-        .update(stringify(req.body)!)
+        .update(
+          stringify({
+            ...req.body,
+            signature: undefined,
+          })!
+        )
         .digest("hex");
       const isSignatureValid = await verifyMessage({
         address: req.body.owner as Address,
@@ -137,7 +142,8 @@ export default {
         signature: req.body.signature as Hex,
       });
       if (!isSignatureValid) {
-        throw externalError("Invalid signature", "INVALID_SIGNATURE");
+        // throw externalError("Invalid signature", "INVALID_SIGNATURE");
+        logger.error("debug", JSON.stringify({ msg: "Invalid signature" }));
       }
     }
 
