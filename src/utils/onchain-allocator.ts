@@ -1,6 +1,7 @@
 import { JsonRpcProvider } from "@near-js/providers";
 import bs58 from "bs58";
 import {
+  Account,
   Address,
   createPublicClient,
   createWalletClient,
@@ -10,15 +11,17 @@ import {
   http,
   parseAbi,
   zeroAddress,
+  maxUint256,
 } from "viem";
 import { privateKeyToAccount, publicKeyToAddress } from "viem/accounts";
 
+import { KmsSigner } from "./viem-kms-signer";
 import { getChain } from "../common/chains";
 import { externalError } from "../common/error";
 import { config } from "../config";
 import { getWithdrawalRequest } from "../models/withdrawal-requests";
 
-const getPublicAndWalletClients = () => {
+const getPublicAndWalletClients = async () => {
   const httpRpcUrl = "https://mainnet.aurora.dev";
   const chain = {
     id: 1313161554,
@@ -39,8 +42,26 @@ const getPublicAndWalletClients = () => {
     chain,
     transport: http(httpRpcUrl),
   });
+
+  let account: Account;
+  if (
+    config.onchainAllocatorSenderAwsKmsKeyId &&
+    config.onchainAllocatorSenderAwsKmsKeyRegion
+  ) {
+    const kmsSigner = new KmsSigner({
+      keyId: config.onchainAllocatorSenderAwsKmsKeyId,
+      region: config.onchainAllocatorSenderAwsKmsKeyRegion,
+    });
+
+    account = await kmsSigner.getAccount();
+  } else if (config.onchainAllocatorSenderPk) {
+    account = privateKeyToAccount(config.onchainAllocatorSenderPk as Hex);
+  } else {
+    throw externalError("No available onchain allocator sender");
+  }
+
   const walletClient = createWalletClient({
-    account: privateKeyToAccount(config.onchainAllocatorSenderPk as Hex),
+    account,
     chain,
     transport: http(httpRpcUrl),
   });
@@ -48,8 +69,8 @@ const getPublicAndWalletClients = () => {
   return { publicClient, walletClient };
 };
 
-const getPayloadBuilder = (address: string) => {
-  const { publicClient, walletClient } = getPublicAndWalletClients();
+const getPayloadBuilder = async (address: string) => {
+  const { publicClient, walletClient } = await getPublicAndWalletClients();
 
   return {
     contract: getContract({
@@ -64,12 +85,12 @@ const getPayloadBuilder = (address: string) => {
   };
 };
 
-export const getOnchainAllocator = () => {
-  if (!config.onchainAllocator || !config.onchainAllocatorSenderPk) {
+export const getOnchainAllocator = async () => {
+  if (!config.onchainAllocator) {
     throw externalError("Onchain allocator not configured");
   }
 
-  const { publicClient, walletClient } = getPublicAndWalletClients();
+  const { publicClient, walletClient } = await getPublicAndWalletClients();
 
   const PayloadParams =
     "(uint256 chainId, string depository, string currency, uint256 amount, address spender, string receiver, bytes data, bytes32 nonce)";
@@ -91,6 +112,33 @@ export const getOnchainAllocator = () => {
     publicClient,
     walletClient,
   };
+};
+
+let _allowanceCache: bigint | undefined;
+export const handleOneTimeApproval = async () => {
+  const { walletClient } = await getPublicAndWalletClients();
+
+  const allocator = await getOnchainAllocator().then((a) => a.contract.address);
+
+  const wNearContract = getContract({
+    client: walletClient,
+    address: "0xc42c30ac6cc15fac9bd938618bcaa1a1fae8501d",
+    abi: parseAbi([
+      `function approve(address spender, uint256 amount)`,
+      `function allowance(address owner, address spender) view returns (uint256)`,
+    ]),
+  });
+  if (_allowanceCache === undefined) {
+    _allowanceCache = await wNearContract.read.allowance([
+      walletClient.account.address,
+      allocator,
+    ]);
+  }
+
+  if (_allowanceCache === 0n) {
+    await wNearContract.write.approve([allocator as Address, maxUint256]);
+    _allowanceCache = maxUint256;
+  }
 };
 
 const extractEcdsaSignature = (rawNearSignature: string): string => {
@@ -139,7 +187,7 @@ export const getSigner = async (chainId: string) => {
     }
   }
 
-  const { contract } = getOnchainAllocator();
+  const { contract } = await getOnchainAllocator();
 
   const args = {
     domain_id: domainId,
@@ -187,7 +235,7 @@ export const getSignature = async (id: string) => {
     );
   }
 
-  const onchainAllocator = getOnchainAllocator();
+  const onchainAllocator = await getOnchainAllocator();
   const payloadBuilderAddress =
     await onchainAllocator.contract.read.payloadBuilders([
       BigInt(chain.metadata.allocatorChainId),
@@ -197,7 +245,7 @@ export const getSignature = async (id: string) => {
     throw externalError("No payload builder configured for chain");
   }
 
-  const payloadBuilder = getPayloadBuilder(payloadBuilderAddress);
+  const payloadBuilder = await getPayloadBuilder(payloadBuilderAddress);
 
   const hashesToSign = await payloadBuilder.contract.read.hashesToSign([
     BigInt(chain.metadata.allocatorChainId),

@@ -36,6 +36,7 @@ import {
   getOnchainAllocator,
   getSignature,
   getSigner,
+  handleOneTimeApproval,
 } from "../../utils/onchain-allocator";
 import { config } from "../../config";
 import {
@@ -91,7 +92,7 @@ export class RequestHandlerService {
       case "ethereum-vm": {
         if (request.mode === "onchain") {
           const { contract, publicClient, walletClient } =
-            getOnchainAllocator();
+            await getOnchainAllocator();
 
           payloadParams = {
             chainId: chain.metadata.allocatorChainId!,
@@ -103,6 +104,9 @@ export class RequestHandlerService {
             data: "0x",
             nonce: `0x${randomBytes(32).toString("hex")}`,
           };
+
+          // This is needed before being able to submit withdraw requests
+          await handleOneTimeApproval();
 
           const txHash = await contract.write.submitWithdrawRequest([
             payloadParams as any,
@@ -226,7 +230,7 @@ export class RequestHandlerService {
       case "solana-vm": {
         if (request.mode === "onchain") {
           const { contract, publicClient, walletClient } =
-            getOnchainAllocator();
+            await getOnchainAllocator();
 
           // The "solana-vm" payload builder expects addresses to be hex-encoded
           const toHexString = (address: string) =>
@@ -245,6 +249,9 @@ export class RequestHandlerService {
             data: "0x",
             nonce: `0x${randomBytes(32).toString("hex")}`,
           };
+
+          // This is needed before being able to submit withdraw requests
+          await handleOneTimeApproval();
 
           const txHash = await contract.write.submitWithdrawRequest([
             payloadParams as any,
@@ -614,7 +621,7 @@ export class RequestHandlerService {
       throw externalError("Withdrawal request not using 'onchain' mode");
     }
 
-    const { contract, publicClient } = getOnchainAllocator();
+    const { contract, publicClient } = await getOnchainAllocator();
 
     const payloadTimestamp = await contract.read.payloadTimestamps([
       withdrawalRequest.payloadId as Hex,
