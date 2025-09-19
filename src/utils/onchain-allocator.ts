@@ -11,6 +11,7 @@ import {
   http,
   parseAbi,
   zeroAddress,
+  maxUint256,
 } from "viem";
 import { privateKeyToAccount, publicKeyToAddress } from "viem/accounts";
 
@@ -58,9 +59,6 @@ const getPublicAndWalletClients = async () => {
   } else {
     throw externalError("No available onchain allocator sender");
   }
-
-  // Temporary log to be able to retrieve the address of the signer
-  console.log(account.address);
 
   const walletClient = createWalletClient({
     account,
@@ -114,6 +112,33 @@ export const getOnchainAllocator = async () => {
     publicClient,
     walletClient,
   };
+};
+
+let _allowanceCache: bigint | undefined;
+export const handleOneTimeApproval = async () => {
+  const { walletClient } = await getPublicAndWalletClients();
+
+  const allocator = await getOnchainAllocator().then((a) => a.contract.address);
+
+  const wNearContract = getContract({
+    client: walletClient,
+    address: "0xc42c30ac6cc15fac9bd938618bcaa1a1fae8501d",
+    abi: parseAbi([
+      `function approve(address spender, uint256 amount)`,
+      `function allowance(address owner, address spender) view returns (uint256)`,
+    ]),
+  });
+  if (_allowanceCache === undefined) {
+    _allowanceCache = await wNearContract.read.allowance([
+      walletClient.account.address,
+      allocator,
+    ]);
+  }
+
+  if (_allowanceCache === 0n) {
+    await wNearContract.write.approve([allocator as Address, maxUint256]);
+    _allowanceCache = maxUint256;
+  }
 };
 
 const extractEcdsaSignature = (rawNearSignature: string): string => {
