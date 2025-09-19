@@ -1,7 +1,12 @@
+type ErrorCode =
+  | "INVALID_SIGNATURE"
+  | "INSUFFICIENT_SIGNATURES"
+  | "UNSUPPORTED_SIGNATURE";
+
 // Returns an error which can safely be exposed externally
 export const externalError = (
   errorData: string | any,
-  externalErrorCode?: string
+  externalErrorCode?: ErrorCode
 ) => {
   const error = errorData instanceof Error ? errorData : new Error(errorData);
   (error as any).isExternalError = true;

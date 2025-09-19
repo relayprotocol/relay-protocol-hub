@@ -11,6 +11,7 @@ import { zeroHash } from "viem";
 
 import { db } from "../../common/db";
 import { externalError } from "../../common/error";
+import { logger } from "../../common/logger";
 import {
   Balance,
   getBalanceLock,
@@ -44,6 +45,16 @@ export class ActionExecutorService {
         },
         { tx }
       );
+
+      logger.info(
+        "tracking",
+        JSON.stringify({
+          msg: "Executing `depository-deposit` action",
+          action: message,
+          saveResult: saveResult ?? null,
+        })
+      );
+
       // Verify the save result
       if (!saveResult) {
         return;
@@ -64,6 +75,16 @@ export class ActionExecutorService {
           },
           { tx }
         );
+
+        logger.info(
+          "tracking",
+          JSON.stringify({
+            msg: "Executing `depository-deposit` action",
+            action: message,
+            lockResult: lockResult ?? null,
+          })
+        );
+
         // Verify the lock result
         if (!lockResult) {
           return;
@@ -99,6 +120,15 @@ export class ActionExecutorService {
         );
       }
 
+      logger.info(
+        "tracking",
+        JSON.stringify({
+          msg: "Executing `depository-withdrawal` action",
+          action: message,
+          executeResult: executeResult ?? null,
+        })
+      );
+
       // Step 3:
       // Unlock and reduce the balance
       const unlockResult = await (async () => {
@@ -121,6 +151,15 @@ export class ActionExecutorService {
       if (!unlockResult.balanceLock || !unlockResult.newBalance) {
         throw externalError("Corresponding balance lock already unlocked");
       }
+
+      logger.info(
+        "tracking",
+        JSON.stringify({
+          msg: "Executing `depository-withdrawal` action",
+          action: message,
+          unlockResult: unlockResult ?? null,
+        })
+      );
     });
   }
 
@@ -144,6 +183,15 @@ export class ActionExecutorService {
       if (unlockResult.some((r) => !r.balanceLock || !r.newBalance)) {
         throw externalError("Corresponding balance lock(s) already unlocked");
       }
+
+      logger.info(
+        "tracking",
+        JSON.stringify({
+          msg: "Executing `solver-fill` action",
+          action: message,
+          unlockResult: unlockResult ?? null,
+        })
+      );
 
       // Step 2:
       // Reallocate the payments to the solver
@@ -192,6 +240,15 @@ export class ActionExecutorService {
       ) {
         throw externalError("Payment balance reallocation failed");
       }
+
+      logger.info(
+        "tracking",
+        JSON.stringify({
+          msg: "Executing `solver-fill` action",
+          action: message,
+          reallocatePaymentsResult: reallocatePaymentsResult ?? null,
+        })
+      );
 
       // Step 3:
       // Reallocate the fees to the recipients
@@ -243,6 +300,15 @@ export class ActionExecutorService {
       ) {
         throw externalError("Fee balance reallocation failed");
       }
+
+      logger.info(
+        "tracking",
+        JSON.stringify({
+          msg: "Executing `solver-fill` action",
+          action: message,
+          reallocateFeesResult: reallocateFeesResult ?? null,
+        })
+      );
     });
   }
 
@@ -268,6 +334,15 @@ export class ActionExecutorService {
       if (unlockResult.some((r) => !r.balanceLock || !r.newBalance)) {
         throw externalError("Corresponding balance lock(s) already unlocked");
       }
+
+      logger.info(
+        "tracking",
+        JSON.stringify({
+          msg: "Executing `solver-refund` action",
+          action: message,
+          unlockResult: unlockResult ?? null,
+        })
+      );
 
       // Step 2:
       // Reallocate the payments to the solver
@@ -316,6 +391,15 @@ export class ActionExecutorService {
       ) {
         throw externalError("Payment balance reallocation failed");
       }
+
+      logger.info(
+        "tracking",
+        JSON.stringify({
+          msg: "Executing `solver-refund` action",
+          action: message,
+          reallocatePaymentsResult: reallocatePaymentsResult ?? null,
+        })
+      );
     });
   }
 

@@ -1,4 +1,7 @@
 import { Type } from "@fastify/type-provider-typebox";
+import { createHash } from "crypto";
+import stringify from "json-stable-stringify";
+import { Address, Hex, verifyMessage } from "viem";
 
 import {
   Endpoint,
@@ -6,6 +9,8 @@ import {
   FastifyReplyTypeBox,
   FastifyRequestTypeBox,
 } from "../../utils";
+import { getChain } from "../../../common/chains";
+import { externalError } from "../../../common/error";
 import { logger } from "../../../common/logger";
 import { RequestHandlerService } from "../../../services/request-handler";
 
@@ -30,6 +35,12 @@ const Schema = {
     recipient: Type.String({
       description: "The address of the recipient for the withdrawal proceeds",
     }),
+    signature: Type.Optional(
+      Type.String({
+        description:
+          "Signature attesting the owner authorized this particular withdrawal request",
+      })
+    ),
     additionalData: Type.Optional(
       Type.Object(
         {
@@ -104,6 +115,45 @@ export default {
     req: FastifyRequestTypeBox<typeof Schema>,
     reply: FastifyReplyTypeBox<typeof Schema>
   ) => {
+    if (req.body.signature) {
+      const signatureVmType = await getChain(req.body.ownerChainId).then(
+        (c) => c.vmType
+      );
+      if (signatureVmType !== "ethereum-vm") {
+        throw externalError(
+          "Only 'ethereum-vm' signatures are supported",
+          "UNSUPPORTED_SIGNATURE"
+        );
+      }
+
+      const hash = createHash("sha256")
+        .update(
+          stringify({
+            ...req.body,
+            signature: undefined,
+          })!
+        )
+        .digest("hex");
+      const isSignatureValid = await verifyMessage({
+        address: req.body.owner as Address,
+        message: {
+          raw: `0x${hash}`,
+        },
+        signature: req.body.signature as Hex,
+      });
+      if (!isSignatureValid) {
+        throw externalError("Invalid signature", "INVALID_SIGNATURE");
+      }
+    }
+
+    logger.info(
+      "tracking",
+      JSON.stringify({
+        msg: "Executing `withdrawal` request",
+        request: req.body,
+      })
+    );
+
     const requestHandler = new RequestHandlerService();
     const result = await requestHandler.handleWithdrawal(req.body);
 
@@ -111,7 +161,7 @@ export default {
       "tracking",
       JSON.stringify({
         msg: "Executed `withdrawal` request",
-        data: req.body,
+        request: req.body,
         result,
       })
     );

@@ -9,6 +9,7 @@ import {
   FastifyRequestTypeBox,
 } from "../../utils";
 import { getSdkChainsConfig } from "../../../common/chains";
+import { externalError } from "../../../common/error";
 import { logger } from "../../../common/logger";
 import { ActionExecutorService } from "../../../services/action-executor";
 
@@ -76,10 +77,10 @@ export default {
 
     const signatures = message.signatures;
     if (!signatures.length) {
-      return reply.status(400).send({
-        message: "At least one signature is required",
-        code: "INSUFFICIENT_SIGNATURES",
-      });
+      throw externalError(
+        "At least one signature is required",
+        "INSUFFICIENT_SIGNATURES"
+      );
     }
 
     const messageId = getDepositoryDepositMessageId(
@@ -98,12 +99,17 @@ export default {
         signature: signature as Hex,
       });
       if (!isSignatureValid) {
-        return reply.status(400).send({
-          message: "Invalid signature",
-          code: "INVALID_SIGNATURE",
-        });
+        throw externalError("Invalid signature", "INVALID_SIGNATURE");
       }
     }
+
+    logger.info(
+      "tracking",
+      JSON.stringify({
+        msg: "Executing `depository-deposit` action",
+        action: message,
+      })
+    );
 
     const actionExecutor = new ActionExecutorService();
     await actionExecutor.executeDepositoryDeposit(message);
@@ -112,7 +118,7 @@ export default {
       "tracking",
       JSON.stringify({
         msg: "Executed `depository-deposit` action",
-        data: req.body,
+        action: message,
       })
     );
 
