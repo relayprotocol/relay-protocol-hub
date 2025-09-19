@@ -174,14 +174,6 @@ export default {
       }
     }
 
-    logger.info(
-      "tracking",
-      JSON.stringify({
-        msg: "Executing `solver-refund` action",
-        action: message,
-      })
-    );
-
     const actionExecutor = new ActionExecutorService();
     await actionExecutor.executeSolverRefund(message);
 

@@ -166,14 +166,6 @@ export default {
       }
     }
 
-    logger.info(
-      "tracking",
-      JSON.stringify({
-        msg: "Executing `solver-fill` action",
-        action: message,
-      })
-    );
-
     const actionExecutor = new ActionExecutorService();
     await actionExecutor.executeSolverFill(message);
 

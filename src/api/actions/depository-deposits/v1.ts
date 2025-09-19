@@ -103,14 +103,6 @@ export default {
       }
     }
 
-    logger.info(
-      "tracking",
-      JSON.stringify({
-        msg: "Executing `depository-deposit` action",
-        action: message,
-      })
-    );
-
     const actionExecutor = new ActionExecutorService();
     await actionExecutor.executeDepositoryDeposit(message);
 
