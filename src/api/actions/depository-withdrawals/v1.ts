@@ -96,14 +96,6 @@ export default {
       }
     }
 
-    logger.info(
-      "tracking",
-      JSON.stringify({
-        msg: "Executing `depository-withdrawal` action",
-        action: message,
-      })
-    );
-
     const actionExecutor = new ActionExecutorService();
     await actionExecutor.executeDepositoryWithdrawal(message);
 
