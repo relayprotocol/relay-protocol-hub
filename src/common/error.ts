@@ -1,6 +1,7 @@
 type ErrorCode =
   | "INVALID_SIGNATURE"
   | "INSUFFICIENT_SIGNATURES"
+  | "UNAUTHORIZED_ORACLE"
   | "UNSUPPORTED_SIGNATURE";
 
 // Returns an error which can safely be exposed externally

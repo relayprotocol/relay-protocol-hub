@@ -11,6 +11,7 @@ import {
 import { getSdkChainsConfig } from "../../../common/chains";
 import { externalError } from "../../../common/error";
 import { logger } from "../../../common/logger";
+import { config } from "../../../config";
 import { ActionExecutorService } from "../../../services/action-executor";
 
 const Schema = {
@@ -159,9 +160,11 @@ export default {
       await getSdkChainsConfig()
     );
 
-    // TODO: Keep track of allowed oracles for every chain
-
     for (const { oracle, signature } of signatures) {
+      if (config.allowedOracles && !config.allowedOracles.includes(oracle)) {
+        throw externalError("Oracle not allowed", "UNAUTHORIZED_ORACLE");
+      }
+
       const isSignatureValid = await verifyMessage({
         address: oracle as Address,
         message: {

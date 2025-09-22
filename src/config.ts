@@ -13,6 +13,9 @@ export const config = {
         })
       )
     : undefined,
+  allowedOracles: process.env.ALLOWED_ORACLES
+    ? process.env.ALLOWED_ORACLES.split(";")
+    : undefined,
 
   onchainAllocator: process.env.ONCHAIN_ALLOCATOR,
 
