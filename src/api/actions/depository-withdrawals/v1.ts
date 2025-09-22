@@ -1,7 +1,7 @@
 import { Type } from "@fastify/type-provider-typebox";
 import { getDepositoryWithdrawalMessageId } from "@reservoir0x/relay-protocol-sdk";
-import { Address, Hex, verifyMessage } from "viem";
 
+import { checkOracleSignatures } from "../utils";
 import {
   Endpoint,
   ErrorResponse,
@@ -9,9 +9,7 @@ import {
   FastifyRequestTypeBox,
 } from "../../utils";
 import { getSdkChainsConfig } from "../../../common/chains";
-import { externalError } from "../../../common/error";
 import { logger } from "../../../common/logger";
-import { config } from "../../../config";
 import { ActionExecutorService } from "../../../services/action-executor";
 
 const Schema = {
@@ -68,36 +66,12 @@ export default {
     reply: FastifyReplyTypeBox<typeof Schema>
   ) => {
     const message = req.body.message;
-
-    const signatures = message.signatures;
-    if (!signatures.length) {
-      throw externalError(
-        "At least one signature is required",
-        "INSUFFICIENT_SIGNATURES"
-      );
-    }
-
     const messageId = getDepositoryWithdrawalMessageId(
       message,
       await getSdkChainsConfig()
     );
 
-    for (const { oracle, signature } of signatures) {
-      if (config.allowedOracles && !config.allowedOracles.includes(oracle)) {
-        throw externalError("Oracle not allowed", "UNAUTHORIZED_ORACLE");
-      }
-
-      const isSignatureValid = await verifyMessage({
-        address: oracle as Address,
-        message: {
-          raw: messageId,
-        },
-        signature: signature as Hex,
-      });
-      if (!isSignatureValid) {
-        throw externalError("Invalid signature", "INVALID_SIGNATURE");
-      }
-    }
+    await checkOracleSignatures(messageId, message.signatures);
 
     const actionExecutor = new ActionExecutorService();
     await actionExecutor.executeDepositoryWithdrawal(message);
