@@ -336,7 +336,10 @@ export class RequestHandlerService {
           );
           const allocatorChange =
             totalAllocatorUtxosValue - BigInt(request.amount);
-          if (allocatorChange > 0n && allocatorChange < MIN_UTXO_VALUE) {
+          if (
+            allocatorChange < 0n ||
+            (allocatorChange > 0n && allocatorChange < MIN_UTXO_VALUE)
+          ) {
             throw externalError("Insufficient allocator UTXOs");
           }
 
@@ -349,7 +352,7 @@ export class RequestHandlerService {
             BigInt(request.amount) +
             totalRelayerUtxosValue -
             BigInt(additionalData.transactionFee);
-          if (relayerChange < 0) {
+          if (relayerChange < 0n) {
             throw externalError("Insufficient relayer UTXOs");
           }
 
