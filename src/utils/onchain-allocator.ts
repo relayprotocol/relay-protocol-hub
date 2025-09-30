@@ -77,7 +77,7 @@ const getPayloadBuilder = async (address: string) => {
       client: walletClient,
       address: address as Address,
       abi: parseAbi([
-        `function hashesToSign(uint256 chainId, string depository, bytes unsignedPayload) view returns (bytes32[])`,
+        `function hashToSign(uint256 chainId, string depository, bytes unsignedPayload, uint8 index) view returns (bytes32)`,
       ]),
     }),
     publicClient,
@@ -102,7 +102,7 @@ export const getOnchainAllocator = async () => {
       address: config.onchainAllocator as Address,
       abi: parseAbi([
         `function submitWithdrawRequest(${PayloadParams} params) returns (bytes32)`,
-        `function signWithdrawPayload(${PayloadParams} params, bytes signature, ${GasSettings} gasSettings)`,
+        `function signWithdrawPayloadHash(${PayloadParams} params, bytes signature, ${GasSettings} gasSettings, uint8 index)`,
         `function payloads(bytes32 payloadId) view returns (bytes unsignedPayload)`,
         `function payloadTimestamps(bytes32 payloadId) view returns (uint256 timestamp)`,
         `function payloadBuilders(uint256 chainId, string depository) view returns (address)`,
@@ -247,15 +247,14 @@ export const getSignature = async (id: string) => {
 
   const payloadBuilder = await getPayloadBuilder(payloadBuilderAddress);
 
-  const hashesToSign = await payloadBuilder.contract.read.hashesToSign([
-    BigInt(chain.metadata.allocatorChainId),
-    chain.depository,
-    withdrawalRequest.encodedData as Hex,
-  ]);
-
   switch (chain.vmType) {
     case "ethereum-vm": {
-      const hashToSign = hashesToSign[0];
+      const hashToSign = await payloadBuilder.contract.read.hashToSign([
+        BigInt(chain.metadata.allocatorChainId),
+        chain.depository,
+        withdrawalRequest.encodedData as Hex,
+        0,
+      ]);
 
       const signature = await onchainAllocator.contract.read.signedPayloads([
         withdrawalRequest.payloadId as Hex,
@@ -269,7 +268,12 @@ export const getSignature = async (id: string) => {
     }
 
     case "solana-vm": {
-      const hashToSign = hashesToSign[0];
+      const hashToSign = await payloadBuilder.contract.read.hashToSign([
+        BigInt(chain.metadata.allocatorChainId),
+        chain.depository,
+        withdrawalRequest.encodedData as Hex,
+        0,
+      ]);
 
       const signature = await onchainAllocator.contract.read.signedPayloads([
         withdrawalRequest.payloadId as Hex,
