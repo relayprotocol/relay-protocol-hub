@@ -683,6 +683,7 @@ export class RequestHandlerService {
           functionName: "signWithdrawPayloadHash",
         }),
         gas: 2000000n,
+        chain: publicClient.chain,
       });
     }
   }
