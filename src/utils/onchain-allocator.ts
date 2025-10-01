@@ -77,7 +77,7 @@ const getPayloadBuilder = async (address: string) => {
       client: walletClient,
       address: address as Address,
       abi: parseAbi([
-        `function hashToSign(uint256 chainId, string depository, bytes unsignedPayload, uint8 index) view returns (bytes32)`,
+        `function hashToSign(uint256 chainId, string depository, bytes unsignedPayload, uint32 index) view returns (bytes32)`,
       ]),
     }),
     publicClient,
