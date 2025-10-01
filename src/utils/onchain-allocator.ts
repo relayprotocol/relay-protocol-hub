@@ -102,7 +102,7 @@ export const getOnchainAllocator = async () => {
       address: config.onchainAllocator as Address,
       abi: parseAbi([
         `function submitWithdrawRequest(${PayloadParams} params) returns (bytes32)`,
-        `function signWithdrawPayloadHash(${PayloadParams} params, bytes signature, ${GasSettings} gasSettings, uint8 index)`,
+        `function signWithdrawPayloadHash(${PayloadParams} params, bytes signature, ${GasSettings} gasSettings, uint32 index)`,
         `function payloads(bytes32 payloadId) view returns (bytes unsignedPayload)`,
         `function payloadTimestamps(bytes32 payloadId) view returns (uint256 timestamp)`,
         `function payloadBuilders(uint256 chainId, string depository) view returns (address)`,
