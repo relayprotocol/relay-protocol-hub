@@ -624,8 +624,7 @@ export class RequestHandlerService {
       throw externalError("Withdrawal request not using 'onchain' mode");
     }
 
-    const { contract, publicClient, walletClient } =
-      await getOnchainAllocator();
+    const { contract, publicClient } = await getOnchainAllocator();
 
     const payloadTimestamp = await contract.read.payloadTimestamps([
       withdrawalRequest.payloadId as Hex,
@@ -666,25 +665,16 @@ export class RequestHandlerService {
     const signature = await getSignature(withdrawalRequest.id);
     if (!signature) {
       // TODO: Once we integrate Bitcoin we might need to make multiple calls
-      await walletClient.sendTransaction({
-        to: contract.address,
-        data: encodeFunctionData({
-          abi: contract.abi,
-          args: [
-            withdrawalRequest.payloadParams as any,
-            "0x",
-            // These are both the default recommended values
-            {
-              signGas: 30_000_000_000_000n,
-              callbackGas: 20_000_000_000_000n,
-            },
-            0,
-          ],
-          functionName: "signWithdrawPayloadHash",
-        }),
-        gas: 2000000n,
-        chain: publicClient.chain,
-      });
+      await contract.write.signWithdrawPayloadHash([
+        withdrawalRequest.payloadParams as any,
+        "0x",
+        // These are both the default recommended values
+        {
+          signGas: 30_000_000_000_000n,
+          callbackGas: 20_000_000_000_000n,
+        },
+        0,
+      ]);
     }
   }
 
