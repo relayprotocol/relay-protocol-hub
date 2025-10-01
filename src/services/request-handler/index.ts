@@ -676,7 +676,7 @@ export class RequestHandlerService {
           },
           0,
         ],
-        { gas: 3000000n, ...(await publicClient.estimateFeesPerGas()) }
+        { gas: 3000000n }
       );
     }
   }
