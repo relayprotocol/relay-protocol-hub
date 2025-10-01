@@ -665,16 +665,19 @@ export class RequestHandlerService {
     const signature = await getSignature(withdrawalRequest.id);
     if (!signature) {
       // TODO: Once we integrate Bitcoin we might need to make multiple calls
-      await contract.write.signWithdrawPayloadHash([
-        withdrawalRequest.payloadParams as any,
-        "0x",
-        // These are both the default recommended values
-        {
-          signGas: 30_000_000_000_000n,
-          callbackGas: 20_000_000_000_000n,
-        },
-        0,
-      ]);
+      await contract.write.signWithdrawPayloadHash(
+        [
+          withdrawalRequest.payloadParams as any,
+          "0x",
+          // These are both the default recommended values
+          {
+            signGas: 30_000_000_000_000n,
+            callbackGas: 20_000_000_000_000n,
+          },
+          0,
+        ],
+        { gas: 3000000n }
+      );
     }
   }
 
