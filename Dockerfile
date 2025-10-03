@@ -8,5 +8,7 @@ ADD . /service
 
 RUN yarn install
 RUN yarn build
+COPY entrypoint.sh /entrypoint.sh
 
+ENTRYPOINT ["/entrypoint.sh"]
 CMD yarn start
