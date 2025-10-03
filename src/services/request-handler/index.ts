@@ -105,6 +105,16 @@ export class RequestHandlerService {
             nonce: `0x${randomBytes(32).toString("hex")}`,
           };
 
+          if (request.chainId === "sonic") {
+            logger.info(
+              "debug",
+              JSON.stringify({
+                msg: "Debug payload params",
+                payloadParams,
+              })
+            );
+          }
+
           // This is needed before being able to submit withdraw requests
           await handleOneTimeApproval();
 
