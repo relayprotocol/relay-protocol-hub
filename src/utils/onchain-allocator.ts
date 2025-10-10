@@ -169,8 +169,12 @@ const extractEddsaSignature = (rawNearSignature: string): string => {
   return `0x${Buffer.from(signature).toString("hex")}`.toLowerCase();
 };
 
+let _getSignerCache = new Map<string, string>();
 export const getSigner = async (chainId: string) => {
   const vmType = await getChain(chainId).then((c) => c.vmType);
+  if (_getSignerCache.has(vmType)) {
+    return _getSignerCache.get(vmType)!;
+  }
 
   let domainId: number | undefined;
   switch (vmType) {
@@ -207,19 +211,28 @@ export const getSigner = async (chainId: string) => {
   const [, publicKey] = result!.toString().split(":");
   switch (vmType) {
     case "ethereum-vm": {
-      return publicKeyToAddress(
-        `0x04${Buffer.from(bs58.decode(publicKey)).toString("hex")}`
-      ).toLowerCase();
+      _getSignerCache.set(
+        vmType,
+        publicKeyToAddress(
+          `0x04${Buffer.from(bs58.decode(publicKey)).toString("hex")}`
+        ).toLowerCase()
+      );
+
+      break;
     }
 
     case "solana-vm": {
-      return publicKey;
+      _getSignerCache.set(vmType, publicKey);
+
+      break;
     }
 
     default: {
       throw externalError("Vm type not implemented");
     }
   }
+
+  return _getSignerCache.get(vmType)!;
 };
 
 export const getSignature = async (id: string) => {
