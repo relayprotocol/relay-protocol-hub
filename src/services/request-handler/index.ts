@@ -37,6 +37,7 @@ import {
   getSignature,
   getSigner,
   handleOneTimeApproval,
+  logBalance,
 } from "../../utils/onchain-allocator";
 import { config } from "../../config";
 import {
@@ -107,6 +108,8 @@ export class RequestHandlerService {
 
           // This is needed before being able to submit withdraw requests
           await handleOneTimeApproval();
+          // Log the balance of the onchain-allocator sender wallet for tracking purposes
+          await logBalance();
 
           const txHash = await contract.write.submitWithdrawRequest([
             payloadParams as any,
@@ -252,6 +255,8 @@ export class RequestHandlerService {
 
           // This is needed before being able to submit withdraw requests
           await handleOneTimeApproval();
+          // Log the balance of the onchain-allocator sender wallet for tracking purposes
+          await logBalance();
 
           const txHash = await contract.write.submitWithdrawRequest([
             payloadParams as any,
