@@ -12,12 +12,14 @@ import {
   parseAbi,
   zeroAddress,
   maxUint256,
+  formatUnits,
 } from "viem";
 import { privateKeyToAccount, publicKeyToAddress } from "viem/accounts";
 
 import { KmsSigner } from "./viem-kms-signer";
 import { getChain } from "../common/chains";
 import { externalError } from "../common/error";
+import { logger } from "../common/logger";
 import { config } from "../config";
 import { getWithdrawalRequest } from "../models/withdrawal-requests";
 
@@ -112,6 +114,21 @@ export const getOnchainAllocator = async () => {
     publicClient,
     walletClient,
   };
+};
+
+export const logBalance = async () => {
+  const { walletClient, publicClient } = await getPublicAndWalletClients();
+
+  const balance = await publicClient.getBalance({
+    address: walletClient.account.address,
+  });
+  logger.info(
+    "balance",
+    JSON.stringify({
+      msg: "Balance of onchain-allocator sender wallet",
+      balance: Number(formatUnits(balance, 18)),
+    })
+  );
 };
 
 let _allowanceCache: bigint | undefined;
