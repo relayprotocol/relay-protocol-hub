@@ -3,7 +3,9 @@ type ErrorCode =
   | "INVALID_SIGNATURE"
   | "INSUFFICIENT_SIGNATURES"
   | "UNAUTHORIZED_ORACLE"
-  | "UNSUPPORTED_SIGNATURE";
+  | "UNSUPPORTED_SIGNATURE"
+  | "NONCE_ALREADY_EXISTS"
+  | "DEPOSIT_BINDING_NOT_FOUND";
 
 // Returns an error which can safely be exposed externally
 export const externalError = (
