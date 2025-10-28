@@ -19,6 +19,7 @@ import {
   http,
   parseAbi,
   zeroAddress,
+  encodeAbiParameters,
 } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import TronWeb from "tronweb";
@@ -455,6 +456,63 @@ export class RequestHandlerService {
           signature = "0x";
 
           break;
+        }
+      }
+
+      case "hyperliquid-vm": {
+        if (request.mode === "onchain") {
+          const { contract, publicClient, walletClient } =
+            await getOnchainAllocator();
+
+          const currentTime = BigInt(Date.now()) // Current timestamp in milliseconds
+          const data = encodeAbiParameters([{ type: "uint64" }], [currentTime]); 
+          const signatureChainId = '421614';
+
+          payloadParams = {
+            chainId: signatureChainId,
+            depository: zeroAddress,
+            currency: request.currency.toLowerCase(),
+            amount: request.amount,
+            spender: walletClient.account.address.toLowerCase(),
+            receiver: request.recipient.toLowerCase(),
+            data,
+            nonce: `0x${randomBytes(32).toString("hex")}`,
+          };
+
+          // This is needed before being able to submit withdraw requests
+          await handleOneTimeApproval();
+          // Log the balance of the onchain-allocator sender wallet for tracking purposes
+          await logBalance();
+
+          const txHash = await contract.write.submitWithdrawRequest([
+            payloadParams as any,
+          ]);
+          payloadId = await publicClient
+            .waitForTransactionReceipt({ hash: txHash })
+            .then(
+              (receipt) =>
+                receipt.logs.find(
+                  (l) =>
+                    l.address.toLowerCase() ===
+                      contract.address.toLowerCase() &&
+                    // We need the "PayloadBuild" event
+                    l.topics[0] ===
+                      "0x007d52d35e656ce646ba5807d55724e47d53e72435a328e89eb6ce56b0e95d6a"
+                )?.topics[1]
+            );
+          if (!payloadId) {
+            throw externalError("Could not submit withdrawal request");
+          }
+
+          encodedData = await contract.read.payloads([payloadId as Hex]);
+
+          id = getDecodedWithdrawalId(
+            decodeWithdrawal(encodedData, chain.vmType)
+          );
+
+          break;
+        } else {
+          throw externalError("Offchain mode not implemented for hyperliquid-vm");
         }
       }
 
