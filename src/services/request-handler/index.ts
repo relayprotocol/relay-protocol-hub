@@ -466,7 +466,7 @@ export class RequestHandlerService {
 
           const currentTime = BigInt(Date.now()) // Current timestamp in milliseconds
           const data = encodeAbiParameters([{ type: "uint64" }], [currentTime]); 
-          const signatureChainId = '421614';
+          const signatureChainId = "421614";
 
           payloadParams = {
             chainId: signatureChainId,
