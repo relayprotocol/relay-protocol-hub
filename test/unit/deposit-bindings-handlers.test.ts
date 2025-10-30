@@ -57,12 +57,6 @@ describe("deposit-bindings API handlers", () => {
     );
     expect(recoveredAddress.toLowerCase()).toBe(depositor.toLowerCase());
 
-    console.log("Test data:");
-    console.log("- Depositor:", depositor);
-    console.log("- Deposit ID:", depositId);
-    console.log("- Nonce:", nonce);
-    console.log("- Signature:", signature);
-
     // Create mock request and reply
     const req = createMockRequest({
       depositor,
@@ -84,7 +78,6 @@ describe("deposit-bindings API handlers", () => {
       bindingSignature: signature,
     });
 
-    console.log("✅ Save handler executed successfully");
   });
 
   it("should handle GET /queries/deposits/by-nonce/:nonce/:depositor", async () => {
@@ -122,7 +115,6 @@ describe("deposit-bindings API handlers", () => {
       bindingSignature: signature,
     });
 
-    console.log("✅ Query handler executed successfully");
   });
 
   it("should handle error case - binding not found", async () => {
@@ -140,7 +132,6 @@ describe("deposit-bindings API handlers", () => {
       queryBindingEndpoint.handler(req as any, reply as any)
     ).rejects.toThrow("Deposit binding not found");
 
-    console.log("✅ Error handling works correctly");
   });
 
   it("should handle error case - duplicate nonce", async () => {
@@ -163,9 +154,9 @@ describe("deposit-bindings API handlers", () => {
     // Try to create another binding with same nonce/depositor
     const req = createMockRequest({
       depositor,
-      depositId: randomHex(32), // Different deposit ID
+      depositId,
       nonce, // Same nonce
-      signature: randomHex(64), // Different signature
+      signature,
     });
     const reply = createMockReply();
 
@@ -174,23 +165,15 @@ describe("deposit-bindings API handlers", () => {
       saveBindingEndpoint.handler(req as any, reply as any)
     ).rejects.toThrow("Nonce already exists");
 
-    console.log("✅ Duplicate nonce error handling works correctly");
   });
 
   it("should handle complete flow - save then query using EIP-712 helpers", async () => {
-    console.log("\n=== Complete Flow Test with EIP-712 Helpers ===");
-    
     // Generate test data
     const privateKey = generatePrivateKey();
     const account = privateKeyToAccount(privateKey);
     const depositor = account.address;
     const depositId = randomHex(32);
     const nonce = generateNonce();
-
-    console.log("Generated data:");
-    console.log("- Depositor:", depositor);
-    console.log("- Deposit ID:", depositId);
-    console.log("- Nonce:", nonce);
 
     // Create signature using helper functions
     const { signature, typedData } = await createSignature(depositor, depositId, nonce, privateKey);
@@ -202,7 +185,6 @@ describe("deposit-bindings API handlers", () => {
       typedData.message
     );
     expect(recoveredAddress.toLowerCase()).toBe(depositor.toLowerCase());
-    console.log("✅ Signature verification passed");
 
     // Step 1: Save via handler
     const saveReq = createMockRequest({
@@ -223,8 +205,6 @@ describe("deposit-bindings API handlers", () => {
       bindingSignature: signature,
     });
 
-    console.log("✅ Save handler completed");
-
     // Step 2: Query via handler
     const queryReq = createMockRequest({}, { nonce, depositor });
     const queryReply = createMockReply();
@@ -238,8 +218,5 @@ describe("deposit-bindings API handlers", () => {
       depositor,
       bindingSignature: signature,
     });
-
-    console.log("✅ Query handler completed");
-    console.log("✅ Complete flow test passed with EIP-712 helpers");
   });
 });

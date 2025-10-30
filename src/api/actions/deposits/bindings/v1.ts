@@ -10,7 +10,7 @@ import { logger } from "../../../../common/logger";
 import { db } from "../../../../common/db";
 import { externalError } from "../../../../common/error";
 import { DEPOSIT_BINDING_DOMAIN, DEPOSIT_BINDING_TYPES } from "../../../../common/deposit-binding-eip712";
-import { saveDepositBinding, getDepositBindingByNonce } from "../../../../models/deposit-bindings";
+import { saveDepositBinding } from "../../../../models/deposit-bindings";
 
 const Schema = {
   body: Type.Object({
@@ -48,14 +48,6 @@ export default {
     reply: FastifyReplyTypeBox<typeof Schema>
   ) => {
     const { depositor, depositId, nonce, signature } = req.body;
-    // Check if nonce already exists for this depositor
-    const existingBinding = await getDepositBindingByNonce(nonce, depositor);
-    if (existingBinding) {
-      throw externalError(
-        "Nonce already exists",
-        "NONCE_ALREADY_EXISTS"
-      );
-    }
 
     // Verify EIP-712 signature
     const message = {
@@ -81,33 +73,52 @@ export default {
     }
 
     // Save the deposit binding
-    const savedBinding = await db.tx(async (tx) => {
-      return await saveDepositBinding(
-        {
+    try {
+      const savedBinding = await db.tx(async (tx) => {
+        return saveDepositBinding(
+          {
+            nonce,
+            depositId,
+            depositor,
+            signature,
+          },
+          { tx }
+        );
+      });
+  
+      logger.info(
+        "tracking",
+        JSON.stringify({
+          msg: "Created deposit binding",
           nonce,
           depositId,
           depositor,
-          signature,
-        },
-        { tx }
+        })
       );
-    });
+  
+      return reply.status(200).send({
+        nonce: savedBinding.nonce,
+        depositId: savedBinding.depositId,
+        depositor: savedBinding.depositor,
+        bindingSignature: savedBinding.signature,
+      });
+    } catch (error) {
+      // Handle duplicate key value violates unique constraint error
+      if (error.code === "23505") {
+        throw externalError("Nonce already exists", "NONCE_ALREADY_EXISTS");
+      }
 
-    logger.info(
-      "tracking",
-      JSON.stringify({
-        msg: "Created deposit binding",
-        nonce,
-        depositId,
-        depositor,
-      })
-    );
-
-    return reply.status(200).send({
-      nonce: savedBinding.nonce,
-      depositId: savedBinding.depositId,
-      depositor: savedBinding.depositor,
-      bindingSignature: savedBinding.signature,
-    });
+      logger.error(
+        "tracking",
+        JSON.stringify({
+          msg: "Failed to create deposit binding",
+          nonce,
+          depositId,
+          depositor,
+          error,
+        })
+      );
+      throw error;
+    }
   },
 } as Endpoint;
