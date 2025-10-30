@@ -129,7 +129,7 @@ export class RequestHandlerService {
                 )?.topics[1]
             );
           if (!payloadId) {
-            throw externalError("Could not submit withdrawal request");
+            throw externalError("Withdrawal request submission failed to generate Payload");
           }
 
           encodedData = await contract.read.payloads([payloadId as Hex]);
@@ -276,7 +276,7 @@ export class RequestHandlerService {
                 )?.topics[1]
             );
           if (!payloadId) {
-            throw externalError("Could not submit withdrawal request");
+            throw externalError("Withdrawal request submission failed to generate Payload");
           }
 
           encodedData = await contract.read.payloads([payloadId as Hex]);
@@ -465,6 +465,7 @@ export class RequestHandlerService {
             await getOnchainAllocator();
 
           const currentTime = BigInt(Date.now()) // Current timestamp in milliseconds
+          // TODO: Add support for useSendAsset, need sourceDex and destinationDex parameters
           const data = encodeAbiParameters([{ type: "uint64" }], [currentTime]); 
           const signatureChainId = "421614";
 
@@ -501,7 +502,7 @@ export class RequestHandlerService {
                 )?.topics[1]
             );
           if (!payloadId) {
-            throw externalError("Could not submit withdrawal request");
+            throw externalError("Withdrawal request submission failed to generate Payload");
           }
 
           encodedData = await contract.read.payloads([payloadId as Hex]);
