@@ -18,6 +18,7 @@ import TronWeb from "tronweb";
 import { db } from "./db";
 import { externalError } from "./error";
 import { config } from "../config";
+import * as onchainAllocator from "../utils/onchain-allocator";
 
 // Global chain metadata
 export type ChainMetadata = {
@@ -78,7 +79,11 @@ export const getChain = async (chainId: string) => {
   return chains[chainId];
 };
 
-export const getAllocatorForChain = async (chainId: string) => {
+export const getOnchainAllocatorForChain = async (chainId: string) => {
+  return onchainAllocator.getSigner(chainId);
+};
+
+export const getOffchainAllocatorForChain = async (chainId: string) => {
   const ecdsaPk = config.ecdsaPrivateKey;
   const ed25519Pk = config.ed25519PrivateKey;
 
