@@ -78,7 +78,7 @@ export default {
                 ? await getOffchainAllocatorForChain(id)
                 : await getOnchainAllocatorForChain(id)
               : undefined,
-            allocatorMode,
+            allocatorMode: chains[id].depository ? allocatorMode : undefined,
           };
         })
       ),
