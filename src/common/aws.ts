@@ -1,5 +1,5 @@
-import { Signer } from '@aws-sdk/rds-signer';
-import { fromNodeProviderChain } from '@aws-sdk/credential-providers';
+import { Signer } from "@aws-sdk/rds-signer";
+import { fromNodeProviderChain } from "@aws-sdk/credential-providers";
 
 interface GetIamTokenParams {
   host: string;
@@ -8,19 +8,19 @@ interface GetIamTokenParams {
   region?: string;
 }
 
-export const getIamToken = async({
+export const getIamToken = async ({
   host,
   port = 5432,
   user,
-  region = 'us-east-1',
+  region = "us-east-1",
 }: GetIamTokenParams) => {
   const signer = new Signer({
     hostname: host,
     port,
     username: user,
     region,
-    credentials: fromNodeProviderChain()
+    credentials: fromNodeProviderChain(),
   });
 
   return signer.getAuthToken();
-}
+};

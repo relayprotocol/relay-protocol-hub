@@ -6,8 +6,11 @@ import {
   FastifyReplyTypeBox,
   FastifyRequestTypeBox,
 } from "../../utils";
-import { getAllocatorForChain } from "../../../common/chains";
-import { getSignature, getSigner } from "../../../utils/onchain-allocator";
+import {
+  getOffchainAllocatorForChain,
+  getOnchainAllocatorForChain,
+} from "../../../common/chains";
+import { getSignature } from "../../../utils/onchain-allocator";
 import { getPendingWithdrawalRequestsByOwner } from "../../../models/withdrawal-requests";
 
 const Schema = {
@@ -67,11 +70,11 @@ export default {
           let signature: string | undefined;
           if (w.payloadId) {
             // Signed using "onchain" mode, signature might be available onchain
-            signer = await getSigner(w.chainId);
+            signer = await getOnchainAllocatorForChain(w.chainId);
             signature = await getSignature(w.id);
           } else {
             // Signed using "offchain" mode, signature already available
-            signer = await getAllocatorForChain(w.chainId);
+            signer = await getOffchainAllocatorForChain(w.chainId);
             signature = w.signature;
           }
 

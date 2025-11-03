@@ -26,7 +26,8 @@ import TronWeb from "tronweb";
 import {
   ChainMetadataEthereumVm,
   ChainMetadataTronVm,
-  getAllocatorForChain,
+  getOffchainAllocatorForChain,
+  getOnchainAllocatorForChain,
   getChain,
 } from "../../common/chains";
 import { db } from "../../common/db";
@@ -35,7 +36,6 @@ import { logger } from "../../common/logger";
 import {
   getOnchainAllocator,
   getSignature,
-  getSigner,
   handleOneTimeApproval,
   logBalance,
 } from "../../utils/onchain-allocator";
@@ -364,7 +364,7 @@ export class RequestHandlerService {
           // Start constructing the PSBT
           const psbt = new bitcoin.Psbt({ network: bitcoin.networks.bitcoin });
 
-          const allocator = await getAllocatorForChain(request.chainId);
+          const allocator = await getOffchainAllocatorForChain(request.chainId);
 
           // Add allocator input UTXOs
           for (const utxo of additionalData.allocatorUtxos) {
@@ -615,8 +615,8 @@ export class RequestHandlerService {
       signature,
       signer:
         request.mode === "onchain"
-          ? await getSigner(request.chainId)
-          : await getAllocatorForChain(request.chainId),
+          ? await getOnchainAllocatorForChain(request.chainId)
+          : await getOffchainAllocatorForChain(request.chainId),
     };
   }
 
