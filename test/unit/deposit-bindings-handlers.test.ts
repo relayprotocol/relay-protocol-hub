@@ -45,6 +45,7 @@ describe("deposit-bindings API handlers", () => {
     const depositor = account.address;
     const depositId = randomHex(32);
     const nonce = generateNonce();
+    const chainId = "42161";
 
     // Create signature using helper functions
     const { signature, typedData } = await createSignature(depositor, depositId, nonce, privateKey);
@@ -63,6 +64,7 @@ describe("deposit-bindings API handlers", () => {
       depositId,
       nonce,
       signature,
+      chainId,
     });
     const reply = createMockReply();
 
@@ -141,6 +143,7 @@ describe("deposit-bindings API handlers", () => {
     const depositor = account.address;
     const depositId = randomHex(32);
     const nonce = generateNonce();
+    const chainId = "42161";
 
     // Create and save first binding
     const { signature } = await createSignature(depositor, depositId, nonce, privateKey);
@@ -157,6 +160,7 @@ describe("deposit-bindings API handlers", () => {
       depositId,
       nonce, // Same nonce
       signature,
+      chainId,
     });
     const reply = createMockReply();
 
@@ -174,6 +178,7 @@ describe("deposit-bindings API handlers", () => {
     const depositor = account.address;
     const depositId = randomHex(32);
     const nonce = generateNonce();
+    const chainId = "42161";
 
     // Create signature using helper functions
     const { signature, typedData } = await createSignature(depositor, depositId, nonce, privateKey);
@@ -192,6 +197,7 @@ describe("deposit-bindings API handlers", () => {
       depositId,
       nonce,
       signature,
+      chainId,
     });
     const saveReply = createMockReply();
 
