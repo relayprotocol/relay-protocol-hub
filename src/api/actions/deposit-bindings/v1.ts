@@ -28,6 +28,9 @@ const Schema = {
     chainId: Type.String({
       description: "The chain ID",
     }),
+    signatureChainId: Type.String({
+      description: "The chain ID of the signature",
+    }),
   }),
   response: {
     200: Type.Object({
@@ -49,7 +52,7 @@ export default {
     req: FastifyRequestTypeBox<typeof Schema>,
     reply: FastifyReplyTypeBox<typeof Schema>
   ) => {
-    const { depositor, depositId, nonce, signature, chainId } = req.body;
+    const { depositor, depositId, nonce, signature, chainId, signatureChainId } = req.body;
 
     // Verify EIP-712 signature
     const message = {
@@ -60,7 +63,7 @@ export default {
 
     const isValid = await verifyTypedData({
       address: depositor as `0x${string}`,
-      domain: DEPOSIT_BINDING_DOMAIN(Number(chainId)),
+      domain: DEPOSIT_BINDING_DOMAIN(Number(signatureChainId)),
       types: DEPOSIT_BINDING_TYPES,
       primaryType: "DepositBinding",
       message,
