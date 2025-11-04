@@ -65,6 +65,7 @@ describe("deposit-bindings API handlers", () => {
       nonce,
       signature,
       chainId,
+      signatureChainId: chainId,
     });
     const reply = createMockReply();
 
@@ -129,7 +130,8 @@ describe("deposit-bindings API handlers", () => {
     const req = createMockRequest({}, { 
       nonce: nonExistentNonce, 
       depositor: nonExistentWallet,
-      chainId
+      chainId,
+      signatureChainId: chainId,
     });
     const reply = createMockReply();
 
@@ -166,6 +168,7 @@ describe("deposit-bindings API handlers", () => {
       nonce, // Same nonce
       signature,
       chainId,
+      signatureChainId: chainId,
     });
     const reply = createMockReply();
 
@@ -203,6 +206,7 @@ describe("deposit-bindings API handlers", () => {
       nonce,
       signature,
       chainId,
+      signatureChainId: chainId,
     });
     const saveReply = createMockReply();
 

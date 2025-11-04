@@ -97,6 +97,7 @@ export default {
           depositId,
           depositor,
           chainId,
+          signatureChainId,
         })
       );
   
@@ -120,6 +121,7 @@ export default {
           depositId,
           depositor,
           chainId,
+          signatureChainId,
           error,
         })
       );
