@@ -5,9 +5,9 @@ import {
   ErrorResponse,
   FastifyReplyTypeBox,
   FastifyRequestTypeBox,
-} from "../../utils";
-import { externalError } from "../../../common/error";
-import { getRequestIdMappingByNonce } from "../../../models/request-mappings";
+} from "../../../utils";
+import { externalError } from "../../../../common/error";
+import { getRequestIdMappingByNonce } from "../../../../models/request-mappings";
 
 const Schema = {
   params: Type.Object({
@@ -34,7 +34,7 @@ const Schema = {
 
 export default {
   method: "GET",
-  url: "/queries/deposits/by-nonce/:nonce/:depositor/:chainId",
+  url: "/queries/deposit-bindings/by-nonce/:nonce/:depositor/:chainId/v1",
   schema: Schema,
   handler: async (
     req: FastifyRequestTypeBox<typeof Schema>,

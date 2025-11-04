@@ -1,8 +1,8 @@
 import { describe, expect, it, jest } from "@jest/globals";
 import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
 
-import saveBindingEndpoint from "../../src/api/actions/deposits/bindings/v1";
-import queryBindingEndpoint from "../../src/api/queries/deposits/by-nonce";
+import saveBindingEndpoint from "../../src/api/actions/deposit-bindings/v1";
+import queryBindingEndpoint from "../../src/api/queries/deposit-bindings/by-nonce/v1";
 import { saveRequestIdMapping } from "../../src/models/request-mappings";
 import {
   createDepositBindingTypedData,
@@ -38,7 +38,7 @@ const createMockRequest = (body: any = {}, params: any = {}) => ({
 });
 
 describe("deposit-bindings API handlers", () => {
-  it("should handle POST /actions/deposits/bindings/v1 with valid signature", async () => {
+  it("should handle POST /actions/deposit-bindings/v1 with valid signature", async () => {
     // Generate test data
     const privateKey = generatePrivateKey();
     const account = privateKeyToAccount(privateKey);
@@ -82,7 +82,7 @@ describe("deposit-bindings API handlers", () => {
 
   });
 
-  it("should handle GET /queries/deposits/by-nonce/:nonce/:depositor/:chainId", async () => {
+  it("should handle GET /queries/deposit-bindings/by-nonce/:nonce/:depositor/:chainId/v1", async () => {
     // Generate test data
     const privateKey = generatePrivateKey();
     const account = privateKeyToAccount(privateKey);

@@ -5,11 +5,11 @@ import {
   ErrorResponse,
   FastifyReplyTypeBox,
   FastifyRequestTypeBox,
-} from "../../../utils";
-import { logger } from "../../../../common/logger";
-import { externalError } from "../../../../common/error";
-import { DEPOSIT_BINDING_DOMAIN, DEPOSIT_BINDING_TYPES } from "../../../../common/deposit-binding-eip712";
-import { saveRequestIdMapping } from "../../../../models/request-mappings";
+} from "../../utils";
+import { logger } from "../../../common/logger";
+import { externalError } from "../../../common/error";
+import { DEPOSIT_BINDING_DOMAIN, DEPOSIT_BINDING_TYPES } from "../../../common/deposit-binding-eip712";
+import { saveRequestIdMapping } from "../../../models/request-mappings";
 
 const Schema = {
   body: Type.Object({
@@ -43,7 +43,7 @@ const Schema = {
 
 export default {
   method: "POST",
-  url: "/actions/deposits/bindings/v1",
+  url: "/actions/deposit-bindings/v1",
   schema: Schema,
   handler: async (
     req: FastifyRequestTypeBox<typeof Schema>,
