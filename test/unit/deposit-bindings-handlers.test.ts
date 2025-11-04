@@ -3,7 +3,7 @@ import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
 
 import saveBindingEndpoint from "../../src/api/actions/deposits/bindings/v1";
 import queryBindingEndpoint from "../../src/api/queries/deposits/by-nonce";
-import { saveDepositBinding } from "../../src/models/deposit-bindings";
+import { saveRequestIdMapping } from "../../src/models/request-mappings";
 import {
   createDepositBindingTypedData,
   verifyDepositBindingSignature,
@@ -42,13 +42,13 @@ describe("deposit-bindings API handlers", () => {
     // Generate test data
     const privateKey = generatePrivateKey();
     const account = privateKeyToAccount(privateKey);
-    const depositor = account.address;
-    const depositId = randomHex(32);
+    const wallet = account.address;
+    const requestId = randomHex(32);
     const nonce = generateNonce();
     const chainId = "42161";
 
     // Create signature using helper functions
-    const { signature, typedData } = await createSignature(depositor, depositId, nonce, privateKey);
+    const { signature, typedData } = await createSignature(wallet, requestId, nonce, privateKey);
 
     // Verify signature using existing helper
     const recoveredAddress = await verifyDepositBindingSignature(
@@ -56,12 +56,12 @@ describe("deposit-bindings API handlers", () => {
       typedData.domain,
       typedData.message
     );
-    expect(recoveredAddress.toLowerCase()).toBe(depositor.toLowerCase());
+    expect(recoveredAddress.toLowerCase()).toBe(wallet.toLowerCase());
 
     // Create mock request and reply
     const req = createMockRequest({
-      depositor,
-      depositId,
+      depositor: wallet,
+      depositId: requestId,
       nonce,
       signature,
       chainId,
@@ -75,34 +75,36 @@ describe("deposit-bindings API handlers", () => {
     expect(reply.status).toHaveBeenCalledWith(200);
     expect(reply.send).toHaveBeenCalledWith({
       nonce,
-      depositId,
-      depositor,
+      depositId: requestId,
+      depositor: wallet,
       bindingSignature: signature,
     });
 
   });
 
-  it("should handle GET /queries/deposits/by-nonce/:nonce/:depositor", async () => {
+  it("should handle GET /queries/deposits/by-nonce/:nonce/:depositor/:chainId", async () => {
     // Generate test data
     const privateKey = generatePrivateKey();
     const account = privateKeyToAccount(privateKey);
-    const depositor = account.address;
-    const depositId = randomHex(32);
+    const wallet = account.address;
+    const requestId = randomHex(32);
     const nonce = generateNonce();
+    const chainId = "42161";
 
     // Create signature
-    const { signature } = await createSignature(depositor, depositId, nonce, privateKey);
+    const { signature } = await createSignature(wallet, requestId, nonce, privateKey);
 
     // Save to database first
-    await saveDepositBinding({
+    await saveRequestIdMapping({
+      chainId,
       nonce,
-      depositId,
-      depositor,
+      requestId,
+      wallet,
       signature,
     });
 
     // Create mock request and reply for query
-    const req = createMockRequest({}, { nonce, depositor });
+    const req = createMockRequest({}, { nonce, depositor: wallet, chainId });
     const reply = createMockReply();
 
     // Call the query handler
@@ -112,20 +114,22 @@ describe("deposit-bindings API handlers", () => {
     expect(reply.status).toHaveBeenCalledWith(200);
     expect(reply.send).toHaveBeenCalledWith({
       nonce,
-      depositId,
-      depositor,
+      depositId: requestId,
+      depositor: wallet,
       bindingSignature: signature,
     });
 
   });
 
-  it("should handle error case - binding not found", async () => {
+  it("should handle error case - mapping not found", async () => {
     const nonExistentNonce = "999999999";
-    const nonExistentDepositor = randomHex(20);
+    const nonExistentWallet = randomHex(20);
+    const chainId = "42161";
 
     const req = createMockRequest({}, { 
       nonce: nonExistentNonce, 
-      depositor: nonExistentDepositor 
+      depositor: nonExistentWallet,
+      chainId
     });
     const reply = createMockReply();
 
@@ -145,16 +149,17 @@ describe("deposit-bindings API handlers", () => {
     const nonce = generateNonce();
     const chainId = "42161";
 
-    // Create and save first binding
+    // Create and save first mapping
     const { signature } = await createSignature(depositor, depositId, nonce, privateKey);
-    await saveDepositBinding({
+    await saveRequestIdMapping({
+      chainId,
       nonce,
-      depositId,
-      depositor,
+      requestId: depositId,
+      wallet: depositor,
       signature,
     });
 
-    // Try to create another binding with same nonce/depositor
+    // Try to create another mapping with same depositor/nonce
     const req = createMockRequest({
       depositor,
       depositId,
@@ -212,7 +217,7 @@ describe("deposit-bindings API handlers", () => {
     });
 
     // Step 2: Query via handler
-    const queryReq = createMockRequest({}, { nonce, depositor });
+    const queryReq = createMockRequest({}, { nonce, depositor, chainId });
     const queryReply = createMockReply();
 
     await queryBindingEndpoint.handler(queryReq as any, queryReply as any);

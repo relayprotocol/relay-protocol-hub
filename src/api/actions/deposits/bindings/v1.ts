@@ -7,10 +7,9 @@ import {
   FastifyRequestTypeBox,
 } from "../../../utils";
 import { logger } from "../../../../common/logger";
-import { db } from "../../../../common/db";
 import { externalError } from "../../../../common/error";
 import { DEPOSIT_BINDING_DOMAIN, DEPOSIT_BINDING_TYPES } from "../../../../common/deposit-binding-eip712";
-import { saveDepositBinding } from "../../../../models/deposit-bindings";
+import { saveRequestIdMapping } from "../../../../models/request-mappings";
 
 const Schema = {
   body: Type.Object({
@@ -75,19 +74,17 @@ export default {
       );
     }
 
-    // Save the deposit binding
+    // Save the request ID mapping
     try {
-      const savedBinding = await db.tx(async (tx) => {
-        return saveDepositBinding(
-          {
-            nonce,
-            depositId,
-            depositor,
-            signature,
-          },
-          { tx }
-        );
-      });
+      const savedMapping = await saveRequestIdMapping(
+        {
+          chainId,
+          nonce,
+          requestId: depositId,
+          wallet: depositor,
+          signature,
+        },
+      );
   
       logger.info(
         "tracking",
@@ -96,14 +93,15 @@ export default {
           nonce,
           depositId,
           depositor,
+          chainId,
         })
       );
   
       return reply.status(200).send({
-        nonce: savedBinding.nonce,
-        depositId: savedBinding.depositId,
-        depositor: savedBinding.depositor,
-        bindingSignature: savedBinding.signature,
+        nonce: savedMapping.nonce,
+        depositId: savedMapping.requestId,
+        depositor: savedMapping.wallet,
+        bindingSignature: savedMapping.signature,
       });
     } catch (error) {
       // Handle duplicate key value violates unique constraint error
@@ -118,6 +116,7 @@ export default {
           nonce,
           depositId,
           depositor,
+          chainId,
           error,
         })
       );

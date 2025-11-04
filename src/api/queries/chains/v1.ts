@@ -6,7 +6,11 @@ import {
   FastifyReplyTypeBox,
   FastifyRequestTypeBox,
 } from "../../utils";
-import { getAllocatorForChain, getChains } from "../../../common/chains";
+import {
+  getChains,
+  getOffchainAllocatorForChain,
+  getOnchainAllocatorForChain,
+} from "../../../common/chains";
 
 const Schema = {
   response: {
@@ -34,6 +38,11 @@ const Schema = {
           allocator: Type.Optional(
             Type.String({ description: "The allocator address for the chain" })
           ),
+          allocatorMode: Type.Optional(
+            Type.Union([Type.Literal("offchain"), Type.Literal("onchain")], {
+              description: "The vm type of the chain",
+            })
+          ),
         }),
         {
           description: "A list of supported chains",
@@ -57,13 +66,19 @@ export default {
     return reply.status(200).send({
       chains: await Promise.all(
         Object.keys(chains).map(async (id) => {
+          const allocatorMode = chains[id].metadata.allocatorChainId
+            ? "onchain"
+            : "offchain";
           return {
             id,
             vmType: chains[id].vmType,
             depository: chains[id].depository,
             allocator: chains[id].depository
-              ? await getAllocatorForChain(id)
+              ? allocatorMode === "offchain"
+                ? await getOffchainAllocatorForChain(id)
+                : await getOnchainAllocatorForChain(id)
               : undefined,
+            allocatorMode: chains[id].depository ? allocatorMode : undefined,
           };
         })
       ),

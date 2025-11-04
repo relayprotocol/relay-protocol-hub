@@ -7,7 +7,7 @@ import {
   FastifyRequestTypeBox,
 } from "../../utils";
 import { externalError } from "../../../common/error";
-import { getDepositBindingByNonce } from "../../../models/deposit-bindings";
+import { getRequestIdMappingByNonce } from "../../../models/request-mappings";
 
 const Schema = {
   params: Type.Object({
@@ -16,6 +16,9 @@ const Schema = {
     }),
     depositor: Type.String({
       description: "The depositor address to lookup",
+    }),
+    chainId: Type.String({
+      description: "The chain ID to lookup",
     }),
   }),
   response: {
@@ -31,24 +34,24 @@ const Schema = {
 
 export default {
   method: "GET",
-  url: "/queries/deposits/by-nonce/:nonce/:depositor",
+  url: "/queries/deposits/by-nonce/:nonce/:depositor/:chainId",
   schema: Schema,
   handler: async (
     req: FastifyRequestTypeBox<typeof Schema>,
     reply: FastifyReplyTypeBox<typeof Schema>
   ) => {
-    const { nonce, depositor } = req.params;
+    const { nonce, depositor, chainId } = req.params;
 
-    const binding = await getDepositBindingByNonce(nonce, depositor);
-    if (!binding) {
+    const mapping = await getRequestIdMappingByNonce(nonce, depositor, chainId);
+    if (!mapping) {
       throw externalError("Deposit binding not found", "DEPOSIT_BINDING_NOT_FOUND");
     }
 
     return reply.status(200).send({
-      nonce: binding.nonce,
-      depositId: binding.depositId,
-      depositor: binding.depositor,
-      bindingSignature: binding.signature,
+      nonce: mapping.nonce,
+      depositId: mapping.requestId,
+      depositor: mapping.wallet,
+      bindingSignature: mapping.signature,
     });
   },
 } as Endpoint;
