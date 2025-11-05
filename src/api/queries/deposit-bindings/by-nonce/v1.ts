@@ -41,7 +41,7 @@ export default {
     reply: FastifyReplyTypeBox<typeof Schema>
   ) => {
     const { nonce, depositor, chainId } = req.params;
-
+    
     const mapping = await getRequestIdMappingByNonce(nonce, depositor, chainId);
     if (!mapping) {
       throw externalError("Deposit binding not found", "DEPOSIT_BINDING_NOT_FOUND");

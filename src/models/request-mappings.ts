@@ -1,7 +1,8 @@
 import { ITask } from "pg-promise";
 
-import { DbEntry } from "./utils";
+import { DbEntry, nvAddress } from "./utils";
 import { db } from "../common/db";
+import { VmType } from "@reservoir0x/relay-protocol-sdk";
 
 export type RequestIdMapping = {
   chainId: string;
@@ -57,6 +58,7 @@ export const getRequestIdMappingByNonce = async (
 
 export const saveRequestIdMapping = async (
   requestIdMapping: RequestIdMapping,
+  vmType: VmType,
   options?: {
     tx?: ITask<any>;
   }
@@ -82,7 +84,7 @@ export const saveRequestIdMapping = async (
       chainId: requestIdMapping.chainId,
       nonce: requestIdMapping.nonce,
       requestId: requestIdMapping.requestId,
-      wallet: requestIdMapping.wallet,
+      wallet: nvAddress(requestIdMapping.wallet, vmType),
       signature: requestIdMapping.signature,
     }
   );

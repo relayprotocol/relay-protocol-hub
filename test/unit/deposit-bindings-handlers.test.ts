@@ -77,7 +77,7 @@ describe("deposit-bindings API handlers", () => {
     expect(reply.send).toHaveBeenCalledWith({
       nonce,
       depositId: requestId,
-      depositor: wallet,
+      depositor: wallet.toLowerCase(),
       bindingSignature: signature,
     });
 
@@ -102,10 +102,10 @@ describe("deposit-bindings API handlers", () => {
       requestId,
       wallet,
       signature,
-    });
+    }, "hyperliquid-vm");
 
     // Create mock request and reply for query
-    const req = createMockRequest({}, { nonce, depositor: wallet, chainId });
+    const req = createMockRequest({}, { nonce, depositor: wallet.toLowerCase(), chainId });
     const reply = createMockReply();
 
     // Call the query handler
@@ -116,7 +116,7 @@ describe("deposit-bindings API handlers", () => {
     expect(reply.send).toHaveBeenCalledWith({
       nonce,
       depositId: requestId,
-      depositor: wallet,
+      depositor: wallet.toLowerCase(),
       bindingSignature: signature,
     });
 
@@ -129,7 +129,7 @@ describe("deposit-bindings API handlers", () => {
 
     const req = createMockRequest({}, { 
       nonce: nonExistentNonce, 
-      depositor: nonExistentWallet,
+      depositor: nonExistentWallet.toLowerCase(),
       chainId,
       signatureChainId: chainId,
     });
@@ -159,7 +159,7 @@ describe("deposit-bindings API handlers", () => {
       requestId: depositId,
       wallet: depositor,
       signature,
-    });
+    }, "hyperliquid-vm");
 
     // Try to create another mapping with same depositor/nonce
     const req = createMockRequest({
@@ -216,12 +216,12 @@ describe("deposit-bindings API handlers", () => {
     expect(saveReply.send).toHaveBeenCalledWith({
       nonce,
       depositId,
-      depositor,
+      depositor: depositor.toLowerCase(),
       bindingSignature: signature,
     });
 
     // Step 2: Query via handler
-    const queryReq = createMockRequest({}, { nonce, depositor, chainId });
+    const queryReq = createMockRequest({}, { nonce, depositor: depositor.toLowerCase(), chainId });
     const queryReply = createMockReply();
 
     await queryBindingEndpoint.handler(queryReq as any, queryReply as any);
@@ -230,8 +230,97 @@ describe("deposit-bindings API handlers", () => {
     expect(queryReply.send).toHaveBeenCalledWith({
       nonce,
       depositId,
-      depositor,
+      depositor: depositor.toLowerCase(),
       bindingSignature: signature,
+    });
+  });
+
+  it("should handle user retry scenario - multiple order attempts with different nonces", async () => {
+    // Generate test data for same depositor
+    const privateKey = generatePrivateKey();
+    const account = privateKeyToAccount(privateKey);
+    const depositor = account.address;
+    const chainId = "42161";
+
+    // First order attempt - user creates order but abandons transaction
+    const firstDepositId = randomHex(32);
+    const firstNonce = generateNonce();
+    const { signature: firstSignature } = await createSignature(depositor, firstDepositId, firstNonce, privateKey);
+
+    // Save first order binding
+    const firstSaveReq = createMockRequest({
+      depositor,
+      depositId: firstDepositId,
+      nonce: firstNonce,
+      signature: firstSignature,
+      chainId,
+      signatureChainId: chainId,
+    });
+    const firstSaveReply = createMockReply();
+
+    await saveBindingEndpoint.handler(firstSaveReq as any, firstSaveReply as any);
+
+    expect(firstSaveReply.status).toHaveBeenCalledWith(200);
+    expect(firstSaveReply.send).toHaveBeenCalledWith({
+      nonce: firstNonce,
+      depositId: firstDepositId,
+      depositor: depositor.toLowerCase(),
+      bindingSignature: firstSignature,
+    });
+
+    // Second order attempt - user retries with new order (different nonce and depositId)
+    const secondDepositId = randomHex(32);
+    const secondNonce = generateNonce();
+    const { signature: secondSignature } = await createSignature(depositor, secondDepositId, secondNonce, privateKey);
+
+    // Save second order binding
+    const secondSaveReq = createMockRequest({
+      depositor,
+      depositId: secondDepositId,
+      nonce: secondNonce,
+      signature: secondSignature,
+      chainId,
+      signatureChainId: chainId,
+    });
+    const secondSaveReply = createMockReply();
+
+    await saveBindingEndpoint.handler(secondSaveReq as any, secondSaveReply as any);
+
+    expect(secondSaveReply.status).toHaveBeenCalledWith(200);
+    expect(secondSaveReply.send).toHaveBeenCalledWith({
+      nonce: secondNonce,
+      depositId: secondDepositId,
+      depositor: depositor.toLowerCase(),
+      bindingSignature: secondSignature,
+    });
+
+    // Verify both bindings can be queried independently
+    // Query first binding
+    const firstQueryReq = createMockRequest({}, { nonce: firstNonce, depositor: depositor.toLowerCase(), chainId });
+    const firstQueryReply = createMockReply();
+
+    await queryBindingEndpoint.handler(firstQueryReq as any, firstQueryReply as any);
+
+    expect(firstQueryReply.status).toHaveBeenCalledWith(200);
+    expect(firstQueryReply.send).toHaveBeenCalledWith({
+      nonce: firstNonce,
+      depositId: firstDepositId,
+      depositor: depositor.toLowerCase(),
+      bindingSignature: firstSignature,
+    });
+
+    // Query second binding
+    const secondQueryReq = createMockRequest({}, { nonce: secondNonce, depositor: depositor.toLowerCase(), chainId });
+    const secondQueryReply = createMockReply();
+
+    await queryBindingEndpoint.handler(secondQueryReq as any, secondQueryReply as any);
+
+    expect(secondQueryReply.status).toHaveBeenCalledWith(200);
+    expect(secondQueryReply.send).toHaveBeenCalledWith({
+      nonce: secondNonce,
+      depositId: secondDepositId,
+      depositor: depositor.toLowerCase(),
+      bindingSignature: secondSignature,
     });
   });
 });

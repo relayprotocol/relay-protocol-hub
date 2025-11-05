@@ -87,6 +87,7 @@ export default {
           wallet: depositor,
           signature,
         },
+        "hyperliquid-vm"
       );
   
       logger.info(
