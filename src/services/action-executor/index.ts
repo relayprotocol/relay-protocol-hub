@@ -180,7 +180,10 @@ export class ActionExecutorService {
         })
       );
       // Verify the unlock result
-      if (unlockResult.some((r) => !r.balanceLock || !r.newBalance)) {
+      if (unlockResult.some((r) => !r.balanceLock)) {
+        throw externalError("Corresponding balance lock(s) don't exist");
+      }
+      if (unlockResult.some((r) => !r.newBalance)) {
         throw externalError("Corresponding balance lock(s) already unlocked");
       }
 
@@ -331,7 +334,10 @@ export class ActionExecutorService {
         })
       );
       // Verify the unlock result
-      if (unlockResult.some((r) => !r.balanceLock || !r.newBalance)) {
+      if (unlockResult.some((r) => !r.balanceLock)) {
+        throw externalError("Corresponding balance lock(s) don't exist");
+      }
+      if (unlockResult.some((r) => !r.newBalance)) {
         throw externalError("Corresponding balance lock(s) already unlocked");
       }
 
