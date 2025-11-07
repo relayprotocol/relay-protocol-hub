@@ -146,12 +146,6 @@ describe("execute-depository-withdrawal", () => {
 
         const dbBalance = await getBalance(chainId, owner, chainId, currency);
         expect(dbBalance).toBeTruthy();
-        if (
-          dbBalance?.availableAmount !==
-          inMemoryBalances[key].availableAmount.toString()
-        ) {
-          console.log(key, inMemoryBalances[key], dbBalance);
-        }
         expect(
           dbBalance?.availableAmount ===
             inMemoryBalances[key].availableAmount.toString()
