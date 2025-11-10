@@ -17,6 +17,7 @@ const NONCE_MAPPING_DOMAIN = (chainId: number) => ({
 
 const NONCE_MAPPING_TYPES = {
   NonceMapping: [
+    { name: "chainId", type: "string" },
     { name: "wallet", type: "address" },
     { name: "id", type: "bytes32" },
     { name: "nonce", type: "uint256" },
@@ -24,6 +25,7 @@ const NONCE_MAPPING_TYPES = {
 };
 
 interface NonceMappingMessage extends Record<string, unknown> {
+  chainId: string;
   wallet: string;
   id: string;
   nonce: string | number;
@@ -37,11 +39,13 @@ const generateNonce = (): string => {
 
 // Generate deposit binding message for signing (used by solver)
 const createNonceMappingMessage = (
+  chainId: string,
   wallet: string,
   id: string,
   nonce?: string | number
 ): NonceMappingMessage => {
   return {
+    chainId,
     wallet,
     id,
     nonce: nonce || generateNonce(),
@@ -50,13 +54,14 @@ const createNonceMappingMessage = (
 
 // Create full EIP-712 typed data for signing (used by solver)
 const createNonceMappingTypedData = (
+  walletChainId: string,
   wallet: string,
   nonce: string,
   id: string,
   signatureChainId: number
 ) => {
   const domain = NONCE_MAPPING_DOMAIN(signatureChainId);
-  const message = createNonceMappingMessage(wallet, id, nonce);
+  const message = createNonceMappingMessage(walletChainId, wallet, id, nonce);
 
   return {
     types: NONCE_MAPPING_TYPES,
@@ -81,12 +86,19 @@ const getNonceMappingSigner = async (
 
 // Helper to create signature using viem
 const createSignature = async (
+  walletChainId: string,
   wallet: string,
   id: string,
   nonce: string,
   privateKey: `0x${string}`
 ) => {
-  const typedData = createNonceMappingTypedData(wallet, nonce, id, 1);
+  const typedData = createNonceMappingTypedData(
+    walletChainId,
+    wallet,
+    nonce,
+    id,
+    1
+  );
 
   const account = privateKeyToAccount(privateKey);
   const signature = await account.signTypedData({
@@ -122,6 +134,7 @@ describe("nonce-mappings api handlers", () => {
 
     // Create signature using helper functions
     const { signature, typedData } = await createSignature(
+      chainId,
       wallet,
       id,
       nonce,
@@ -164,7 +177,13 @@ describe("nonce-mappings api handlers", () => {
     const chainId = "ethereum";
 
     // Create signature
-    const { signature } = await createSignature(wallet, id, nonce, privateKey);
+    const { signature } = await createSignature(
+      chainId,
+      wallet,
+      id,
+      nonce,
+      privateKey
+    );
 
     // Save to database first
     await saveNonceMapping({
@@ -233,7 +252,13 @@ describe("nonce-mappings api handlers", () => {
     const chainId = "ethereum";
 
     // Create and save first mapping
-    const { signature } = await createSignature(wallet, id, nonce, privateKey);
+    const { signature } = await createSignature(
+      chainId,
+      wallet,
+      id,
+      nonce,
+      privateKey
+    );
     await saveNonceMapping({
       walletChainId: chainId,
       wallet,
@@ -271,6 +296,7 @@ describe("nonce-mappings api handlers", () => {
     const firstId = randomHex(32);
     const firstNonce = generateNonce();
     const { signature: firstSignature } = await createSignature(
+      chainId,
       wallet,
       firstId,
       firstNonce,
@@ -296,6 +322,7 @@ describe("nonce-mappings api handlers", () => {
     const secondId = randomHex(32);
     const secondNonce = generateNonce();
     const { signature: secondSignature } = await createSignature(
+      chainId,
       wallet,
       secondId,
       secondNonce,
