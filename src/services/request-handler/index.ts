@@ -126,7 +126,9 @@ export class RequestHandlerService {
                 )?.topics[1]
             );
           if (!payloadId) {
-            throw externalError("Withdrawal request submission failed to generate Payload");
+            throw externalError(
+              "Withdrawal request submission failed to generate payload"
+            );
           }
 
           encodedData = await contract.read.payloads([payloadId as Hex]);
@@ -271,7 +273,9 @@ export class RequestHandlerService {
                 )?.topics[1]
             );
           if (!payloadId) {
-            throw externalError("Withdrawal request submission failed to generate Payload");
+            throw externalError(
+              "Withdrawal request submission failed to generate payload"
+            );
           }
 
           encodedData = await contract.read.payloads([payloadId as Hex]);
@@ -459,14 +463,14 @@ export class RequestHandlerService {
           const { contract, publicClient, walletClient } =
             await getOnchainAllocator();
 
-          const currentTime = BigInt(Date.now()) // Current timestamp in milliseconds
-          // TODO: Add support for useSendAsset, need sourceDex and destinationDex parameters
-          const data = encodeAbiParameters([{ type: "uint64" }], [currentTime]); 
-          const signatureChainId = "421614";
+          const currentTime = BigInt(Date.now());
+
+          // TODO: Add support for "sendAsset"
+          const data = encodeAbiParameters([{ type: "uint64" }], [currentTime]);
 
           payloadParams = {
-            chainId: signatureChainId,
-            depository: zeroAddress,
+            chainId: chain.metadata.allocatorChainId!,
+            depository: chain.depository!,
             currency: request.currency.toLowerCase(),
             amount: request.amount,
             spender: walletClient.account.address.toLowerCase(),
@@ -477,8 +481,6 @@ export class RequestHandlerService {
 
           // This is needed before being able to submit withdraw requests
           await handleOneTimeApproval();
-          // Log the balance of the onchain-allocator sender wallet for tracking purposes
-          await logBalance();
 
           const txHash = await contract.write.submitWithdrawRequest([
             payloadParams as any,
@@ -497,7 +499,9 @@ export class RequestHandlerService {
                 )?.topics[1]
             );
           if (!payloadId) {
-            throw externalError("Withdrawal request submission failed to generate Payload");
+            throw externalError(
+              "Withdrawal request submission failed to generate payload"
+            );
           }
 
           encodedData = await contract.read.payloads([payloadId as Hex]);
@@ -508,7 +512,7 @@ export class RequestHandlerService {
 
           break;
         } else {
-          throw externalError("Offchain mode not implemented for hyperliquid-vm");
+          throw externalError("Offchain allocator mode not implemented");
         }
       }
 
