@@ -60,6 +60,7 @@ export default {
 
     const NONCE_MAPPING_TYPES = {
       NonceMapping: [
+        { name: "chainId", type: "string" },
         { name: "wallet", type: "address" },
         { name: "id", type: "bytes32" },
         { name: "nonce", type: "uint256" },
@@ -67,6 +68,7 @@ export default {
     };
 
     const message = {
+      chainId: walletChainId,
       wallet: wallet as `0x${string}`,
       id: id as `0x${string}`,
       nonce: BigInt(nonce),
