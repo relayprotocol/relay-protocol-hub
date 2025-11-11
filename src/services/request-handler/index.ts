@@ -58,6 +58,10 @@ type AdditionalDataBitcoinVm = {
   transactionFee: string;
 };
 
+type AdditionalDataHyperliquidVm = {
+  currencyHyperliquidSymbol: string;
+};
+
 type WithdrawalRequest = {
   mode?: "offchain" | "onchain";
   ownerChainId: string;
@@ -68,6 +72,7 @@ type WithdrawalRequest = {
   recipient: string;
   additionalData?: {
     "bitcoin-vm"?: AdditionalDataBitcoinVm;
+    "hyperliquid-vm"?: AdditionalDataHyperliquidVm;
   };
 };
 
@@ -463,15 +468,39 @@ export class RequestHandlerService {
           const { contract, publicClient, walletClient } =
             await getOnchainAllocator();
 
-          const currentTime = BigInt(Date.now());
+          const isNativeCurrency =
+            request.currency === getVmTypeNativeCurrency(chain.vmType);
+          if (!isNativeCurrency) {
+            const additionalData = request.additionalData?.["hyperliquid-vm"];
+            if (!additionalData) {
+              throw externalError(
+                "Additional data is required for generating the withdrawal request"
+              );
+            }
+          }
 
-          // TODO: Add support for "sendAsset"
-          const data = encodeAbiParameters([{ type: "uint64" }], [currentTime]);
+          const currencyDex =
+            request.currency.slice(34) === ""
+              ? "spot"
+              : Buffer.from(request.currency.slice(34), "hex").toString(
+                  "ascii"
+                );
+          const data = isNativeCurrency
+            ? encodeAbiParameters([{ type: "uint64" }], [BigInt(Date.now())])
+            : encodeAbiParameters(
+                [{ type: "uint64" }, { type: "string" }, { type: "string" }],
+                [BigInt(Date.now()), currencyDex, currencyDex]
+              );
 
           payloadParams = {
             chainId: chain.metadata.allocatorChainId!,
             depository: chain.depository!,
-            currency: request.currency.toLowerCase(),
+            currency: isNativeCurrency
+              ? ""
+              : `${
+                  request.additionalData!["hyperliquid-vm"]!
+                    .currencyHyperliquidSymbol
+                }:${request.currency.toLowerCase()}`,
             amount: request.amount,
             spender: walletClient.account.address.toLowerCase(),
             receiver: request.recipient.toLowerCase(),
