@@ -89,7 +89,8 @@ export const getOffchainAllocatorForChain = async (chainId: string) => {
 
   const chain = await getChain(chainId);
   switch (chain.vmType) {
-    case "ethereum-vm": {
+    case "ethereum-vm":
+    case "hyperliquid-vm": {
       return privateKeyToAccount(ecdsaPk as any).address.toLowerCase();
     }
 

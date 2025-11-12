@@ -179,12 +179,15 @@ export const getSigner = async (chainId: string) => {
   let domainId: number | undefined;
   switch (vmType) {
     case "ethereum-vm":
+    case "hyperliquid-vm": {
       domainId = 0;
       break;
+    }
 
-    case "solana-vm":
+    case "solana-vm": {
       domainId = 1;
       break;
+    }
 
     default: {
       throw externalError("Vm type not implemented");
@@ -210,7 +213,8 @@ export const getSigner = async (chainId: string) => {
 
   const [, publicKey] = result!.toString().split(":");
   switch (vmType) {
-    case "ethereum-vm": {
+    case "ethereum-vm":
+    case "hyperliquid-vm": {
       _getSignerCache.set(
         vmType,
         publicKeyToAddress(
@@ -261,7 +265,8 @@ export const getSignature = async (id: string) => {
   const payloadBuilder = await getPayloadBuilder(payloadBuilderAddress);
 
   switch (chain.vmType) {
-    case "ethereum-vm": {
+    case "ethereum-vm":
+    case "hyperliquid-vm": {
       const hashToSign = await payloadBuilder.contract.read.hashToSign([
         BigInt(chain.metadata.allocatorChainId),
         chain.depository,
