@@ -51,7 +51,10 @@ export const getNonceMapping = async (
     `,
     {
       walletChainId,
-      wallet,
+      wallet: nvAddress(
+        wallet,
+        getChainVmType(walletChainId, await getSdkChainsConfig())
+      ),
       nonce,
     }
   );
