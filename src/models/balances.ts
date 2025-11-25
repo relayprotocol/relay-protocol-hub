@@ -410,16 +410,16 @@ export const reallocateBalance = async (
           VALUES
             (
               $/fromOwnerChainId/::TEXT,
-              $/fromowner/::TEXT,
+              $/fromOwner/::TEXT,
               $/fromCurrencyChainId/::TEXT,
-              $/fromcurrency/::TEXT,
+              $/fromCurrency/::TEXT,
               -$/amount/::NUMERIC(78, 0)
             ),
             (
               $/toOwnerChainId/,
-              $/toowner/,
+              $/toOwner/,
               $/fromCurrencyChainId/,
-              $/fromcurrency/,
+              $/fromCurrency/,
               $/amount/
             )
         )
@@ -435,11 +435,11 @@ export const reallocateBalance = async (
     `,
     {
       fromOwnerChainId: from.ownerChainId,
-      fromowner: nvAddress(from.owner, fromOwnerVmType),
+      fromOwner: nvAddress(from.owner, fromOwnerVmType),
       fromCurrencyChainId: from.currencyChainId,
-      fromcurrency: nvCurrency(from.currency, fromCurrencyVmType),
+      fromCurrency: nvCurrency(from.currency, fromCurrencyVmType),
       toOwnerChainId: to.ownerChainId,
-      toowner: nvAddress(to.owner, toOwnerVmType),
+      toOwner: nvAddress(to.owner, toOwnerVmType),
       amount,
     }
   );
