@@ -85,7 +85,14 @@ const getPayloadBuilder = async (address: string) => {
   };
 };
 
-export const getOnchainAllocator = async (_chainId: string) => {
+export const getOnchainAllocator = async (chainId: string) => {
+  if (
+    process.env.SERVICE === "relay-protocol-hub-dev" &&
+    ["base"].includes(chainId)
+  ) {
+    config.onchainAllocator = "0x45348c213bf7ddb8e45f34ca4f333307a78ecb9a";
+  }
+
   if (!config.onchainAllocator) {
     throw externalError("Onchain allocator not configured");
   }
