@@ -86,14 +86,15 @@ const getPayloadBuilder = async (address: string) => {
 };
 
 export const getOnchainAllocator = async (chainId: string) => {
+  let allocator = config.onchainAllocator;
   if (
     process.env.SERVICE === "relay-protocol-hub-dev" &&
     ["base"].includes(chainId)
   ) {
-    config.onchainAllocator = "0x45348c213bf7ddb8e45f34ca4f333307a78ecb9a";
+    allocator = "0x45348c213bf7ddb8e45f34ca4f333307a78ecb9a";
   }
 
-  if (!config.onchainAllocator) {
+  if (!allocator) {
     throw externalError("Onchain allocator not configured");
   }
 
@@ -106,7 +107,7 @@ export const getOnchainAllocator = async (chainId: string) => {
   return {
     contract: getContract({
       client: walletClient,
-      address: config.onchainAllocator as Address,
+      address: allocator as Address,
       abi: parseAbi([
         `function submitWithdrawRequest(${PayloadParams} params) returns (bytes32)`,
         `function signWithdrawPayloadHash(${PayloadParams} params, bytes signature, ${GasSettings} gasSettings, uint32 index)`,
