@@ -98,7 +98,7 @@ export class RequestHandlerService {
       case "ethereum-vm": {
         if (request.mode === "onchain") {
           const { contract, publicClient, walletClient } =
-            await getOnchainAllocator();
+            await getOnchainAllocator(request.chainId);
 
           payloadParams = {
             chainId: chain.metadata.allocatorChainId!,
@@ -112,7 +112,7 @@ export class RequestHandlerService {
           };
 
           // This is needed before being able to submit withdraw requests
-          await handleOneTimeApproval();
+          await handleOneTimeApproval(request.chainId);
 
           const txHash = await contract.write.submitWithdrawRequest([
             payloadParams as any,
@@ -238,7 +238,7 @@ export class RequestHandlerService {
       case "solana-vm": {
         if (request.mode === "onchain") {
           const { contract, publicClient, walletClient } =
-            await getOnchainAllocator();
+            await getOnchainAllocator(request.chainId);
 
           // The "solana-vm" payload builder expects addresses to be hex-encoded
           const toHexString = (address: string) =>
@@ -259,7 +259,7 @@ export class RequestHandlerService {
           };
 
           // This is needed before being able to submit withdraw requests
-          await handleOneTimeApproval();
+          await handleOneTimeApproval(request.chainId);
 
           const txHash = await contract.write.submitWithdrawRequest([
             payloadParams as any,
@@ -466,7 +466,7 @@ export class RequestHandlerService {
       case "hyperliquid-vm": {
         if (request.mode === "onchain") {
           const { contract, publicClient, walletClient } =
-            await getOnchainAllocator();
+            await getOnchainAllocator(request.chainId);
 
           const isNativeCurrency =
             request.currency === getVmTypeNativeCurrency(chain.vmType);
@@ -509,7 +509,7 @@ export class RequestHandlerService {
           };
 
           // This is needed before being able to submit withdraw requests
-          await handleOneTimeApproval();
+          await handleOneTimeApproval(request.chainId);
 
           const txHash = await contract.write.submitWithdrawRequest([
             payloadParams as any,
@@ -716,7 +716,9 @@ export class RequestHandlerService {
       throw externalError("Withdrawal request not using 'onchain' mode");
     }
 
-    const { contract, publicClient } = await getOnchainAllocator();
+    const { contract, publicClient } = await getOnchainAllocator(
+      withdrawalRequest.chainId
+    );
 
     const payloadTimestamp = await contract.read.payloadTimestamps([
       withdrawalRequest.payloadId as Hex,
