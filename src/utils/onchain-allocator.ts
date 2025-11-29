@@ -96,6 +96,7 @@ export const getOnchainAllocator = async (chainId: string) => {
       "abstract",
       "base",
       "arbitrum",
+      "solana",
     ].includes(chainId)
   ) {
     allocator = "0x45348c213bf7ddb8e45f34ca4f333307a78ecb9a";
