@@ -88,19 +88,10 @@ const getPayloadBuilder = async (address: string) => {
 export const getOnchainAllocator = async (chainId: string) => {
   let allocator = config.onchainAllocator;
   if (
-    process.env.SERVICE === "relay-protocol-hub-dev" &&
-    [
-      "ethereum",
-      "optimism",
-      "polygon",
-      "abstract",
-      "base",
-      "arbitrum",
-      "solana",
-      "hyperliquid",
-    ].includes(chainId)
+    process.env.SERVICE === "relay-protocol-hub" &&
+    ["hyperliquid"].includes(chainId)
   ) {
-    allocator = "0x45348c213bf7ddb8e45f34ca4f333307a78ecb9a";
+    allocator = "0x7eda04920f22ba6a2b9f2573fd9a6f6f1946ff9f";
   }
 
   if (!allocator) {
