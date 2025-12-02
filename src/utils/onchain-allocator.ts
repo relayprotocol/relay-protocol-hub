@@ -181,10 +181,11 @@ const extractEddsaSignature = (rawNearSignature: string): string => {
 
 let _getSignerCache = new Map<string, string>();
 export const getSigner = async (chainId: string) => {
-  const vmType = await getChain(chainId).then((c) => c.vmType);
-  if (_getSignerCache.has(vmType)) {
-    return _getSignerCache.get(vmType)!;
+  if (_getSignerCache.has(chainId)) {
+    return _getSignerCache.get(chainId)!;
   }
+
+  const vmType = await getChain(chainId).then((c) => c.id);
 
   let domainId: number | undefined;
   switch (vmType) {
@@ -226,7 +227,7 @@ export const getSigner = async (chainId: string) => {
     case "ethereum-vm":
     case "hyperliquid-vm": {
       _getSignerCache.set(
-        vmType,
+        chainId,
         publicKeyToAddress(
           `0x04${Buffer.from(bs58.decode(publicKey)).toString("hex")}`
         ).toLowerCase()
@@ -236,7 +237,7 @@ export const getSigner = async (chainId: string) => {
     }
 
     case "solana-vm": {
-      _getSignerCache.set(vmType, publicKey);
+      _getSignerCache.set(chainId, publicKey);
 
       break;
     }
@@ -246,7 +247,7 @@ export const getSigner = async (chainId: string) => {
     }
   }
 
-  return _getSignerCache.get(vmType)!;
+  return _getSignerCache.get(chainId)!;
 };
 
 export const getSignature = async (id: string) => {
