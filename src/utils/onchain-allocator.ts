@@ -185,7 +185,7 @@ export const getSigner = async (chainId: string) => {
     return _getSignerCache.get(chainId)!;
   }
 
-  const vmType = await getChain(chainId).then((c) => c.id);
+  const vmType = await getChain(chainId).then((c) => c.vmType);
 
   let domainId: number | undefined;
   switch (vmType) {
