@@ -108,6 +108,23 @@ export const getOnchainAllocator = async (chainId: string) => {
       "taiko",
       "plume",
       "blast",
+      "berachain",
+      "anime",
+      "bob",
+      "linea",
+      "ink",
+      "superposition",
+      "zircuit",
+      "gunz",
+      // "avalanche",
+      "hemi",
+      "celo",
+      "arbitrum_nova",
+      // "arbitrum",
+      "mode",
+      "funki",
+      "apechain",
+      "plasma",
     ].includes(chainId)
   ) {
     allocator = "0x7eda04920f22ba6a2b9f2573fd9a6f6f1946ff9f";
