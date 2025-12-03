@@ -89,7 +89,26 @@ export const getOnchainAllocator = async (chainId: string) => {
   let allocator = config.onchainAllocator;
   if (
     process.env.SERVICE === "relay-protocol-hub" &&
-    ["hyperliquid", "eclipse", "soon", "solana"].includes(chainId)
+    [
+      "hyperliquid",
+      "eclipse",
+      "soon",
+      "solana",
+      "rari",
+      "ancient8",
+      "degen",
+      "corn",
+      "zora",
+      "forma",
+      "katana",
+      "xai",
+      "zero",
+      "scroll",
+      "syndicate",
+      "taiko",
+      "plume",
+      "blast",
+    ].includes(chainId)
   ) {
     allocator = "0x7eda04920f22ba6a2b9f2573fd9a6f6f1946ff9f";
   }
