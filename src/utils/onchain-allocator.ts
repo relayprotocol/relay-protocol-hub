@@ -143,8 +143,8 @@ export const getOnchainAllocator = async (chainId: string) => {
       "perennial",
       "sei",
       "lisk",
-      "polygon_zkevm",
-      "metis",
+      // "polygon_zkevm",
+      // "metis",
       "hyperevm",
       "flow",
     ].includes(chainId)
