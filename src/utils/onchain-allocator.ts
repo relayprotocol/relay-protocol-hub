@@ -116,7 +116,7 @@ export const getOnchainAllocator = async (chainId: string) => {
       "superposition",
       "zircuit",
       "gunz",
-      // "avalanche",
+      "avalanche",
       "hemi",
       "celo",
       "arbitrum_nova",
