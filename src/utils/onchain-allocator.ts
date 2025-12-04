@@ -120,7 +120,7 @@ export const getOnchainAllocator = async (chainId: string) => {
       "hemi",
       "celo",
       "arbitrum_nova",
-      // "arbitrum",
+      "arbitrum",
       "mode",
       "funki",
       "apechain",
