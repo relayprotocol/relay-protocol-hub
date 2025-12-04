@@ -85,73 +85,8 @@ const getPayloadBuilder = async (address: string) => {
   };
 };
 
-export const getOnchainAllocator = async (chainId: string) => {
-  let allocator = config.onchainAllocator;
-  if (
-    process.env.SERVICE === "relay-protocol-hub" &&
-    [
-      "hyperliquid",
-      "eclipse",
-      "soon",
-      "solana",
-      "rari",
-      "ancient8",
-      "degen",
-      "corn",
-      "zora",
-      "forma",
-      "katana",
-      "xai",
-      "zero",
-      "scroll",
-      "syndicate",
-      "taiko",
-      "plume",
-      "blast",
-      "berachain",
-      "anime",
-      "bob",
-      "linea",
-      "ink",
-      "superposition",
-      "zircuit",
-      "gunz",
-      "avalanche",
-      "hemi",
-      "celo",
-      "arbitrum_nova",
-      "arbitrum",
-      "mode",
-      "funki",
-      "apechain",
-      "plasma",
-      "base",
-      "b3",
-      "arena_z",
-      "cyber",
-      "superseed",
-      "somnia",
-      "mantle",
-      "morph",
-      "abstract",
-      "ronin",
-      "sanko",
-      "swellchain",
-      "soneium",
-      "gravity",
-      "story",
-      "perennial",
-      "sei",
-      "lisk",
-      // "polygon_zkevm",
-      // "metis",
-      "hyperevm",
-      "flow",
-    ].includes(chainId)
-  ) {
-    allocator = "0x7eda04920f22ba6a2b9f2573fd9a6f6f1946ff9f";
-  }
-
+export const getOnchainAllocator = async (_chainId: string) => {
+  const allocator = config.onchainAllocator;
   if (!allocator) {
     throw externalError("Onchain allocator not configured");
   }
