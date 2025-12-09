@@ -701,6 +701,7 @@ export class RequestHandlerService {
       encodedData,
       submitWithdrawalRequestParams: payloadParams,
       signature,
+      submitWithdrawRequestParams: payloadParams,
       signer:
         request.mode === "onchain"
           ? await getOnchainAllocatorForChain(request.chainId)
