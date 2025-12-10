@@ -699,6 +699,7 @@ export class RequestHandlerService {
     return {
       id,
       encodedData,
+      submitWithdrawalRequestParams: payloadParams,
       signature,
       signer:
         request.mode === "onchain"
