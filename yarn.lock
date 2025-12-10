@@ -1463,10 +1463,10 @@
   resolved "https://registry.yarnpkg.com/@protobuf-ts/runtime/-/runtime-2.11.1.tgz#ee2bf2fac6e2d8deac0ca63471a77481548e5553"
   integrity sha512-KuDaT1IfHkugM2pyz+FwiY80ejWrkH1pAtOBOZFuR6SXEFTsnb/jiQWQ1rCIrcKx2BtyxnxW6BWwsVSA/Ie+WQ==
 
-"@reservoir0x/relay-protocol-sdk@^0.0.50":
-  version "0.0.50"
-  resolved "https://registry.yarnpkg.com/@reservoir0x/relay-protocol-sdk/-/relay-protocol-sdk-0.0.50.tgz#0a5b42e9f52aa8143ed13e6bf389e19274cd8f92"
-  integrity sha512-2WcysR1rb2r5yqUxbSXDEvIvUk6lcDfG/pb7GUGr4Ub4AA9TNofCu2fgkB1Yu2HySfDADYWZ420wm7P26SGZQg==
+"@reservoir0x/relay-protocol-sdk@^0.0.59":
+  version "0.0.59"
+  resolved "https://registry.yarnpkg.com/@reservoir0x/relay-protocol-sdk/-/relay-protocol-sdk-0.0.59.tgz#ee6edcfd54d3bb58aa835f79471797474f55bb97"
+  integrity sha512-T0nxQiGCclvDdsfsaXI+oydjRHmSY9xvVqNCZHRj+QOYmG/hl3wj+f/+uqacPI/ht+AGnvrx5FtKJIm36c78Yw==
   dependencies:
     "@coral-xyz/anchor" "^0.31.1"
     "@mysten/sui" "^1.24.0"

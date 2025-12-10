@@ -85,24 +85,8 @@ const getPayloadBuilder = async (address: string) => {
   };
 };
 
-export const getOnchainAllocator = async (chainId: string) => {
-  let allocator = config.onchainAllocator;
-  if (
-    process.env.SERVICE === "relay-protocol-hub-dev" &&
-    [
-      "ethereum",
-      "optimism",
-      "polygon",
-      "abstract",
-      "base",
-      "arbitrum",
-      "solana",
-      "hyperliquid",
-    ].includes(chainId)
-  ) {
-    allocator = "0x45348c213bf7ddb8e45f34ca4f333307a78ecb9a";
-  }
-
+export const getOnchainAllocator = async (_chainId: string) => {
+  const allocator = config.onchainAllocator;
   if (!allocator) {
     throw externalError("Onchain allocator not configured");
   }
@@ -190,10 +174,11 @@ const extractEddsaSignature = (rawNearSignature: string): string => {
 
 let _getSignerCache = new Map<string, string>();
 export const getSigner = async (chainId: string) => {
-  const vmType = await getChain(chainId).then((c) => c.vmType);
-  if (_getSignerCache.has(vmType)) {
-    return _getSignerCache.get(vmType)!;
+  if (_getSignerCache.has(chainId)) {
+    return _getSignerCache.get(chainId)!;
   }
+
+  const vmType = await getChain(chainId).then((c) => c.vmType);
 
   let domainId: number | undefined;
   switch (vmType) {
@@ -235,7 +220,7 @@ export const getSigner = async (chainId: string) => {
     case "ethereum-vm":
     case "hyperliquid-vm": {
       _getSignerCache.set(
-        vmType,
+        chainId,
         publicKeyToAddress(
           `0x04${Buffer.from(bs58.decode(publicKey)).toString("hex")}`
         ).toLowerCase()
@@ -245,7 +230,7 @@ export const getSigner = async (chainId: string) => {
     }
 
     case "solana-vm": {
-      _getSignerCache.set(vmType, publicKey);
+      _getSignerCache.set(chainId, publicKey);
 
       break;
     }
@@ -255,7 +240,7 @@ export const getSigner = async (chainId: string) => {
     }
   }
 
-  return _getSignerCache.get(vmType)!;
+  return _getSignerCache.get(chainId)!;
 };
 
 export const getSignature = async (id: string) => {
