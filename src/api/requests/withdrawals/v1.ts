@@ -31,7 +31,7 @@ const SubmitWithdrawalRequestParamsSchema = Type.Object({
     description: "The address of the spender",
   }),
   receiver: Type.String({
-    description: "The address of the receiver",
+    description: "The address of the receiver on the depository chain",
   }),
   data: Type.String({
     description: "The data to include in the withdrawal request",
