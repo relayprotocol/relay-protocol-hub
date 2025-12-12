@@ -43,7 +43,7 @@ export default {
     logger.info(
       "tracking",
       JSON.stringify({
-        msg: "Executed onchain `withdrawal-signature` request",
+        msg: "Executed `withdrawal-signature` request",
         data: req.body,
         result,
       })
