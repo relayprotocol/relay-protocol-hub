@@ -97,27 +97,14 @@ export class RequestHandlerService {
     switch (chain.vmType) {
       case "ethereum-vm": {
         if (request.mode === "onchain") {
-          const { contract, walletClient } = await getOnchainAllocator(
-            request.chainId
-          );
+          const { walletClient } = await getOnchainAllocator(request.chainId);
 
-          payloadParams = this._parseAllocatorPayloadParams(
-            chain.vmType,
-            chain,
-            request,
-            walletClient.account.address
-          );
-
-          payloadId = await this._submitWithdrawRequest(
-            request.chainId,
-            payloadParams
-          );
-
-          encodedData = await contract.read.payloads([payloadId as Hex]);
-
-          id = getDecodedWithdrawalId(
-            decodeWithdrawal(encodedData, chain.vmType)
-          );
+          ({ id, encodedData, payloadId, payloadParams } =
+            await this._submitWithdrawRequest(
+              chain,
+              request,
+              walletClient.account.address
+            ));
 
           break;
         } else {
@@ -214,27 +201,14 @@ export class RequestHandlerService {
 
       case "solana-vm": {
         if (request.mode === "onchain") {
-          const { contract, walletClient } = await getOnchainAllocator(
-            request.chainId
-          );
+          const { walletClient } = await getOnchainAllocator(request.chainId);
 
-          payloadParams = this._parseAllocatorPayloadParams(
-            chain.vmType,
-            chain,
-            request,
-            walletClient.account.address
-          );
-
-          payloadId = await this._submitWithdrawRequest(
-            request.chainId,
-            payloadParams
-          );
-
-          encodedData = await contract.read.payloads([payloadId as Hex]);
-
-          id = getDecodedWithdrawalId(
-            decodeWithdrawal(encodedData, chain.vmType)
-          );
+          ({ id, encodedData, payloadId, payloadParams } =
+            await this._submitWithdrawRequest(
+              chain,
+              request,
+              walletClient.account.address
+            ));
 
           break;
         } else {
@@ -412,9 +386,7 @@ export class RequestHandlerService {
 
       case "hyperliquid-vm": {
         if (request.mode === "onchain") {
-          const { contract, walletClient } = await getOnchainAllocator(
-            request.chainId
-          );
+          const { walletClient } = await getOnchainAllocator(request.chainId);
 
           const isNativeCurrency =
             request.currency === getVmTypeNativeCurrency(chain.vmType);
@@ -427,23 +399,12 @@ export class RequestHandlerService {
             }
           }
 
-          payloadParams = this._parseAllocatorPayloadParams(
-            chain.vmType,
-            chain,
-            request,
-            walletClient.account.address
-          );
-
-          payloadId = await this._submitWithdrawRequest(
-            request.chainId,
-            payloadParams
-          );
-
-          encodedData = await contract.read.payloads([payloadId as Hex]);
-
-          id = getDecodedWithdrawalId(
-            decodeWithdrawal(encodedData, chain.vmType)
-          );
+          ({ id, encodedData, payloadId, payloadParams } =
+            await this._submitWithdrawRequest(
+              chain,
+              request,
+              walletClient.account.address
+            ));
 
           break;
         } else {
@@ -787,13 +748,28 @@ export class RequestHandlerService {
   }
 
   private async _submitWithdrawRequest(
-    chainId: string,
-    payloadParams: PayloadParams
-  ): Promise<string> {
-    const { contract, publicClient } = await getOnchainAllocator(chainId);
+    chain: Awaited<ReturnType<typeof getChain>>,
+    request: WithdrawalRequest,
+    spender: string
+  ): Promise<{
+    id: string;
+    encodedData: string;
+    payloadId: string;
+    payloadParams: PayloadParams;
+  }> {
+    const { contract, publicClient } = await getOnchainAllocator(
+      request.chainId
+    );
+
+    const payloadParams = this._parseAllocatorPayloadParams(
+      chain.vmType,
+      chain,
+      request,
+      spender
+    );
 
     // This is needed before being able to submit withdraw requests
-    await handleOneTimeApproval(chainId);
+    await handleOneTimeApproval(request.chainId);
 
     const txHash = await contract.write.submitWithdrawRequest([
       payloadParams as any,
@@ -816,6 +792,17 @@ export class RequestHandlerService {
       );
     }
 
-    return payloadId;
+    const encodedData = await contract.read.payloads([payloadId as Hex]);
+
+    const id = getDecodedWithdrawalId(
+      decodeWithdrawal(encodedData, chain.vmType)
+    );
+
+    return {
+      id,
+      encodedData,
+      payloadId,
+      payloadParams,
+    };
   }
 }
