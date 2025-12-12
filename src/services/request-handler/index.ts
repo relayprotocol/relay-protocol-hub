@@ -97,15 +97,8 @@ export class RequestHandlerService {
     switch (chain.vmType) {
       case "ethereum-vm": {
         if (request.mode === "onchain") {
-          const { walletClient } = await getOnchainAllocator(request.chainId);
-
           ({ id, encodedData, payloadId, payloadParams } =
-            await this._submitWithdrawRequest(
-              chain,
-              request,
-              walletClient.account.address
-            ));
-
+            await this._submitWithdrawRequest(chain, request));
           break;
         } else {
           const expiration = Math.floor(Date.now() / 1000) + 5 * 60;
@@ -201,14 +194,8 @@ export class RequestHandlerService {
 
       case "solana-vm": {
         if (request.mode === "onchain") {
-          const { walletClient } = await getOnchainAllocator(request.chainId);
-
           ({ id, encodedData, payloadId, payloadParams } =
-            await this._submitWithdrawRequest(
-              chain,
-              request,
-              walletClient.account.address
-            ));
+            await this._submitWithdrawRequest(chain, request));
 
           break;
         } else {
@@ -386,8 +373,6 @@ export class RequestHandlerService {
 
       case "hyperliquid-vm": {
         if (request.mode === "onchain") {
-          const { walletClient } = await getOnchainAllocator(request.chainId);
-
           const isNativeCurrency =
             request.currency === getVmTypeNativeCurrency(chain.vmType);
           if (!isNativeCurrency) {
@@ -400,11 +385,7 @@ export class RequestHandlerService {
           }
 
           ({ id, encodedData, payloadId, payloadParams } =
-            await this._submitWithdrawRequest(
-              chain,
-              request,
-              walletClient.account.address
-            ));
+            await this._submitWithdrawRequest(chain, request));
 
           break;
         } else {
@@ -749,15 +730,14 @@ export class RequestHandlerService {
 
   private async _submitWithdrawRequest(
     chain: Awaited<ReturnType<typeof getChain>>,
-    request: WithdrawalRequest,
-    spender: string
+    request: WithdrawalRequest
   ): Promise<{
     id: string;
     encodedData: string;
     payloadId: string;
     payloadParams: PayloadParams;
   }> {
-    const { contract, publicClient } = await getOnchainAllocator(
+    const { contract, publicClient, walletClient } = await getOnchainAllocator(
       request.chainId
     );
 
@@ -765,7 +745,7 @@ export class RequestHandlerService {
       chain.vmType,
       chain,
       request,
-      spender
+      walletClient.account.address
     );
 
     // This is needed before being able to submit withdraw requests
