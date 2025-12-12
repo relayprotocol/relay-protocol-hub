@@ -38,6 +38,7 @@ import { logger } from "../../common/logger";
 import {
   getOnchainAllocator,
   getSignature,
+  getSignatureFromContract,
   handleOneTimeApproval,
 } from "../../utils/onchain-allocator";
 import { config } from "../../config";
@@ -79,6 +80,12 @@ type WithdrawalRequest = {
 
 type WithdrawalSignatureRequest = {
   id: string;
+};
+
+type OnChainWithdrawalSignatureRequest = {
+  chainId: string;
+  payloadId: string;
+  payloadParams: PayloadParams;
 };
 
 type UnlockRequest = {
@@ -550,11 +557,73 @@ export class RequestHandlerService {
       encodedData,
       submitWithdrawalRequestParams: payloadParams,
       signature,
-      submitWithdrawRequestParams: payloadParams,
       signer:
         request.mode === "onchain"
           ? await getOnchainAllocatorForChain(request.chainId)
           : await getOffchainAllocatorForChain(request.chainId),
+    };
+  }
+
+  public async handleOnChainWithdrawal(request: WithdrawalRequest) {
+    let id: string;
+    let encodedData: string;
+    let signature: string | undefined;
+
+    let payloadId: string | undefined;
+    let payloadParams: PayloadParams | undefined;
+
+    const chain = await getChain(request.chainId);
+    switch (chain.vmType) {
+      case "ethereum-vm": {
+        ({ id, encodedData, payloadId, payloadParams } =
+          await this._submitWithdrawRequest(chain, request));
+        break;
+      }
+
+      case "solana-vm": {
+        ({ id, encodedData, payloadId, payloadParams } =
+          await this._submitWithdrawRequest(chain, request));
+        break;
+      }
+
+      case "bitcoin-vm": {
+        throw externalError("Onchain allocator mode not implemented");
+      }
+
+      case "hyperliquid-vm": {
+        const isNativeCurrency =
+          request.currency === getVmTypeNativeCurrency(chain.vmType);
+        if (!isNativeCurrency) {
+          const additionalData = request.additionalData?.["hyperliquid-vm"];
+          if (!additionalData) {
+            throw externalError(
+              "Additional data is required for generating the withdrawal request"
+            );
+          }
+        }
+
+        ({ id, encodedData, payloadId, payloadParams } =
+          await this._submitWithdrawRequest(chain, request));
+
+        break;
+      }
+
+      case "tron-vm": {
+        throw externalError("Onchain allocator mode not implemented");
+      }
+
+      default: {
+        throw externalError("Vm type not implemented");
+      }
+    }
+
+    return {
+      id,
+      encodedData,
+      payloadId,
+      submitWithdrawalRequestParams: payloadParams,
+      signature,
+      signer: await getOnchainAllocatorForChain(request.chainId),
     };
   }
 
@@ -605,6 +674,31 @@ export class RequestHandlerService {
         withdrawalRequest.chainId,
         withdrawalRequest.payloadParams
       );
+    }
+  }
+
+  public async handleOnChainWithdrawalSignature(
+    request: OnChainWithdrawalSignatureRequest
+  ) {
+    // will throw if withdrawal is not ready
+    this._withdrawalIsReady(request.chainId, request.payloadId);
+
+    // get data from the contract
+    const { contract } = await getOnchainAllocator(request.chainId);
+    const encodedData = await contract.read.payloads([
+      request.payloadId as Hex,
+    ]);
+
+    // check if signature already exists
+    const signature = await getSignatureFromContract(
+      request.chainId,
+      request.payloadId,
+      encodedData
+    );
+
+    // if not get one
+    if (!signature) {
+      this._signPayload(request.chainId, request.payloadParams);
     }
   }
 
