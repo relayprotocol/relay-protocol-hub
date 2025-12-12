@@ -30,6 +30,7 @@ import {
   getOffchainAllocatorForChain,
   getOnchainAllocatorForChain,
   getChain,
+  Chain,
 } from "../../common/chains";
 import { db } from "../../common/db";
 import { externalError } from "../../common/error";
@@ -566,19 +567,11 @@ export class RequestHandlerService {
       throw externalError("Withdrawal request not using 'onchain' mode");
     }
 
-    const { contract, publicClient } = await getOnchainAllocator(
-      withdrawalRequest.chainId
+    // will throw if withdrawal is not ready
+    this._withdrawalIsReady(
+      withdrawalRequest.chainId,
+      withdrawalRequest.payloadId
     );
-
-    const payloadTimestamp = await contract.read.payloadTimestamps([
-      withdrawalRequest.payloadId as Hex,
-    ]);
-    const allocatorTimestamp = await publicClient
-      .getBlock()
-      .then((b) => b.timestamp);
-    if (payloadTimestamp > allocatorTimestamp) {
-      throw externalError("Withdrawal not ready to be signed");
-    }
 
     // Lock the balance (if we don't already have a lock on it)
     if (!(await getBalanceLock(withdrawalRequest.id))) {
@@ -608,17 +601,10 @@ export class RequestHandlerService {
     // Only trigger the signing process if we don't already have a valid signature
     const signature = await getSignature(withdrawalRequest.id);
     if (!signature) {
-      // TODO: Once we integrate Bitcoin we might need to make multiple calls
-      await contract.write.signWithdrawPayloadHash([
-        withdrawalRequest.payloadParams as any,
-        "0x",
-        // These are both the default recommended values
-        {
-          signGas: 30_000_000_000_000n,
-          callbackGas: 20_000_000_000_000n,
-        },
-        0,
-      ]);
+      this._signPayload(
+        withdrawalRequest.chainId,
+        withdrawalRequest.payloadParams
+      );
     }
   }
 
@@ -652,7 +638,7 @@ export class RequestHandlerService {
 
   private _parseAllocatorPayloadParams(
     vmType: string,
-    chain: Awaited<ReturnType<typeof getChain>>,
+    chain: Chain,
     request: WithdrawalRequest,
     spender: string
   ): PayloadParams {
@@ -784,5 +770,35 @@ export class RequestHandlerService {
       payloadId,
       payloadParams,
     };
+  }
+
+  private async _withdrawalIsReady(chainId: string, payloadId: string) {
+    const { contract, publicClient } = await getOnchainAllocator(chainId);
+
+    const payloadTimestamp = await contract.read.payloadTimestamps([
+      payloadId as Hex,
+    ]);
+    const allocatorTimestamp = await publicClient
+      .getBlock()
+      .then((b) => b.timestamp);
+    if (payloadTimestamp > allocatorTimestamp) {
+      throw externalError("Withdrawal not ready to be signed");
+    }
+  }
+
+  private async _signPayload(chainId: string, payloadParams: PayloadParams) {
+    const { contract } = await getOnchainAllocator(chainId);
+
+    // TODO: Once we integrate Bitcoin we might need to make multiple calls
+    await contract.write.signWithdrawPayloadHash([
+      payloadParams as any,
+      "0x",
+      // These are both the default recommended values
+      {
+        signGas: 30_000_000_000_000n,
+        callbackGas: 20_000_000_000_000n,
+      },
+      0,
+    ]);
   }
 }
