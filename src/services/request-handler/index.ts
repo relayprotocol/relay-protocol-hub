@@ -30,6 +30,7 @@ import {
   getOffchainAllocatorForChain,
   getOnchainAllocatorForChain,
   getChain,
+  Chain,
 } from "../../common/chains";
 import { db } from "../../common/db";
 import { externalError } from "../../common/error";
@@ -97,51 +98,8 @@ export class RequestHandlerService {
     switch (chain.vmType) {
       case "ethereum-vm": {
         if (request.mode === "onchain") {
-          const { contract, publicClient, walletClient } =
-            await getOnchainAllocator(request.chainId);
-
-          payloadParams = {
-            chainId: chain.metadata.allocatorChainId!,
-            depository: chain.depository!.toLowerCase(),
-            currency: request.currency.toLowerCase(),
-            amount: request.amount,
-            spender: walletClient.account.address.toLowerCase(),
-            receiver: request.recipient.toLowerCase(),
-            data: "0x",
-            nonce: `0x${randomBytes(32).toString("hex")}`,
-          };
-
-          // This is needed before being able to submit withdraw requests
-          await handleOneTimeApproval(request.chainId);
-
-          const txHash = await contract.write.submitWithdrawRequest([
-            payloadParams as any,
-          ]);
-          payloadId = await publicClient
-            .waitForTransactionReceipt({ hash: txHash })
-            .then(
-              (receipt) =>
-                receipt.logs.find(
-                  (l) =>
-                    l.address.toLowerCase() ===
-                      contract.address.toLowerCase() &&
-                    // We need the "PayloadBuild" event
-                    l.topics[0] ===
-                      "0x007d52d35e656ce646ba5807d55724e47d53e72435a328e89eb6ce56b0e95d6a"
-                )?.topics[1]
-            );
-          if (!payloadId) {
-            throw externalError(
-              "Withdrawal request submission failed to generate payload"
-            );
-          }
-
-          encodedData = await contract.read.payloads([payloadId as Hex]);
-
-          id = getDecodedWithdrawalId(
-            decodeWithdrawal(encodedData, chain.vmType)
-          );
-
+          ({ id, encodedData, payloadId, payloadParams } =
+            await this._submitWithdrawRequest(chain, request));
           break;
         } else {
           const expiration = Math.floor(Date.now() / 1000) + 5 * 60;
@@ -237,57 +195,8 @@ export class RequestHandlerService {
 
       case "solana-vm": {
         if (request.mode === "onchain") {
-          const { contract, publicClient, walletClient } =
-            await getOnchainAllocator(request.chainId);
-
-          // The "solana-vm" payload builder expects addresses to be hex-encoded
-          const toHexString = (address: string) =>
-            new PublicKey(address).toBuffer().toString("hex");
-
-          payloadParams = {
-            chainId: chain.metadata.allocatorChainId!,
-            depository: chain.depository!,
-            currency:
-              request.currency === getVmTypeNativeCurrency(chain.vmType)
-                ? ""
-                : toHexString(request.currency),
-            amount: request.amount,
-            spender: walletClient.account.address.toLowerCase(),
-            receiver: toHexString(request.recipient),
-            data: "0x",
-            nonce: `0x${randomBytes(32).toString("hex")}`,
-          };
-
-          // This is needed before being able to submit withdraw requests
-          await handleOneTimeApproval(request.chainId);
-
-          const txHash = await contract.write.submitWithdrawRequest([
-            payloadParams as any,
-          ]);
-          payloadId = await publicClient
-            .waitForTransactionReceipt({ hash: txHash })
-            .then(
-              (receipt) =>
-                receipt.logs.find(
-                  (l) =>
-                    l.address.toLowerCase() ===
-                      contract.address.toLowerCase() &&
-                    // We need the "PayloadBuild" event
-                    l.topics[0] ===
-                      "0x007d52d35e656ce646ba5807d55724e47d53e72435a328e89eb6ce56b0e95d6a"
-                )?.topics[1]
-            );
-          if (!payloadId) {
-            throw externalError(
-              "Withdrawal request submission failed to generate payload"
-            );
-          }
-
-          encodedData = await contract.read.payloads([payloadId as Hex]);
-
-          id = getDecodedWithdrawalId(
-            decodeWithdrawal(encodedData, chain.vmType)
-          );
+          ({ id, encodedData, payloadId, payloadParams } =
+            await this._submitWithdrawRequest(chain, request));
 
           break;
         } else {
@@ -465,9 +374,6 @@ export class RequestHandlerService {
 
       case "hyperliquid-vm": {
         if (request.mode === "onchain") {
-          const { contract, publicClient, walletClient } =
-            await getOnchainAllocator(request.chainId);
-
           const isNativeCurrency =
             request.currency === getVmTypeNativeCurrency(chain.vmType);
           if (!isNativeCurrency) {
@@ -479,65 +385,8 @@ export class RequestHandlerService {
             }
           }
 
-          const currencyDex =
-            request.currency.slice(34) === ""
-              ? "spot"
-              : Buffer.from(request.currency.slice(34), "hex").toString(
-                  "ascii"
-                );
-          const data = isNativeCurrency
-            ? encodeAbiParameters([{ type: "uint64" }], [BigInt(Date.now())])
-            : encodeAbiParameters(
-                [{ type: "uint64" }, { type: "string" }, { type: "string" }],
-                [BigInt(Date.now()), currencyDex, currencyDex]
-              );
-
-          payloadParams = {
-            chainId: chain.metadata.allocatorChainId!,
-            depository: chain.depository!,
-            currency: isNativeCurrency
-              ? ""
-              : `${
-                  request.additionalData!["hyperliquid-vm"]!
-                    .currencyHyperliquidSymbol
-                }:${request.currency.toLowerCase()}`,
-            amount: request.amount,
-            spender: walletClient.account.address.toLowerCase(),
-            receiver: request.recipient.toLowerCase(),
-            data,
-            nonce: `0x${randomBytes(32).toString("hex")}`,
-          };
-
-          // This is needed before being able to submit withdraw requests
-          await handleOneTimeApproval(request.chainId);
-
-          const txHash = await contract.write.submitWithdrawRequest([
-            payloadParams as any,
-          ]);
-          payloadId = await publicClient
-            .waitForTransactionReceipt({ hash: txHash })
-            .then(
-              (receipt) =>
-                receipt.logs.find(
-                  (l) =>
-                    l.address.toLowerCase() ===
-                      contract.address.toLowerCase() &&
-                    // We need the "PayloadBuild" event
-                    l.topics[0] ===
-                      "0x007d52d35e656ce646ba5807d55724e47d53e72435a328e89eb6ce56b0e95d6a"
-                )?.topics[1]
-            );
-          if (!payloadId) {
-            throw externalError(
-              "Withdrawal request submission failed to generate payload"
-            );
-          }
-
-          encodedData = await contract.read.payloads([payloadId as Hex]);
-
-          id = getDecodedWithdrawalId(
-            decodeWithdrawal(encodedData, chain.vmType)
-          );
+          ({ id, encodedData, payloadId, payloadParams } =
+            await this._submitWithdrawRequest(chain, request));
 
           break;
         } else {
@@ -701,6 +550,7 @@ export class RequestHandlerService {
       encodedData,
       submitWithdrawalRequestParams: payloadParams,
       signature,
+      submitWithdrawRequestParams: payloadParams,
       signer:
         request.mode === "onchain"
           ? await getOnchainAllocatorForChain(request.chainId)
@@ -717,19 +567,11 @@ export class RequestHandlerService {
       throw externalError("Withdrawal request not using 'onchain' mode");
     }
 
-    const { contract, publicClient } = await getOnchainAllocator(
-      withdrawalRequest.chainId
+    // will throw if withdrawal is not ready
+    this._withdrawalIsReady(
+      withdrawalRequest.chainId,
+      withdrawalRequest.payloadId
     );
-
-    const payloadTimestamp = await contract.read.payloadTimestamps([
-      withdrawalRequest.payloadId as Hex,
-    ]);
-    const allocatorTimestamp = await publicClient
-      .getBlock()
-      .then((b) => b.timestamp);
-    if (payloadTimestamp > allocatorTimestamp) {
-      throw externalError("Withdrawal not ready to be signed");
-    }
 
     // Lock the balance (if we don't already have a lock on it)
     if (!(await getBalanceLock(withdrawalRequest.id))) {
@@ -759,17 +601,10 @@ export class RequestHandlerService {
     // Only trigger the signing process if we don't already have a valid signature
     const signature = await getSignature(withdrawalRequest.id);
     if (!signature) {
-      // TODO: Once we integrate Bitcoin we might need to make multiple calls
-      await contract.write.signWithdrawPayloadHash([
-        withdrawalRequest.payloadParams as any,
-        "0x",
-        // These are both the default recommended values
-        {
-          signGas: 30_000_000_000_000n,
-          callbackGas: 20_000_000_000_000n,
-        },
-        0,
-      ]);
+      this._signPayload(
+        withdrawalRequest.chainId,
+        withdrawalRequest.payloadParams
+      );
     }
   }
 
@@ -799,5 +634,171 @@ export class RequestHandlerService {
         newBalance: newBalance ?? null,
       })
     );
+  }
+
+  private _parseAllocatorPayloadParams(
+    vmType: string,
+    chain: Chain,
+    request: WithdrawalRequest,
+    spender: string
+  ): PayloadParams {
+    switch (vmType) {
+      case "ethereum-vm": {
+        return {
+          chainId: chain.metadata.allocatorChainId!,
+          depository: chain.depository!.toLowerCase(),
+          currency: request.currency.toLowerCase(),
+          amount: request.amount,
+          spender: spender.toLowerCase(),
+          receiver: request.recipient.toLowerCase(),
+          data: "0x",
+          nonce: `0x${randomBytes(32).toString("hex")}`,
+        };
+      }
+
+      case "solana-vm": {
+        // The "solana-vm" payload builder expects addresses to be hex-encoded
+        const toHexString = (address: string) =>
+          new PublicKey(address).toBuffer().toString("hex");
+
+        return {
+          chainId: chain.metadata.allocatorChainId!,
+          depository: chain.depository!,
+          currency:
+            request.currency === getVmTypeNativeCurrency(vmType)
+              ? ""
+              : toHexString(request.currency),
+          amount: request.amount,
+          spender: spender.toLowerCase(),
+          receiver: toHexString(request.recipient),
+          data: "0x",
+          nonce: `0x${randomBytes(32).toString("hex")}`,
+        };
+      }
+
+      case "hyperliquid-vm": {
+        const isNativeCurrency =
+          request.currency === getVmTypeNativeCurrency(vmType);
+
+        const currencyDex =
+          request.currency.slice(34) === ""
+            ? "spot"
+            : Buffer.from(request.currency.slice(34), "hex").toString("ascii");
+        const data = isNativeCurrency
+          ? encodeAbiParameters([{ type: "uint64" }], [BigInt(Date.now())])
+          : encodeAbiParameters(
+              [{ type: "uint64" }, { type: "string" }, { type: "string" }],
+              [BigInt(Date.now()), currencyDex, currencyDex]
+            );
+
+        return {
+          chainId: chain.metadata.allocatorChainId!,
+          depository: chain.depository!,
+          currency: isNativeCurrency
+            ? ""
+            : `${
+                request.additionalData!["hyperliquid-vm"]!
+                  .currencyHyperliquidSymbol
+              }:${request.currency.toLowerCase()}`,
+          amount: request.amount,
+          spender: spender.toLowerCase(),
+          receiver: request.recipient.toLowerCase(),
+          data,
+          nonce: `0x${randomBytes(32).toString("hex")}`,
+        };
+      }
+
+      default: {
+        throw externalError("Vm type not implemented for payload params");
+      }
+    }
+  }
+
+  private async _submitWithdrawRequest(
+    chain: Awaited<ReturnType<typeof getChain>>,
+    request: WithdrawalRequest
+  ): Promise<{
+    id: string;
+    encodedData: string;
+    payloadId: string;
+    payloadParams: PayloadParams;
+  }> {
+    const { contract, publicClient, walletClient } = await getOnchainAllocator(
+      request.chainId
+    );
+
+    const payloadParams = this._parseAllocatorPayloadParams(
+      chain.vmType,
+      chain,
+      request,
+      walletClient.account.address
+    );
+
+    // This is needed before being able to submit withdraw requests
+    await handleOneTimeApproval(request.chainId);
+
+    const txHash = await contract.write.submitWithdrawRequest([
+      payloadParams as any,
+    ]);
+    const payloadId = await publicClient
+      .waitForTransactionReceipt({ hash: txHash })
+      .then(
+        (receipt) =>
+          receipt.logs.find(
+            (l) =>
+              l.address.toLowerCase() === contract.address.toLowerCase() &&
+              // We need the "PayloadBuild" event
+              l.topics[0] ===
+                "0x007d52d35e656ce646ba5807d55724e47d53e72435a328e89eb6ce56b0e95d6a"
+          )?.topics[1]
+      );
+    if (!payloadId) {
+      throw externalError(
+        "Withdrawal request submission failed to generate payload"
+      );
+    }
+
+    const encodedData = await contract.read.payloads([payloadId as Hex]);
+
+    const id = getDecodedWithdrawalId(
+      decodeWithdrawal(encodedData, chain.vmType)
+    );
+
+    return {
+      id,
+      encodedData,
+      payloadId,
+      payloadParams,
+    };
+  }
+
+  private async _withdrawalIsReady(chainId: string, payloadId: string) {
+    const { contract, publicClient } = await getOnchainAllocator(chainId);
+
+    const payloadTimestamp = await contract.read.payloadTimestamps([
+      payloadId as Hex,
+    ]);
+    const allocatorTimestamp = await publicClient
+      .getBlock()
+      .then((b) => b.timestamp);
+    if (payloadTimestamp > allocatorTimestamp) {
+      throw externalError("Withdrawal not ready to be signed");
+    }
+  }
+
+  private async _signPayload(chainId: string, payloadParams: PayloadParams) {
+    const { contract } = await getOnchainAllocator(chainId);
+
+    // TODO: Once we integrate Bitcoin we might need to make multiple calls
+    await contract.write.signWithdrawPayloadHash([
+      payloadParams as any,
+      "0x",
+      // These are both the default recommended values
+      {
+        signGas: 30_000_000_000_000n,
+        callbackGas: 20_000_000_000_000n,
+      },
+      0,
+    ]);
   }
 }
