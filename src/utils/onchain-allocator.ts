@@ -243,13 +243,12 @@ export const getSigner = async (chainId: string) => {
   return _getSignerCache.get(chainId)!;
 };
 
-export const getSignature = async (id: string) => {
-  const withdrawalRequest = await getWithdrawalRequest(id);
-  if (!withdrawalRequest) {
-    throw externalError("Could not find withdrawal request");
-  }
-
-  const chain = await getChain(withdrawalRequest.chainId);
+export const getSignatureFromContract = async (
+  chainId: string,
+  payloadId: string,
+  encodedData: string
+) => {
+  const chain = await getChain(chainId);
   if (!chain.depository || !chain.metadata.allocatorChainId) {
     throw externalError(
       "Depository or allocator chain id not configured for chain"
@@ -274,12 +273,12 @@ export const getSignature = async (id: string) => {
       const hashToSign = await payloadBuilder.contract.read.hashToSign([
         BigInt(chain.metadata.allocatorChainId),
         chain.depository,
-        withdrawalRequest.encodedData as Hex,
+        encodedData as Hex,
         0,
       ]);
 
       const signature = await onchainAllocator.contract.read.signedPayloads([
-        withdrawalRequest.payloadId as Hex,
+        payloadId as Hex,
         hashToSign,
       ]);
       if (signature === "0x") {
@@ -293,12 +292,12 @@ export const getSignature = async (id: string) => {
       const hashToSign = await payloadBuilder.contract.read.hashToSign([
         BigInt(chain.metadata.allocatorChainId),
         chain.depository,
-        withdrawalRequest.encodedData as Hex,
+        encodedData as Hex,
         0,
       ]);
 
       const signature = await onchainAllocator.contract.read.signedPayloads([
-        withdrawalRequest.payloadId as Hex,
+        payloadId as Hex,
         hashToSign,
       ]);
       if (signature === "0x") {
@@ -312,4 +311,17 @@ export const getSignature = async (id: string) => {
       throw externalError("Vm type not implemented");
     }
   }
+};
+
+export const getSignature = async (id: string) => {
+  const withdrawalRequest = await getWithdrawalRequest(id);
+  if (!withdrawalRequest) {
+    throw externalError("Could not find withdrawal request");
+  }
+
+  await getSignatureFromContract(
+    withdrawalRequest.chainId,
+    withdrawalRequest.payloadId!,
+    withdrawalRequest.encodedData
+  );
 };
