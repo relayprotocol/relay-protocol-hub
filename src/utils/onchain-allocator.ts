@@ -319,7 +319,7 @@ export const getSignature = async (id: string) => {
     throw externalError("Could not find withdrawal request");
   }
 
-  await getSignatureFromContract(
+  return getSignatureFromContract(
     withdrawalRequest.chainId,
     withdrawalRequest.payloadId!,
     withdrawalRequest.encodedData
