@@ -27,6 +27,7 @@ const Schema = {
               Type.Literal("sui-vm"),
               Type.Literal("ton-vm"),
               Type.Literal("tron-vm"),
+              Type.Literal("lighter-vm"),
             ],
             {
               description: "The vm type of the chain",

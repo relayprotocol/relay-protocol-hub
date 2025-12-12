@@ -105,7 +105,9 @@ export class ActionExecutorService {
       // Step 1:
       // Ensure the withdrawal request exists in the first place
       if (!(await getWithdrawalRequest(message.result.withdrawalId, { tx }))) {
-        throw externalError("Withdrawal request does not exist");
+        throw externalError(
+          `Withdrawal request does not exist: ${message.result.withdrawalId}`
+        );
       }
 
       // Step 2:
