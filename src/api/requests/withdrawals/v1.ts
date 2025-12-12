@@ -14,13 +14,12 @@ import { externalError } from "../../../common/error";
 import { logger } from "../../../common/logger";
 import { RequestHandlerService } from "../../../services/request-handler";
 
-export const submitWithdrawRequestSchema = Type.Object({
+const SubmitWithdrawalRequestParamsSchema = Type.Object({
   chainId: Type.String({
-    description:
-      "The chain id of the destination chain on which the user will withdraw",
+    description: "The chain id of the allocator",
   }),
   depository: Type.String({
-    description: "The address of the depository account",
+    description: "The depository address of the allocator",
   }),
   currency: Type.String({
     description: "The currency to withdraw",
@@ -29,17 +28,16 @@ export const submitWithdrawRequestSchema = Type.Object({
     description: "The amount to withdraw",
   }),
   spender: Type.String({
-    description:
-      "The address of the account that owns the balance in the Hub contract (can be an alias)",
+    description: "The address of the spender",
   }),
   receiver: Type.String({
-    description: "The address of the account on the destination chain",
+    description: "The address of the receiver on the depository chain",
   }),
   data: Type.String({
-    description: "Additional data",
+    description: "The data to include in the withdrawal request",
   }),
   nonce: Type.String({
-    description: "Nonce for replay protection",
+    description: "The nonce to include in the withdrawal request",
   }),
 });
 
@@ -68,9 +66,7 @@ const Schema = {
       description:
         "Signature attesting the owner authorized this particular withdrawal request",
     }),
-    submitWithdrawalRequestParams: Type.Optional(
-      SubmitWithdrawalRequestParamsSchema
-    ),
+    submitWithdrawalRequestParams: Type.Optional(SubmitWithdrawalRequestParamsSchema),
     additionalData: Type.Optional(
       Type.Object(
         {
@@ -126,7 +122,6 @@ const Schema = {
         description:
           "The withdrawal data (encoded based on the withdrawing chain's vm type)",
       }),
-      submitWithdrawRequestParams: Type.Optional(submitWithdrawRequestSchema),
       signer: Type.String({ description: "The signer of the withdrawal" }),
       signature: Type.Optional(
         Type.String({
