@@ -8,6 +8,7 @@ import {
   ErrorResponse,
   FastifyReplyTypeBox,
   FastifyRequestTypeBox,
+  SubmitWithdrawalRequestParamsSchema,
 } from "../../utils";
 import { getChain } from "../../../common/chains";
 import { externalError } from "../../../common/error";
@@ -102,6 +103,9 @@ const Schema = {
           "The withdrawal data (encoded based on the withdrawing chain's vm type)",
       }),
       signer: Type.String({ description: "The signer of the withdrawal" }),
+      submitWithdrawalRequestParams: Type.Optional(
+        SubmitWithdrawalRequestParamsSchema
+      ),
       signature: Type.Optional(
         Type.String({
           description: "The allocator signature for the withdrawal",

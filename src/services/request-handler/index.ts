@@ -700,6 +700,13 @@ export class RequestHandlerService {
     if (!signature) {
       this._signPayload(request.chainId, request.payloadParams);
     }
+
+    return {
+      payloadId: request.payloadId,
+      encodedData,
+      signature,
+      signer: await getOnchainAllocatorForChain(request.chainId),
+    };
   }
 
   public async handleUnlock(request: UnlockRequest) {
@@ -809,7 +816,7 @@ export class RequestHandlerService {
   }
 
   private async _submitWithdrawRequest(
-    chain: Awaited<ReturnType<typeof getChain>>,
+    chain: Chain,
     request: WithdrawalRequest
   ): Promise<{
     id: string;

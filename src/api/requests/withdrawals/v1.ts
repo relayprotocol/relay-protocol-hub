@@ -8,38 +8,12 @@ import {
   ErrorResponse,
   FastifyReplyTypeBox,
   FastifyRequestTypeBox,
+  SubmitWithdrawalRequestParamsSchema,
 } from "../../utils";
 import { getChain } from "../../../common/chains";
 import { externalError } from "../../../common/error";
 import { logger } from "../../../common/logger";
 import { RequestHandlerService } from "../../../services/request-handler";
-
-const SubmitWithdrawalRequestParamsSchema = Type.Object({
-  chainId: Type.String({
-    description: "The chain id of the allocator",
-  }),
-  depository: Type.String({
-    description: "The depository address of the allocator",
-  }),
-  currency: Type.String({
-    description: "The currency to withdraw",
-  }),
-  amount: Type.String({
-    description: "The amount to withdraw",
-  }),
-  spender: Type.String({
-    description: "The address of the spender",
-  }),
-  receiver: Type.String({
-    description: "The address of the receiver on the depository chain",
-  }),
-  data: Type.String({
-    description: "The data to include in the withdrawal request",
-  }),
-  nonce: Type.String({
-    description: "The nonce to include in the withdrawal request",
-  }),
-});
 
 const Schema = {
   body: Type.Object({
@@ -66,7 +40,9 @@ const Schema = {
       description:
         "Signature attesting the owner authorized this particular withdrawal request",
     }),
-    submitWithdrawalRequestParams: Type.Optional(SubmitWithdrawalRequestParamsSchema),
+    submitWithdrawalRequestParams: Type.Optional(
+      SubmitWithdrawalRequestParamsSchema
+    ),
     additionalData: Type.Optional(
       Type.Object(
         {
