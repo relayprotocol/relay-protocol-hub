@@ -100,16 +100,12 @@ export class RequestHandlerService {
           const { contract, publicClient, walletClient } =
             await getOnchainAllocator(request.chainId);
 
-          payloadParams = {
-            chainId: chain.metadata.allocatorChainId!,
-            depository: chain.depository!.toLowerCase(),
-            currency: request.currency.toLowerCase(),
-            amount: request.amount,
-            spender: walletClient.account.address.toLowerCase(),
-            receiver: request.recipient.toLowerCase(),
-            data: "0x",
-            nonce: `0x${randomBytes(32).toString("hex")}`,
-          };
+          payloadParams = this._parseAllocatorPayloadParams(
+            chain.vmType,
+            chain,
+            request,
+            walletClient.account.address
+          );
 
           // This is needed before being able to submit withdraw requests
           await handleOneTimeApproval(request.chainId);
@@ -240,23 +236,12 @@ export class RequestHandlerService {
           const { contract, publicClient, walletClient } =
             await getOnchainAllocator(request.chainId);
 
-          // The "solana-vm" payload builder expects addresses to be hex-encoded
-          const toHexString = (address: string) =>
-            new PublicKey(address).toBuffer().toString("hex");
-
-          payloadParams = {
-            chainId: chain.metadata.allocatorChainId!,
-            depository: chain.depository!,
-            currency:
-              request.currency === getVmTypeNativeCurrency(chain.vmType)
-                ? ""
-                : toHexString(request.currency),
-            amount: request.amount,
-            spender: walletClient.account.address.toLowerCase(),
-            receiver: toHexString(request.recipient),
-            data: "0x",
-            nonce: `0x${randomBytes(32).toString("hex")}`,
-          };
+          payloadParams = this._parseAllocatorPayloadParams(
+            chain.vmType,
+            chain,
+            request,
+            walletClient.account.address
+          );
 
           // This is needed before being able to submit withdraw requests
           await handleOneTimeApproval(request.chainId);
@@ -479,34 +464,12 @@ export class RequestHandlerService {
             }
           }
 
-          const currencyDex =
-            request.currency.slice(34) === ""
-              ? "spot"
-              : Buffer.from(request.currency.slice(34), "hex").toString(
-                  "ascii"
-                );
-          const data = isNativeCurrency
-            ? encodeAbiParameters([{ type: "uint64" }], [BigInt(Date.now())])
-            : encodeAbiParameters(
-                [{ type: "uint64" }, { type: "string" }, { type: "string" }],
-                [BigInt(Date.now()), currencyDex, currencyDex]
-              );
-
-          payloadParams = {
-            chainId: chain.metadata.allocatorChainId!,
-            depository: chain.depository!,
-            currency: isNativeCurrency
-              ? ""
-              : `${
-                  request.additionalData!["hyperliquid-vm"]!
-                    .currencyHyperliquidSymbol
-                }:${request.currency.toLowerCase()}`,
-            amount: request.amount,
-            spender: walletClient.account.address.toLowerCase(),
-            receiver: request.recipient.toLowerCase(),
-            data,
-            nonce: `0x${randomBytes(32).toString("hex")}`,
-          };
+          payloadParams = this._parseAllocatorPayloadParams(
+            chain.vmType,
+            chain,
+            request,
+            walletClient.account.address
+          );
 
           // This is needed before being able to submit withdraw requests
           await handleOneTimeApproval(request.chainId);
@@ -709,6 +672,8 @@ export class RequestHandlerService {
     };
   }
 
+  public async handleOnChainWithdrawal(request: WithdrawalRequest) {}
+
   public async handleWithdrawalSignature(request: WithdrawalSignatureRequest) {
     const withdrawalRequest = await getWithdrawalRequest(request.id);
     if (!withdrawalRequest) {
@@ -800,5 +765,83 @@ export class RequestHandlerService {
         newBalance: newBalance ?? null,
       })
     );
+  }
+
+  private _parseAllocatorPayloadParams(
+    vmType: string,
+    chain: Awaited<ReturnType<typeof getChain>>,
+    request: WithdrawalRequest,
+    spender: string
+  ): PayloadParams {
+    switch (vmType) {
+      case "ethereum-vm": {
+        return {
+          chainId: chain.metadata.allocatorChainId!,
+          depository: chain.depository!.toLowerCase(),
+          currency: request.currency.toLowerCase(),
+          amount: request.amount,
+          spender: spender.toLowerCase(),
+          receiver: request.recipient.toLowerCase(),
+          data: "0x",
+          nonce: `0x${randomBytes(32).toString("hex")}`,
+        };
+      }
+
+      case "solana-vm": {
+        // The "solana-vm" payload builder expects addresses to be hex-encoded
+        const toHexString = (address: string) =>
+          new PublicKey(address).toBuffer().toString("hex");
+
+        return {
+          chainId: chain.metadata.allocatorChainId!,
+          depository: chain.depository!,
+          currency:
+            request.currency === getVmTypeNativeCurrency(vmType)
+              ? ""
+              : toHexString(request.currency),
+          amount: request.amount,
+          spender: spender.toLowerCase(),
+          receiver: toHexString(request.recipient),
+          data: "0x",
+          nonce: `0x${randomBytes(32).toString("hex")}`,
+        };
+      }
+
+      case "hyperliquid-vm": {
+        const isNativeCurrency =
+          request.currency === getVmTypeNativeCurrency(vmType);
+
+        const currencyDex =
+          request.currency.slice(34) === ""
+            ? "spot"
+            : Buffer.from(request.currency.slice(34), "hex").toString("ascii");
+        const data = isNativeCurrency
+          ? encodeAbiParameters([{ type: "uint64" }], [BigInt(Date.now())])
+          : encodeAbiParameters(
+              [{ type: "uint64" }, { type: "string" }, { type: "string" }],
+              [BigInt(Date.now()), currencyDex, currencyDex]
+            );
+
+        return {
+          chainId: chain.metadata.allocatorChainId!,
+          depository: chain.depository!,
+          currency: isNativeCurrency
+            ? ""
+            : `${
+                request.additionalData!["hyperliquid-vm"]!
+                  .currencyHyperliquidSymbol
+              }:${request.currency.toLowerCase()}`,
+          amount: request.amount,
+          spender: spender.toLowerCase(),
+          receiver: request.recipient.toLowerCase(),
+          data,
+          nonce: `0x${randomBytes(32).toString("hex")}`,
+        };
+      }
+
+      default: {
+        throw externalError("Vm type not implemented for payload params");
+      }
+    }
   }
 }
