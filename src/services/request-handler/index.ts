@@ -97,8 +97,9 @@ export class RequestHandlerService {
     switch (chain.vmType) {
       case "ethereum-vm": {
         if (request.mode === "onchain") {
-          const { contract, publicClient, walletClient } =
-            await getOnchainAllocator(request.chainId);
+          const { contract, walletClient } = await getOnchainAllocator(
+            request.chainId
+          );
 
           payloadParams = this._parseAllocatorPayloadParams(
             chain.vmType,
@@ -107,30 +108,10 @@ export class RequestHandlerService {
             walletClient.account.address
           );
 
-          // This is needed before being able to submit withdraw requests
-          await handleOneTimeApproval(request.chainId);
-
-          const txHash = await contract.write.submitWithdrawRequest([
-            payloadParams as any,
-          ]);
-          payloadId = await publicClient
-            .waitForTransactionReceipt({ hash: txHash })
-            .then(
-              (receipt) =>
-                receipt.logs.find(
-                  (l) =>
-                    l.address.toLowerCase() ===
-                      contract.address.toLowerCase() &&
-                    // We need the "PayloadBuild" event
-                    l.topics[0] ===
-                      "0x007d52d35e656ce646ba5807d55724e47d53e72435a328e89eb6ce56b0e95d6a"
-                )?.topics[1]
-            );
-          if (!payloadId) {
-            throw externalError(
-              "Withdrawal request submission failed to generate payload"
-            );
-          }
+          payloadId = await this._submitWithdrawRequest(
+            request.chainId,
+            payloadParams
+          );
 
           encodedData = await contract.read.payloads([payloadId as Hex]);
 
@@ -233,8 +214,9 @@ export class RequestHandlerService {
 
       case "solana-vm": {
         if (request.mode === "onchain") {
-          const { contract, publicClient, walletClient } =
-            await getOnchainAllocator(request.chainId);
+          const { contract, walletClient } = await getOnchainAllocator(
+            request.chainId
+          );
 
           payloadParams = this._parseAllocatorPayloadParams(
             chain.vmType,
@@ -243,30 +225,10 @@ export class RequestHandlerService {
             walletClient.account.address
           );
 
-          // This is needed before being able to submit withdraw requests
-          await handleOneTimeApproval(request.chainId);
-
-          const txHash = await contract.write.submitWithdrawRequest([
-            payloadParams as any,
-          ]);
-          payloadId = await publicClient
-            .waitForTransactionReceipt({ hash: txHash })
-            .then(
-              (receipt) =>
-                receipt.logs.find(
-                  (l) =>
-                    l.address.toLowerCase() ===
-                      contract.address.toLowerCase() &&
-                    // We need the "PayloadBuild" event
-                    l.topics[0] ===
-                      "0x007d52d35e656ce646ba5807d55724e47d53e72435a328e89eb6ce56b0e95d6a"
-                )?.topics[1]
-            );
-          if (!payloadId) {
-            throw externalError(
-              "Withdrawal request submission failed to generate payload"
-            );
-          }
+          payloadId = await this._submitWithdrawRequest(
+            request.chainId,
+            payloadParams
+          );
 
           encodedData = await contract.read.payloads([payloadId as Hex]);
 
@@ -450,8 +412,9 @@ export class RequestHandlerService {
 
       case "hyperliquid-vm": {
         if (request.mode === "onchain") {
-          const { contract, publicClient, walletClient } =
-            await getOnchainAllocator(request.chainId);
+          const { contract, walletClient } = await getOnchainAllocator(
+            request.chainId
+          );
 
           const isNativeCurrency =
             request.currency === getVmTypeNativeCurrency(chain.vmType);
@@ -471,30 +434,10 @@ export class RequestHandlerService {
             walletClient.account.address
           );
 
-          // This is needed before being able to submit withdraw requests
-          await handleOneTimeApproval(request.chainId);
-
-          const txHash = await contract.write.submitWithdrawRequest([
-            payloadParams as any,
-          ]);
-          payloadId = await publicClient
-            .waitForTransactionReceipt({ hash: txHash })
-            .then(
-              (receipt) =>
-                receipt.logs.find(
-                  (l) =>
-                    l.address.toLowerCase() ===
-                      contract.address.toLowerCase() &&
-                    // We need the "PayloadBuild" event
-                    l.topics[0] ===
-                      "0x007d52d35e656ce646ba5807d55724e47d53e72435a328e89eb6ce56b0e95d6a"
-                )?.topics[1]
-            );
-          if (!payloadId) {
-            throw externalError(
-              "Withdrawal request submission failed to generate payload"
-            );
-          }
+          payloadId = await this._submitWithdrawRequest(
+            request.chainId,
+            payloadParams
+          );
 
           encodedData = await contract.read.payloads([payloadId as Hex]);
 
@@ -672,8 +615,6 @@ export class RequestHandlerService {
     };
   }
 
-  public async handleOnChainWithdrawal(request: WithdrawalRequest) {}
-
   public async handleWithdrawalSignature(request: WithdrawalSignatureRequest) {
     const withdrawalRequest = await getWithdrawalRequest(request.id);
     if (!withdrawalRequest) {
@@ -843,5 +784,38 @@ export class RequestHandlerService {
         throw externalError("Vm type not implemented for payload params");
       }
     }
+  }
+
+  private async _submitWithdrawRequest(
+    chainId: string,
+    payloadParams: PayloadParams
+  ): Promise<string> {
+    const { contract, publicClient } = await getOnchainAllocator(chainId);
+
+    // This is needed before being able to submit withdraw requests
+    await handleOneTimeApproval(chainId);
+
+    const txHash = await contract.write.submitWithdrawRequest([
+      payloadParams as any,
+    ]);
+    const payloadId = await publicClient
+      .waitForTransactionReceipt({ hash: txHash })
+      .then(
+        (receipt) =>
+          receipt.logs.find(
+            (l) =>
+              l.address.toLowerCase() === contract.address.toLowerCase() &&
+              // We need the "PayloadBuild" event
+              l.topics[0] ===
+                "0x007d52d35e656ce646ba5807d55724e47d53e72435a328e89eb6ce56b0e95d6a"
+          )?.topics[1]
+      );
+    if (!payloadId) {
+      throw externalError(
+        "Withdrawal request submission failed to generate payload"
+      );
+    }
+
+    return payloadId;
   }
 }
