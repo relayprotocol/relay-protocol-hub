@@ -39,6 +39,7 @@ import { logger } from "../../common/logger";
 import {
   getOnchainAllocator,
   getSignature,
+  getSignatureFromContract,
   handleOneTimeApproval,
 } from "../../utils/onchain-allocator";
 import { config } from "../../config";
@@ -80,6 +81,12 @@ type WithdrawalRequest = {
 
 type WithdrawalSignatureRequest = {
   id: string;
+};
+
+type OnChainWithdrawalSignatureRequest = {
+  chainId: string;
+  payloadId: string;
+  payloadParams: PayloadParams;
 };
 
 type UnlockRequest = {
@@ -554,11 +561,75 @@ export class RequestHandlerService {
       encodedData,
       submitWithdrawalRequestParams: payloadParams,
       signature,
-      submitWithdrawRequestParams: payloadParams,
       signer:
         request.mode === "onchain"
           ? await getOnchainAllocatorForChain(request.chainId)
           : await getOffchainAllocatorForChain(request.chainId),
+    };
+  }
+
+  public async handleOnChainWithdrawal(
+    request: WithdrawalRequest & { spender: string }
+  ) {
+    let id: string;
+    let encodedData: string;
+    let signature: string | undefined;
+
+    let payloadId: string | undefined;
+    let payloadParams: PayloadParams | undefined;
+
+    const chain = await getChain(request.chainId);
+    switch (chain.vmType) {
+      case "ethereum-vm": {
+        ({ id, encodedData, payloadId, payloadParams } =
+          await this._submitWithdrawRequest(chain, request));
+        break;
+      }
+
+      case "solana-vm": {
+        ({ id, encodedData, payloadId, payloadParams } =
+          await this._submitWithdrawRequest(chain, request));
+        break;
+      }
+
+      case "bitcoin-vm": {
+        throw externalError("Onchain allocator mode not implemented");
+      }
+
+      case "hyperliquid-vm": {
+        const isNativeCurrency =
+          request.currency === getVmTypeNativeCurrency(chain.vmType);
+        if (!isNativeCurrency) {
+          const additionalData = request.additionalData?.["hyperliquid-vm"];
+          if (!additionalData) {
+            throw externalError(
+              "Additional data is required for generating the withdrawal request"
+            );
+          }
+        }
+
+        ({ id, encodedData, payloadId, payloadParams } =
+          await this._submitWithdrawRequest(chain, request));
+
+        break;
+      }
+
+      case "tron-vm": {
+        throw externalError("Onchain allocator mode not implemented");
+      }
+
+      default: {
+        throw externalError("Vm type not implemented");
+      }
+    }
+
+    return {
+      id,
+      encodedData,
+      payloadId,
+      submitWithdrawalRequestParams: payloadParams,
+      signature,
+      signer: await getOnchainAllocatorForChain(request.chainId),
     };
   }
 
@@ -612,6 +683,38 @@ export class RequestHandlerService {
     }
   }
 
+  public async handleOnChainWithdrawalSignature(
+    request: OnChainWithdrawalSignatureRequest
+  ) {
+    // will throw if withdrawal is not ready
+    this._withdrawalIsReady(request.chainId, request.payloadId);
+
+    // get data from the contract
+    const { contract } = await getOnchainAllocator(request.chainId);
+    const encodedData = await contract.read.payloads([
+      request.payloadId as Hex,
+    ]);
+
+    // check if signature already exists
+    const signature = await getSignatureFromContract(
+      request.chainId,
+      request.payloadId,
+      encodedData
+    );
+
+    // if not get one
+    if (!signature) {
+      this._signPayload(request.chainId, request.payloadParams);
+    }
+
+    return {
+      payloadId: request.payloadId,
+      encodedData,
+      signature,
+      signer: await getOnchainAllocatorForChain(request.chainId),
+    };
+  }
+
   public async handleUnlock(request: UnlockRequest) {
     const balanceLock = await getBalanceLock(request.id);
     if (!balanceLock) {
@@ -642,52 +745,53 @@ export class RequestHandlerService {
 
   private _parseAllocatorPayloadParams(
     vmType: string,
-    chain: Chain,
-    request: WithdrawalRequest,
-    spender: string
+    depository: string,
+    allocatorChainId: string,
+    currency: string,
+    amount: string,
+    recipient: string,
+    spender: string,
+    additionalData?: {
+      "hyperliquid-vm"?: AdditionalDataHyperliquidVm;
+    }
   ): PayloadParams {
+    const defaultParams = {
+      chainId: allocatorChainId!,
+      depository: depository!.toLowerCase(),
+      currency: currency.toLowerCase(),
+      spender: spender.toLowerCase(),
+      receiver: recipient.toLowerCase(),
+      amount: amount,
+      data: "0x",
+      nonce: `0x${randomBytes(32).toString("hex")}`,
+    };
+
     switch (vmType) {
       case "ethereum-vm": {
-        return {
-          chainId: chain.metadata.allocatorChainId!,
-          depository: chain.depository!.toLowerCase(),
-          currency: request.currency.toLowerCase(),
-          amount: request.amount,
-          spender: spender.toLowerCase(),
-          receiver: request.recipient.toLowerCase(),
-          data: "0x",
-          nonce: `0x${randomBytes(32).toString("hex")}`,
-        };
+        return defaultParams;
       }
 
       case "solana-vm": {
         // The "solana-vm" payload builder expects addresses to be hex-encoded
         const toHexString = (address: string) =>
           new PublicKey(address).toBuffer().toString("hex");
-
         return {
-          chainId: chain.metadata.allocatorChainId!,
-          depository: chain.depository!,
+          ...defaultParams,
           currency:
-            request.currency === getVmTypeNativeCurrency(vmType)
+            currency === getVmTypeNativeCurrency(vmType)
               ? ""
-              : toHexString(request.currency),
-          amount: request.amount,
-          spender: spender.toLowerCase(),
-          receiver: toHexString(request.recipient),
-          data: "0x",
-          nonce: `0x${randomBytes(32).toString("hex")}`,
+              : toHexString(currency),
+          receiver: toHexString(recipient),
         };
       }
 
       case "hyperliquid-vm": {
-        const isNativeCurrency =
-          request.currency === getVmTypeNativeCurrency(vmType);
+        const isNativeCurrency = currency === getVmTypeNativeCurrency(vmType);
 
         const currencyDex =
-          request.currency.slice(34) === ""
+          currency.slice(34) === ""
             ? "spot"
-            : Buffer.from(request.currency.slice(34), "hex").toString("ascii");
+            : Buffer.from(currency.slice(34), "hex").toString("ascii");
         const data = isNativeCurrency
           ? encodeAbiParameters([{ type: "uint64" }], [BigInt(Date.now())])
           : encodeAbiParameters(
@@ -696,19 +800,13 @@ export class RequestHandlerService {
             );
 
         return {
-          chainId: chain.metadata.allocatorChainId!,
-          depository: chain.depository!,
+          ...defaultParams,
           currency: isNativeCurrency
             ? ""
             : `${
-                request.additionalData!["hyperliquid-vm"]!
-                  .currencyHyperliquidSymbol
-              }:${request.currency.toLowerCase()}`,
-          amount: request.amount,
-          spender: spender.toLowerCase(),
-          receiver: request.recipient.toLowerCase(),
+                additionalData!["hyperliquid-vm"]!.currencyHyperliquidSymbol
+              }:${currency.toLowerCase()}`,
           data,
-          nonce: `0x${randomBytes(32).toString("hex")}`,
         };
       }
 
@@ -719,23 +817,26 @@ export class RequestHandlerService {
   }
 
   private async _submitWithdrawRequest(
-    chain: Awaited<ReturnType<typeof getChain>>,
-    request: WithdrawalRequest
+    chain: Chain,
+    request: WithdrawalRequest & { spender: string }
   ): Promise<{
     id: string;
     encodedData: string;
     payloadId: string;
     payloadParams: PayloadParams;
   }> {
-    const { contract, publicClient, walletClient } = await getOnchainAllocator(
+    const { contract, publicClient } = await getOnchainAllocator(
       request.chainId
     );
 
     const payloadParams = this._parseAllocatorPayloadParams(
       chain.vmType,
-      chain,
-      request,
-      walletClient.account.address
+      chain.depository!,
+      chain.metadata.allocatorChainId!,
+      request.currency,
+      request.amount,
+      request.recipient,
+      request.spender
     );
 
     // This is needed before being able to submit withdraw requests

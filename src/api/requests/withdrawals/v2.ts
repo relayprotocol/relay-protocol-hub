@@ -19,7 +19,7 @@ const Schema = {
   body: Type.Object({
     mode: Type.Optional(
       Type.Union([Type.Literal("offchain"), Type.Literal("onchain")], {
-        description: "Allocation mode to use",
+        description: "The mode of the withdrawal request",
       })
     ),
     ownerChainId: Type.String({ description: "The chain id of the owner" }),
@@ -36,50 +36,21 @@ const Schema = {
     recipient: Type.String({
       description: "The address of the recipient for the withdrawal proceeds",
     }),
+    spender: Type.String({
+      description:
+        "The address of the spender (usually the withdrawal address)",
+    }),
     signature: Type.String({
       description:
         "Signature attesting the owner authorized this particular withdrawal request",
     }),
-    submitWithdrawalRequestParams: Type.Optional(
-      SubmitWithdrawalRequestParamsSchema
-    ),
     additionalData: Type.Optional(
       Type.Object(
         {
-          "bitcoin-vm": Type.Optional(
+          "hyperliquid-vm": Type.Optional(
             Type.Object({
-              allocatorUtxos: Type.Array(
-                Type.Object(
-                  {
-                    txid: Type.String(),
-                    vout: Type.Number(),
-                    value: Type.String(),
-                  },
-                  {
-                    description:
-                      "Allocator UTXOs to be used for generating the withdrawal request",
-                  }
-                )
-              ),
-              relayer: Type.String({
-                description: "The address of the relayer",
-              }),
-              relayerUtxos: Type.Array(
-                Type.Object(
-                  {
-                    txid: Type.String(),
-                    vout: Type.Number(),
-                    value: Type.String(),
-                  },
-                  {
-                    description:
-                      "Relayer UTXOs to be used for the transaction fee payment",
-                  }
-                )
-              ),
-              transactionFee: Type.String({
-                description:
-                  "The transaction fee taken out of the specified relayer UTXOs",
+              currencyHyperliquidSymbol: Type.String({
+                description: "The Hyperliquid symbol for the currency",
               }),
             })
           ),
@@ -99,6 +70,9 @@ const Schema = {
           "The withdrawal data (encoded based on the withdrawing chain's vm type)",
       }),
       signer: Type.String({ description: "The signer of the withdrawal" }),
+      submitWithdrawalRequestParams: Type.Optional(
+        SubmitWithdrawalRequestParamsSchema
+      ),
       signature: Type.Optional(
         Type.String({
           description: "The allocator signature for the withdrawal",
@@ -111,7 +85,7 @@ const Schema = {
 
 export default {
   method: "POST",
-  url: "/requests/withdrawals/v1",
+  url: "/requests/withdrawals/v2",
   schema: Schema,
   handler: async (
     req: FastifyRequestTypeBox<typeof Schema>,
@@ -155,7 +129,9 @@ export default {
     );
 
     const requestHandler = new RequestHandlerService();
-    const result = await requestHandler.handleWithdrawal(req.body);
+    // Extract only the fields expected by the handler (exclude signature which is only for validation)
+    const { signature: _, ...requestBody } = req.body;
+    const result = await requestHandler.handleOnChainWithdrawal(requestBody);
 
     logger.info(
       "tracking",
