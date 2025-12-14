@@ -667,10 +667,7 @@ export class RequestHandlerService {
     }
 
     // will throw if withdrawal is not ready
-    this._withdrawalIsReady(
-      withdrawalRequest.chainId,
-      withdrawalRequest.payloadId
-    );
+    this._withdrawalIsReady(withdrawalRequest.payloadId);
 
     // Lock the balance (if we don't already have a lock on it)
     if (!(await getBalanceLock(withdrawalRequest.id))) {
