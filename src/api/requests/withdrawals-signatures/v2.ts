@@ -22,7 +22,17 @@ const Schema = {
   }),
   response: {
     200: Type.Object({
-      message: Type.String({ description: "Success message" }),
+      encodedData: Type.String({
+        description:
+          "The depository payload to be executed on destination chain",
+      }),
+      signer: Type.String({
+        description: "The (MPC) signer address from the allocator",
+      }),
+      signature: Type.String({
+        description:
+          "The sign data hash to be passed to the depository on exeuction",
+      }),
     }),
     ...ErrorResponse,
   },

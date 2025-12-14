@@ -53,6 +53,41 @@ import {
   saveWithdrawalRequest,
 } from "../../models/withdrawal-requests";
 
+type AllocatorSubmitRequestParams = {
+  chainId: string;
+  currency: string;
+  amount: string;
+  recipient: string;
+  spender?: string;
+  additionalData?: {
+    "hyperliquid-vm"?: AdditionalDataHyperliquidVm;
+  };
+};
+
+type OnchainWithdrawalRequest = {
+  data: AllocatorSubmitRequestParams;
+  result: {
+    id: string;
+    encodedData: string;
+    payloadId: string;
+    submitWithdrawalRequestParams: PayloadParams;
+    signer: string;
+  };
+};
+
+type OnChainWithdrawalSignatureRequest = {
+  data: {
+    chainId: string;
+    payloadId: string;
+    payloadParams: PayloadParams;
+  };
+  result: {
+    encodedData: string;
+    signer: string;
+    signature?: string;
+  };
+};
+
 type AdditionalDataBitcoinVm = {
   allocatorUtxos: { txid: string; vout: number; value: string }[];
   relayer: string;
@@ -80,12 +115,6 @@ type WithdrawalRequest = {
 
 type WithdrawalSignatureRequest = {
   id: string;
-};
-
-type OnChainWithdrawalSignatureRequest = {
-  chainId: string;
-  payloadId: string;
-  payloadParams: PayloadParams;
 };
 
 type UnlockRequest = {
@@ -565,11 +594,10 @@ export class RequestHandlerService {
   }
 
   public async handleOnChainWithdrawal(
-    request: WithdrawalRequest & { spender: string }
-  ) {
+    request: OnchainWithdrawalRequest["data"]
+  ): Promise<OnchainWithdrawalRequest["result"]> {
     let id: string;
     let encodedData: string;
-    let signature: string | undefined;
 
     let payloadId: string | undefined;
     let payloadParams: PayloadParams | undefined;
@@ -624,7 +652,6 @@ export class RequestHandlerService {
       encodedData,
       payloadId,
       submitWithdrawalRequestParams: payloadParams,
-      signature,
       signer: await getOnchainAllocatorForChain(request.chainId),
     };
   }
@@ -680,8 +707,8 @@ export class RequestHandlerService {
   }
 
   public async handleOnChainWithdrawalSignature(
-    request: OnChainWithdrawalSignatureRequest
-  ) {
+    request: OnChainWithdrawalSignatureRequest["data"]
+  ): Promise<OnChainWithdrawalSignatureRequest["result"]> {
     // will throw if withdrawal is not ready
     this._withdrawalIsReady(request.chainId, request.payloadId);
 
@@ -690,6 +717,9 @@ export class RequestHandlerService {
     const encodedData = await contract.read.payloads([
       request.payloadId as Hex,
     ]);
+
+    // get signer address from near MPC
+    const signer = await getOnchainAllocatorForChain(request.chainId);
 
     // check if signature already exists
     const signature = await getSignatureFromContract(
@@ -701,13 +731,16 @@ export class RequestHandlerService {
     // if not get one
     if (!signature) {
       this._signPayload(request.chainId, request.payloadParams);
+      return {
+        encodedData,
+        signer,
+      };
     }
 
     return {
-      payloadId: request.payloadId,
       encodedData,
       signature,
-      signer: await getOnchainAllocatorForChain(request.chainId),
+      signer,
     };
   }
 
@@ -814,7 +847,7 @@ export class RequestHandlerService {
 
   private async _submitWithdrawRequest(
     chain: Chain,
-    request: WithdrawalRequest & { spender?: string }
+    request: AllocatorSubmitRequestParams
   ): Promise<{
     id: string;
     encodedData: string;

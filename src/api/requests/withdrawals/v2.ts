@@ -17,13 +17,6 @@ import { RequestHandlerService } from "../../../services/request-handler";
 
 const Schema = {
   body: Type.Object({
-    mode: Type.Optional(
-      Type.Union([Type.Literal("offchain"), Type.Literal("onchain")], {
-        description: "The mode of the withdrawal request",
-      })
-    ),
-    ownerChainId: Type.String({ description: "The chain id of the owner" }),
-    owner: Type.String({ description: "The address of the owner" }),
     chainId: Type.String({
       description: "The chain id to withdraw on",
     }),
@@ -39,6 +32,13 @@ const Schema = {
     spender: Type.String({
       description:
         "The address of the spender (usually the withdrawal address)",
+    }),
+    proofOfWithdrawalAddressBalance: Type.String({
+      description:
+        "The proof that withdrawal addres has funds returned by the oracle",
+    }),
+    owner: Type.String({
+      description: "The address of the owner (that triggered the withdrawal)",
     }),
     signature: Type.String({
       description:
