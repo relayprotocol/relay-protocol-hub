@@ -53,6 +53,18 @@ import {
   saveWithdrawalRequest,
 } from "../../models/withdrawal-requests";
 
+// TODO: move to SDK
+type AdditionalDataBitcoinVm = {
+  allocatorUtxos: { txid: string; vout: number; value: string }[];
+  relayer: string;
+  relayerUtxos: { txid: string; vout: number; value: string }[];
+  transactionFee: string;
+};
+
+type AdditionalDataHyperliquidVm = {
+  currencyHyperliquidSymbol: string;
+};
+
 type AllocatorSubmitRequestParams = {
   chainId: string;
   currency: string;
@@ -86,17 +98,6 @@ type OnChainWithdrawalSignatureRequest = {
     signer: string;
     signature?: string;
   };
-};
-
-type AdditionalDataBitcoinVm = {
-  allocatorUtxos: { txid: string; vout: number; value: string }[];
-  relayer: string;
-  relayerUtxos: { txid: string; vout: number; value: string }[];
-  transactionFee: string;
-};
-
-type AdditionalDataHyperliquidVm = {
-  currencyHyperliquidSymbol: string;
 };
 
 type WithdrawalRequest = {
@@ -713,7 +714,7 @@ export class RequestHandlerService {
     this._withdrawalIsReady(request.chainId, request.payloadId);
 
     // get data from the contract
-    const { contract } = await getOnchainAllocator(request.chainId);
+    const { contract } = await getOnchainAllocator();
     const encodedData = await contract.read.payloads([
       request.payloadId as Hex,
     ]);
@@ -854,9 +855,8 @@ export class RequestHandlerService {
     payloadId: string;
     payloadParams: PayloadParams;
   }> {
-    const { contract, publicClient, walletClient } = await getOnchainAllocator(
-      request.chainId
-    );
+    const { contract, publicClient, walletClient } =
+      await getOnchainAllocator();
 
     if (!request.spender) {
       request.spender = walletClient.account.address;
@@ -873,7 +873,7 @@ export class RequestHandlerService {
     );
 
     // This is needed before being able to submit withdraw requests
-    await handleOneTimeApproval(request.chainId);
+    await handleOneTimeApproval();
 
     const txHash = await contract.write.submitWithdrawRequest([
       payloadParams as any,
@@ -911,7 +911,7 @@ export class RequestHandlerService {
   }
 
   private async _withdrawalIsReady(chainId: string, payloadId: string) {
-    const { contract, publicClient } = await getOnchainAllocator(chainId);
+    const { contract, publicClient } = await getOnchainAllocator();
 
     const payloadTimestamp = await contract.read.payloadTimestamps([
       payloadId as Hex,
@@ -925,7 +925,7 @@ export class RequestHandlerService {
   }
 
   private async _signPayload(chainId: string, payloadParams: PayloadParams) {
-    const { contract } = await getOnchainAllocator(chainId);
+    const { contract } = await getOnchainAllocator();
 
     // TODO: Once we integrate Bitcoin we might need to make multiple calls
     await contract.write.signWithdrawPayloadHash([
