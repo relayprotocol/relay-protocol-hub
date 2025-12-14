@@ -700,10 +700,7 @@ export class RequestHandlerService {
     // Only trigger the signing process if we don't already have a valid signature
     const signature = await getSignature(withdrawalRequest.id);
     if (!signature) {
-      this._signPayload(
-        withdrawalRequest.chainId,
-        withdrawalRequest.payloadParams
-      );
+      this._signPayload(withdrawalRequest.payloadParams);
     }
   }
 
@@ -711,7 +708,7 @@ export class RequestHandlerService {
     request: OnChainWithdrawalSignatureRequest["data"]
   ): Promise<OnChainWithdrawalSignatureRequest["result"]> {
     // will throw if withdrawal is not ready
-    this._withdrawalIsReady(request.chainId, request.payloadId);
+    this._withdrawalIsReady(request.payloadId);
 
     // get data from the contract
     const { contract } = await getOnchainAllocator();
@@ -731,7 +728,7 @@ export class RequestHandlerService {
 
     // if not get one
     if (!signature) {
-      this._signPayload(request.chainId, request.payloadParams);
+      this._signPayload(request.payloadParams);
       return {
         encodedData,
         signer,
@@ -910,7 +907,7 @@ export class RequestHandlerService {
     };
   }
 
-  private async _withdrawalIsReady(chainId: string, payloadId: string) {
+  private async _withdrawalIsReady(payloadId: string) {
     const { contract, publicClient } = await getOnchainAllocator();
 
     const payloadTimestamp = await contract.read.payloadTimestamps([
@@ -924,7 +921,7 @@ export class RequestHandlerService {
     }
   }
 
-  private async _signPayload(chainId: string, payloadParams: PayloadParams) {
+  private async _signPayload(payloadParams: PayloadParams) {
     const { contract } = await getOnchainAllocator();
 
     // TODO: Once we integrate Bitcoin we might need to make multiple calls

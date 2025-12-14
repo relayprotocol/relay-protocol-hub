@@ -91,7 +91,8 @@ export default {
     req: FastifyRequestTypeBox<typeof Schema>,
     reply: FastifyReplyTypeBox<typeof Schema>
   ) => {
-    const signatureVmType = await getChain(req.body.ownerChainId).then(
+    // TODO: use ownerChainId to allow withdrawals from any chain
+    const signatureVmType = await getChain(req.body.chainId).then(
       (c) => c.vmType
     );
     if (signatureVmType !== "ethereum-vm") {
