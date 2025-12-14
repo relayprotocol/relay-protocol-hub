@@ -71,6 +71,7 @@ type AllocatorSubmitRequestParams = {
   amount: string;
   recipient: string;
   spender?: string;
+  nonce?: string;
   additionalData?: {
     "hyperliquid-vm"?: AdditionalDataHyperliquidVm;
   };
@@ -775,6 +776,7 @@ export class RequestHandlerService {
     amount: string,
     recipient: string,
     spender: string,
+    nonce?: string,
     additionalData?: {
       "hyperliquid-vm"?: AdditionalDataHyperliquidVm;
     }
@@ -787,7 +789,7 @@ export class RequestHandlerService {
       receiver: recipient.toLowerCase(),
       amount: amount,
       data: "0x",
-      nonce: `0x${randomBytes(32).toString("hex")}`,
+      nonce: nonce || `0x${randomBytes(32).toString("hex")}`,
     };
 
     switch (vmType) {
@@ -863,7 +865,8 @@ export class RequestHandlerService {
       request.currency,
       request.amount,
       request.recipient,
-      request.spender
+      request.spender,
+      request.nonce
     );
 
     // This is needed before being able to submit withdraw requests

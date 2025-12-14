@@ -40,6 +40,10 @@ const Schema = {
     owner: Type.String({
       description: "The address of the owner (that triggered the withdrawal)",
     }),
+    nonce: Type.String({
+      description:
+        "The nonce to be used when submitting the withdrawal request to the allocator",
+    }),
     signature: Type.String({
       description:
         "Signature attesting the owner authorized this particular withdrawal request",
