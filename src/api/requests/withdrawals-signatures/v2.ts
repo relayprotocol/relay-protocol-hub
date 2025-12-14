@@ -29,10 +29,12 @@ const Schema = {
       signer: Type.String({
         description: "The (MPC) signer address from the allocator",
       }),
-      signature: Type.String({
-        description:
-          "The sign data hash to be passed to the depository on exeuction",
-      }),
+      signature: Type.Optional(
+        Type.String({
+          description:
+            "The sign data hash to be passed to the depository on exeuction",
+        })
+      ),
     }),
     ...ErrorResponse,
   },
@@ -68,8 +70,6 @@ export default {
       })
     );
 
-    return reply.status(200).send({
-      message: "Success",
-    });
+    return reply.status(200).send(result);
   },
 } as Endpoint;
