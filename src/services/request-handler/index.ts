@@ -814,16 +814,20 @@ export class RequestHandlerService {
 
   private async _submitWithdrawRequest(
     chain: Chain,
-    request: WithdrawalRequest & { spender: string }
+    request: WithdrawalRequest & { spender?: string }
   ): Promise<{
     id: string;
     encodedData: string;
     payloadId: string;
     payloadParams: PayloadParams;
   }> {
-    const { contract, publicClient } = await getOnchainAllocator(
+    const { contract, publicClient, walletClient } = await getOnchainAllocator(
       request.chainId
     );
+
+    if (!request.spender) {
+      request.spender = walletClient.account.address;
+    }
 
     const payloadParams = this._parseAllocatorPayloadParams(
       chain.vmType,
