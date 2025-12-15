@@ -4,7 +4,7 @@ import {
   getDecodedWithdrawalId,
   getVmTypeNativeCurrency,
 } from "@reservoir0x/relay-protocol-sdk";
-import { PublicKey, Keypair } from "@solana/web3.js";
+import { PublicKey, Keypair, SystemProgram } from "@solana/web3.js";
 import * as bitcoin from "bitcoinjs-lib";
 import bs58 from "bs58";
 import { randomBytes } from "crypto";
@@ -20,6 +20,7 @@ import {
   parseAbi,
   zeroAddress,
   encodeAbiParameters,
+  zeroHash,
 } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import TronWeb from "tronweb";
@@ -245,6 +246,9 @@ export class RequestHandlerService {
             amount: request.amount,
             nonce: BigInt("0x" + randomBytes(8).toString("hex")).toString(),
             expiration,
+            // TODO: Use correct values fetched from the depository
+            domain: zeroHash,
+            vaultAddress: SystemProgram.programId.toBase58(),
           };
 
           id = getDecodedWithdrawalId({
