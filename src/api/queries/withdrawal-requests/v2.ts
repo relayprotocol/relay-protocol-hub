@@ -6,7 +6,10 @@ import {
   FastifyReplyTypeBox,
   FastifyRequestTypeBox,
 } from "../../utils";
-import { getOnchainAllocator } from "../../../utils/onchain-allocator";
+import {
+  getOnchainAllocator,
+  getSignatureFromContract,
+} from "../../../utils/onchain-allocator";
 import { logger } from "../../../common/logger";
 import { Hex } from "viem";
 
@@ -15,6 +18,9 @@ const Schema = {
     payloadId: Type.String({
       description: "The payload id of the withdrawal request",
     }),
+    chainId: Type.String({
+      description: "The chain id of the depository",
+    }),
   }),
   response: {
     200: Type.Object({
@@ -22,6 +28,12 @@ const Schema = {
         description:
           "The depository payload to be executed on destination chain",
       }),
+      signature: Type.Optional(
+        Type.String({
+          description:
+            "The sign data hash to be passed to the depository on exeuction",
+        })
+      ),
     }),
     ...ErrorResponse,
   },
@@ -47,9 +59,15 @@ export default {
       req.params.payloadId as Hex,
     ]);
 
+    const signature = await getSignatureFromContract(
+      req.params.chainId,
+      req.params.payloadId,
+      encodedData
+    );
     // TODO: return signature
     return reply.status(200).send({
       encodedData,
+      signature,
     });
   },
 } as Endpoint;
