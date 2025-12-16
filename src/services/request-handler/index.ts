@@ -378,17 +378,6 @@ export class RequestHandlerService {
 
       case "hyperliquid-vm": {
         if (request.mode === "onchain") {
-          const isNativeCurrency =
-            request.currency === getVmTypeNativeCurrency(chain.vmType);
-          if (!isNativeCurrency) {
-            const additionalData = request.additionalData?.["hyperliquid-vm"];
-            if (!additionalData) {
-              throw externalError(
-                "Additional data is required for generating the withdrawal request"
-              );
-            }
-          }
-
           ({ id, encodedData, payloadId, payloadParams } =
             await this._submitWithdrawRequest(chain, request));
 
