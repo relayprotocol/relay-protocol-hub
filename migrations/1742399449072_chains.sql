@@ -4,6 +4,7 @@ CREATE TYPE "vm_type_t" AS ENUM (
   'bitcoin-vm',
   'ethereum-vm',
   'hyperliquid-vm',
+  'lighter-vm',
   'solana-vm',
   'sui-vm',
   'ton-vm',
