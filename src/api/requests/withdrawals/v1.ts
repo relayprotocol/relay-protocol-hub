@@ -66,7 +66,9 @@ const Schema = {
       description:
         "Signature attesting the owner authorized this particular withdrawal request",
     }),
-    submitWithdrawalRequestParams: Type.Optional(SubmitWithdrawalRequestParamsSchema),
+    submitWithdrawalRequestParams: Type.Optional(
+      SubmitWithdrawalRequestParamsSchema
+    ),
     additionalData: Type.Optional(
       Type.Object(
         {
@@ -104,6 +106,13 @@ const Schema = {
               transactionFee: Type.String({
                 description:
                   "The transaction fee taken out of the specified relayer UTXOs",
+              }),
+            })
+          ),
+          "hyperliquid-vm": Type.Optional(
+            Type.Object({
+              currencyHyperliquidSymbol: Type.String({
+                description: "The Hyperliquid symbol of the currency",
               }),
             })
           ),
