@@ -5,7 +5,7 @@ updates:
     schedule:
       interval: "daily"
     cooldown:
-      days: 7
+      default-days: 7
       include:
         - "*"
     versioning-strategy: auto
