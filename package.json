@@ -28,7 +28,7 @@
   "dependencies": {
     "@aws-sdk/client-kms": "3.916.0",
     "@aws-sdk/credential-providers": "3.916.0",
-    "@aws-sdk/rds-signer": "3.916.0",
+    "@aws-sdk/rds-signer": "3.948.0",
     "@fastify/swagger": "9.5.2",
     "@fastify/swagger-ui": "5.2.3",
     "@fastify/type-provider-typebox": "5.2.0",
