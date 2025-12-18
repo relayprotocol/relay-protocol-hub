@@ -51,7 +51,7 @@
     "pg-promise": "11.15.0",
     "pg-query-stream": "4.10.3",
     "tiny-secp256k1": "2.2.4",
-    "tronweb": "6.0.4",
+    "tronweb": "6.1.0",
     "tweetnacl": "1.0.3",
     "viem": "2.38.4",
     "winston": "3.18.3",
