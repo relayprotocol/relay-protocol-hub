@@ -16,6 +16,7 @@ import queriesChainsV1 from "./queries/chains/v1";
 import queriesConfigsV1 from "./queries/configs/v1";
 import queriesNonceMappingsV1 from "./queries/nonce-mappings/v1";
 import queriesWithdrawalRequestsV1 from "./queries/withdrawal-requests/v1";
+import queriesWithdrawalRequestsV2 from "./queries/withdrawal-requests/v2";
 
 // Requests
 import requestsUnlocksV1 from "./requests/unlocks/v1";
@@ -34,6 +35,7 @@ const endpoints = [
   queriesNonceMappingsV1,
   queriesConfigsV1,
   queriesWithdrawalRequestsV1,
+  queriesWithdrawalRequestsV2,
   requestsUnlocksV1,
   requestsWithdrawalsV1,
   requestsWithdrawalsSignaturesV1,

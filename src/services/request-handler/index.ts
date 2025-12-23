@@ -39,6 +39,7 @@ import { logger } from "../../common/logger";
 import {
   getOnchainAllocator,
   getSignature,
+  getSignatureFromContract,
   handleOneTimeApproval,
 } from "../../utils/onchain-allocator";
 import { config } from "../../config";
@@ -53,6 +54,7 @@ import {
   saveWithdrawalRequest,
 } from "../../models/withdrawal-requests";
 
+// TODO: move to SDK
 type AdditionalDataBitcoinVm = {
   allocatorUtxos: { txid: string; vout: number; value: string }[];
   relayer: string;
@@ -62,6 +64,42 @@ type AdditionalDataBitcoinVm = {
 
 type AdditionalDataHyperliquidVm = {
   currencyHyperliquidSymbol: string;
+};
+
+type AllocatorSubmitRequestParams = {
+  chainId: string;
+  currency: string;
+  amount: string;
+  recipient: string;
+  spender?: string;
+  nonce?: string;
+  additionalData?: {
+    "hyperliquid-vm"?: AdditionalDataHyperliquidVm;
+  };
+};
+
+type OnchainWithdrawalRequest = {
+  data: AllocatorSubmitRequestParams;
+  result: {
+    id: string;
+    encodedData: string;
+    payloadId: string;
+    submitWithdrawalRequestParams: PayloadParams;
+    signer: string;
+  };
+};
+
+type OnChainWithdrawalSignatureRequest = {
+  data: {
+    chainId: string;
+    payloadId: string;
+    payloadParams: PayloadParams;
+  };
+  result: {
+    encodedData: string;
+    signer: string;
+    signature?: string;
+  };
 };
 
 type WithdrawalRequest = {
@@ -550,11 +588,73 @@ export class RequestHandlerService {
       encodedData,
       submitWithdrawalRequestParams: payloadParams,
       signature,
-      submitWithdrawRequestParams: payloadParams,
       signer:
         request.mode === "onchain"
           ? await getOnchainAllocatorForChain(request.chainId)
           : await getOffchainAllocatorForChain(request.chainId),
+    };
+  }
+
+  public async handleOnChainWithdrawal(
+    request: OnchainWithdrawalRequest["data"]
+  ): Promise<OnchainWithdrawalRequest["result"]> {
+    let id: string;
+    let encodedData: string;
+
+    let payloadId: string | undefined;
+    let payloadParams: PayloadParams | undefined;
+
+    const chain = await getChain(request.chainId);
+    switch (chain.vmType) {
+      case "ethereum-vm": {
+        ({ id, encodedData, payloadId, payloadParams } =
+          await this._submitWithdrawRequest(chain, request));
+        break;
+      }
+
+      case "solana-vm": {
+        ({ id, encodedData, payloadId, payloadParams } =
+          await this._submitWithdrawRequest(chain, request));
+        break;
+      }
+
+      case "bitcoin-vm": {
+        throw externalError("Onchain allocator mode not implemented");
+      }
+
+      case "hyperliquid-vm": {
+        const isNativeCurrency =
+          request.currency === getVmTypeNativeCurrency(chain.vmType);
+        if (!isNativeCurrency) {
+          const additionalData = request.additionalData?.["hyperliquid-vm"];
+          if (!additionalData) {
+            throw externalError(
+              "Additional data is required for generating the withdrawal request"
+            );
+          }
+        }
+
+        ({ id, encodedData, payloadId, payloadParams } =
+          await this._submitWithdrawRequest(chain, request));
+
+        break;
+      }
+
+      case "tron-vm": {
+        throw externalError("Onchain allocator mode not implemented");
+      }
+
+      default: {
+        throw externalError("Vm type not implemented");
+      }
+    }
+
+    return {
+      id,
+      encodedData,
+      payloadId,
+      submitWithdrawalRequestParams: payloadParams,
+      signer: await getOnchainAllocatorForChain(request.chainId),
     };
   }
 
@@ -568,10 +668,7 @@ export class RequestHandlerService {
     }
 
     // will throw if withdrawal is not ready
-    this._withdrawalIsReady(
-      withdrawalRequest.chainId,
-      withdrawalRequest.payloadId
-    );
+    this._withdrawalIsReady(withdrawalRequest.payloadId);
 
     // Lock the balance (if we don't already have a lock on it)
     if (!(await getBalanceLock(withdrawalRequest.id))) {
@@ -601,11 +698,46 @@ export class RequestHandlerService {
     // Only trigger the signing process if we don't already have a valid signature
     const signature = await getSignature(withdrawalRequest.id);
     if (!signature) {
-      this._signPayload(
-        withdrawalRequest.chainId,
-        withdrawalRequest.payloadParams
-      );
+      this._signPayload(withdrawalRequest.payloadParams);
     }
+  }
+
+  public async handleOnChainWithdrawalSignature(
+    request: OnChainWithdrawalSignatureRequest["data"]
+  ): Promise<OnChainWithdrawalSignatureRequest["result"]> {
+    // will throw if withdrawal is not ready
+    this._withdrawalIsReady(request.payloadId);
+
+    // get data from the contract
+    const { contract } = await getOnchainAllocator();
+    const encodedData = await contract.read.payloads([
+      request.payloadId as Hex,
+    ]);
+
+    // get signer address from near MPC
+    const signer = await getOnchainAllocatorForChain(request.chainId);
+
+    // check if signature already exists
+    const signature = await getSignatureFromContract(
+      request.chainId,
+      request.payloadId,
+      encodedData
+    );
+
+    // if not get one
+    if (!signature) {
+      this._signPayload(request.payloadParams);
+      return {
+        encodedData,
+        signer,
+      };
+    }
+
+    return {
+      encodedData,
+      signature,
+      signer,
+    };
   }
 
   public async handleUnlock(request: UnlockRequest) {
@@ -638,52 +770,54 @@ export class RequestHandlerService {
 
   private _parseAllocatorPayloadParams(
     vmType: string,
-    chain: Chain,
-    request: WithdrawalRequest,
-    spender: string
+    depository: string,
+    allocatorChainId: string,
+    currency: string,
+    amount: string,
+    recipient: string,
+    spender: string,
+    nonce?: string,
+    additionalData?: {
+      "hyperliquid-vm"?: AdditionalDataHyperliquidVm;
+    }
   ): PayloadParams {
+    const defaultParams = {
+      chainId: allocatorChainId!,
+      depository: depository!.toLowerCase(),
+      currency: currency.toLowerCase(),
+      spender: spender.toLowerCase(),
+      receiver: recipient.toLowerCase(),
+      amount: amount,
+      data: "0x",
+      nonce: nonce || `0x${randomBytes(32).toString("hex")}`,
+    };
+
     switch (vmType) {
       case "ethereum-vm": {
-        return {
-          chainId: chain.metadata.allocatorChainId!,
-          depository: chain.depository!.toLowerCase(),
-          currency: request.currency.toLowerCase(),
-          amount: request.amount,
-          spender: spender.toLowerCase(),
-          receiver: request.recipient.toLowerCase(),
-          data: "0x",
-          nonce: `0x${randomBytes(32).toString("hex")}`,
-        };
+        return defaultParams;
       }
 
       case "solana-vm": {
         // The "solana-vm" payload builder expects addresses to be hex-encoded
         const toHexString = (address: string) =>
           new PublicKey(address).toBuffer().toString("hex");
-
         return {
-          chainId: chain.metadata.allocatorChainId!,
-          depository: chain.depository!,
+          ...defaultParams,
           currency:
-            request.currency === getVmTypeNativeCurrency(vmType)
+            currency === getVmTypeNativeCurrency(vmType)
               ? ""
-              : toHexString(request.currency),
-          amount: request.amount,
-          spender: spender.toLowerCase(),
-          receiver: toHexString(request.recipient),
-          data: "0x",
-          nonce: `0x${randomBytes(32).toString("hex")}`,
+              : toHexString(currency),
+          receiver: toHexString(recipient),
         };
       }
 
       case "hyperliquid-vm": {
-        const isNativeCurrency =
-          request.currency === getVmTypeNativeCurrency(vmType);
+        const isNativeCurrency = currency === getVmTypeNativeCurrency(vmType);
 
         const currencyDex =
-          request.currency.slice(34) === ""
+          currency.slice(34) === ""
             ? "spot"
-            : Buffer.from(request.currency.slice(34), "hex").toString("ascii");
+            : Buffer.from(currency.slice(34), "hex").toString("ascii");
         const data = isNativeCurrency
           ? encodeAbiParameters([{ type: "uint64" }], [BigInt(Date.now())])
           : encodeAbiParameters(
@@ -692,19 +826,13 @@ export class RequestHandlerService {
             );
 
         return {
-          chainId: chain.metadata.allocatorChainId!,
-          depository: chain.depository!,
+          ...defaultParams,
           currency: isNativeCurrency
             ? ""
             : `${
-                request.additionalData!["hyperliquid-vm"]!
-                  .currencyHyperliquidSymbol
-              }:${request.currency.toLowerCase()}`,
-          amount: request.amount,
-          spender: spender.toLowerCase(),
-          receiver: request.recipient.toLowerCase(),
+                additionalData!["hyperliquid-vm"]!.currencyHyperliquidSymbol
+              }:${currency.toLowerCase()}`,
           data,
-          nonce: `0x${randomBytes(32).toString("hex")}`,
         };
       }
 
@@ -715,27 +843,34 @@ export class RequestHandlerService {
   }
 
   private async _submitWithdrawRequest(
-    chain: Awaited<ReturnType<typeof getChain>>,
-    request: WithdrawalRequest
+    chain: Chain,
+    request: AllocatorSubmitRequestParams
   ): Promise<{
     id: string;
     encodedData: string;
     payloadId: string;
     payloadParams: PayloadParams;
   }> {
-    const { contract, publicClient, walletClient } = await getOnchainAllocator(
-      request.chainId
-    );
+    const { contract, publicClient, walletClient } =
+      await getOnchainAllocator();
+
+    if (!request.spender) {
+      request.spender = walletClient.account.address;
+    }
 
     const payloadParams = this._parseAllocatorPayloadParams(
       chain.vmType,
-      chain,
-      request,
-      walletClient.account.address
+      chain.depository!,
+      chain.metadata.allocatorChainId!,
+      request.currency,
+      request.amount,
+      request.recipient,
+      request.spender,
+      request.nonce
     );
 
     // This is needed before being able to submit withdraw requests
-    await handleOneTimeApproval(request.chainId);
+    await handleOneTimeApproval();
 
     const txHash = await contract.write.submitWithdrawRequest([
       payloadParams as any,
@@ -772,8 +907,8 @@ export class RequestHandlerService {
     };
   }
 
-  private async _withdrawalIsReady(chainId: string, payloadId: string) {
-    const { contract, publicClient } = await getOnchainAllocator(chainId);
+  private async _withdrawalIsReady(payloadId: string) {
+    const { contract, publicClient } = await getOnchainAllocator();
 
     const payloadTimestamp = await contract.read.payloadTimestamps([
       payloadId as Hex,
@@ -786,8 +921,8 @@ export class RequestHandlerService {
     }
   }
 
-  private async _signPayload(chainId: string, payloadParams: PayloadParams) {
-    const { contract } = await getOnchainAllocator(chainId);
+  private async _signPayload(payloadParams: PayloadParams) {
+    const { contract } = await getOnchainAllocator();
 
     // TODO: Once we integrate Bitcoin we might need to make multiple calls
     await contract.write.signWithdrawPayloadHash([
