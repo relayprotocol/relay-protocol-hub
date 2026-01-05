@@ -186,7 +186,7 @@ describe("nonce-mappings api handlers", () => {
     );
 
     // Save to database first
-    await saveNonceMapping({
+    const dbEntry = await saveNonceMapping({
       walletChainId: chainId,
       wallet,
       nonce,
@@ -212,6 +212,7 @@ describe("nonce-mappings api handlers", () => {
     // Verify reply was called correctly
     expect(reply.status).toHaveBeenCalledWith(200);
     expect(reply.send).toHaveBeenCalledWith({
+      createdAt: dbEntry!.createdAt.toISOString(),
       walletChainId: chainId,
       wallet,
       nonce,
@@ -355,14 +356,16 @@ describe("nonce-mappings api handlers", () => {
     await queryEndpoint.handler(firstQueryReq as any, firstQueryReply as any);
 
     expect(firstQueryReply.status).toHaveBeenCalledWith(200);
-    expect(firstQueryReply.send).toHaveBeenCalledWith({
-      walletChainId: chainId,
-      wallet,
-      nonce: firstNonce,
-      id: firstId,
-      signatureChainId: chainId,
-      signature: firstSignature,
-    });
+    expect(firstQueryReply.send).toHaveBeenCalledWith(
+      expect.objectContaining({
+        walletChainId: chainId,
+        wallet,
+        nonce: firstNonce,
+        id: firstId,
+        signatureChainId: chainId,
+        signature: firstSignature,
+      })
+    );
 
     // Query second binding
     const secondQueryReq = createMockRequest(
@@ -374,13 +377,15 @@ describe("nonce-mappings api handlers", () => {
     await queryEndpoint.handler(secondQueryReq as any, secondQueryReply as any);
 
     expect(secondQueryReply.status).toHaveBeenCalledWith(200);
-    expect(secondQueryReply.send).toHaveBeenCalledWith({
-      walletChainId: chainId,
-      wallet,
-      nonce: secondNonce,
-      id: secondId,
-      signatureChainId: chainId,
-      signature: secondSignature,
-    });
+    expect(secondQueryReply.send).toHaveBeenCalledWith(
+      expect.objectContaining({
+        walletChainId: chainId,
+        wallet,
+        nonce: secondNonce,
+        id: secondId,
+        signatureChainId: chainId,
+        signature: secondSignature,
+      })
+    );
   });
 });

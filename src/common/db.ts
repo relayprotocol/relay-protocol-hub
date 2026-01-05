@@ -1,7 +1,7 @@
 import PgPromise from "pg-promise";
 
 import { config } from "../config";
-import { getIamToken } from './aws';
+import { getIamToken } from "./aws";
 
 export const pgp = PgPromise();
 
