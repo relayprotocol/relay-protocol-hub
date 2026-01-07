@@ -8,7 +8,6 @@ import {
   ErrorResponse,
   FastifyReplyTypeBox,
   FastifyRequestTypeBox,
-  SubmitWithdrawalRequestParamsSchema,
 } from "../../utils";
 import { getChain } from "../../../common/chains";
 import { externalError } from "../../../common/error";
@@ -40,9 +39,6 @@ const Schema = {
       description:
         "Signature attesting the owner authorized this particular withdrawal request",
     }),
-    submitWithdrawalRequestParams: Type.Optional(
-      SubmitWithdrawalRequestParamsSchema
-    ),
     additionalData: Type.Optional(
       Type.Object(
         {
