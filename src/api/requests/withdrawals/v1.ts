@@ -83,6 +83,13 @@ const Schema = {
               }),
             })
           ),
+          "hyperliquid-vm": Type.Optional(
+            Type.Object({
+              currencyHyperliquidSymbol: Type.String({
+                description: "The Hyperliquid symbol of the currency",
+              }),
+            })
+          ),
         },
         {
           description:

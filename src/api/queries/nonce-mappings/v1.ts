@@ -29,6 +29,7 @@ const Schema = {
       id: Type.String(),
       signatureChainId: Type.String(),
       signature: Type.String(),
+      createdAt: Type.String(),
     }),
     ...ErrorResponse,
   },
@@ -56,6 +57,7 @@ export default {
       id: nonceMapping.id,
       signatureChainId: nonceMapping.signatureChainId,
       signature: nonceMapping.signature,
+      createdAt: nonceMapping.createdAt.toISOString(),
     });
   },
 } as Endpoint;
