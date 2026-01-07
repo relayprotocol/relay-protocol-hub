@@ -33,16 +33,17 @@ const Schema = {
       description:
         "The address of the spender (usually the withdrawal address)",
     }),
-    proofOfWithdrawalAddressBalance: Type.String({
-      description:
-        "The proof that withdrawal addres has funds returned by the oracle",
-    }),
     owner: Type.String({
       description: "The address of the owner (that triggered the withdrawal)",
     }),
+    ownerChainId: Type.String({ description: "The chain id of the owner" }),
     nonce: Type.String({
       description:
         "The nonce to be used when submitting the withdrawal request to the allocator",
+    }),
+    proofOfWithdrawalAddressBalance: Type.String({
+      description:
+        "The proof that withdrawal addres has funds returned by the oracle",
     }),
     signature: Type.String({
       description:
@@ -95,8 +96,8 @@ export default {
     req: FastifyRequestTypeBox<typeof Schema>,
     reply: FastifyReplyTypeBox<typeof Schema>
   ) => {
-    // TODO: use ownerChainId to allow withdrawals from any chain
-    const signatureVmType = await getChain(req.body.chainId).then(
+    // make sure we got EVM sig
+    const signatureVmType = await getChain(req.body.ownerChainId).then(
       (c) => c.vmType
     );
     if (signatureVmType !== "ethereum-vm") {
@@ -106,6 +107,7 @@ export default {
       );
     }
 
+    // authentify the proof of withdrawal address balance
     const hash = createHash("sha256")
       .update(stringify(req.body.proofOfWithdrawalAddressBalance)!)
       .digest("hex");
@@ -124,12 +126,13 @@ export default {
     logger.info(
       "tracking",
       JSON.stringify({
-        msg: "Executing `withdrawal` request",
+        msg: "Executing `withdrawal` request (v2)",
         request: req.body,
       })
     );
 
     const requestHandler = new RequestHandlerService();
+
     // Extract only the fields expected by the handler (exclude signature which is only for validation)
     const { signature: _, ...requestBody } = req.body;
     const result = await requestHandler.handleOnChainWithdrawal(requestBody);
