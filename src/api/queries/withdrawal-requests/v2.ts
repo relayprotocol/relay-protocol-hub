@@ -50,7 +50,7 @@ export default {
     logger.info(
       "tracking",
       JSON.stringify({
-        msg: "Querying `withdrawal-signature` request from contract",
+        msg: "Querying if withdrawal exists from the Allocator contract",
         data: req.body,
       })
     );
@@ -64,7 +64,7 @@ export default {
       req.params.payloadId,
       encodedData
     );
-    // TODO: return signature
+
     return reply.status(200).send({
       encodedData,
       signature,
