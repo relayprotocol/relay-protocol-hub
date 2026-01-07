@@ -51,7 +51,7 @@ export default {
     logger.info(
       "tracking",
       JSON.stringify({
-        msg: "Executing `withdrawal-signature` request",
+        msg: "Executing `withdrawal-signature` request (v2)",
         data: req.body,
       })
     );
