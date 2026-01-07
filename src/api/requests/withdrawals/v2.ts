@@ -107,17 +107,13 @@ export default {
     }
 
     const hash = createHash("sha256")
-      .update(
-        stringify({
-          ...req.body,
-          signature: undefined,
-        })!
-      )
+      .update(stringify(req.body.proofOfWithdrawalAddressBalance)!)
       .digest("hex");
+
     const isSignatureValid = await verifyMessage({
       address: req.body.owner as Address,
       message: {
-        raw: `0x${hash}`,
+        raw: hash as `0x${string}`,
       },
       signature: req.body.signature as Hex,
     });
