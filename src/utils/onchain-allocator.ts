@@ -85,7 +85,7 @@ const getPayloadBuilder = async (address: string) => {
   };
 };
 
-export const getOnchainAllocator = async (_chainId: string) => {
+export const getOnchainAllocator = async () => {
   const allocator = config.onchainAllocator;
   if (!allocator) {
     throw externalError("Onchain allocator not configured");
@@ -116,12 +116,10 @@ export const getOnchainAllocator = async (_chainId: string) => {
 };
 
 let _allowanceCache: bigint | undefined;
-export const handleOneTimeApproval = async (chainId: string) => {
+export const handleOneTimeApproval = async () => {
   const { walletClient } = await getPublicAndWalletClients();
 
-  const allocator = await getOnchainAllocator(chainId).then(
-    (a) => a.contract.address
-  );
+  const allocator = await getOnchainAllocator().then((a) => a.contract.address);
 
   const wNearContract = getContract({
     client: walletClient,
@@ -198,7 +196,7 @@ export const getSigner = async (chainId: string) => {
     }
   }
 
-  const { contract } = await getOnchainAllocator(chainId);
+  const { contract } = await getOnchainAllocator();
 
   const args = {
     domain_id: domainId,
@@ -255,7 +253,7 @@ export const getSignatureFromContract = async (
     );
   }
 
-  const onchainAllocator = await getOnchainAllocator(chain.id);
+  const onchainAllocator = await getOnchainAllocator();
   const payloadBuilderAddress =
     await onchainAllocator.contract.read.payloadBuilders([
       BigInt(chain.metadata.allocatorChainId),

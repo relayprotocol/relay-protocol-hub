@@ -8,6 +8,7 @@ import {
   ErrorResponse,
   FastifyReplyTypeBox,
   FastifyRequestTypeBox,
+  SubmitWithdrawalRequestParamsSchema,
 } from "../../utils";
 import { getChain } from "../../../common/chains";
 import { externalError } from "../../../common/error";
@@ -16,13 +17,6 @@ import { RequestHandlerService } from "../../../services/request-handler";
 
 const Schema = {
   body: Type.Object({
-    mode: Type.Optional(
-      Type.Union([Type.Literal("offchain"), Type.Literal("onchain")], {
-        description: "Allocation mode to use",
-      })
-    ),
-    ownerChainId: Type.String({ description: "The chain id of the owner" }),
-    owner: Type.String({ description: "The address of the owner" }),
     chainId: Type.String({
       description: "The chain id to withdraw on",
     }),
@@ -35,6 +29,22 @@ const Schema = {
     recipient: Type.String({
       description: "The address of the recipient for the withdrawal proceeds",
     }),
+    spender: Type.String({
+      description:
+        "The address of the spender (usually the withdrawal address)",
+    }),
+    owner: Type.String({
+      description: "The address of the owner (that triggered the withdrawal)",
+    }),
+    ownerChainId: Type.String({ description: "The chain id of the owner" }),
+    nonce: Type.String({
+      description:
+        "The nonce to be used when submitting the withdrawal request to the allocator",
+    }),
+    proofOfWithdrawalAddressBalance: Type.String({
+      description:
+        "The proof that withdrawal addres has funds returned by the oracle",
+    }),
     signature: Type.String({
       description:
         "Signature attesting the owner authorized this particular withdrawal request",
@@ -42,47 +52,10 @@ const Schema = {
     additionalData: Type.Optional(
       Type.Object(
         {
-          "bitcoin-vm": Type.Optional(
-            Type.Object({
-              allocatorUtxos: Type.Array(
-                Type.Object(
-                  {
-                    txid: Type.String(),
-                    vout: Type.Number(),
-                    value: Type.String(),
-                  },
-                  {
-                    description:
-                      "Allocator UTXOs to be used for generating the withdrawal request",
-                  }
-                )
-              ),
-              relayer: Type.String({
-                description: "The address of the relayer",
-              }),
-              relayerUtxos: Type.Array(
-                Type.Object(
-                  {
-                    txid: Type.String(),
-                    vout: Type.Number(),
-                    value: Type.String(),
-                  },
-                  {
-                    description:
-                      "Relayer UTXOs to be used for the transaction fee payment",
-                  }
-                )
-              ),
-              transactionFee: Type.String({
-                description:
-                  "The transaction fee taken out of the specified relayer UTXOs",
-              }),
-            })
-          ),
           "hyperliquid-vm": Type.Optional(
             Type.Object({
               currencyHyperliquidSymbol: Type.String({
-                description: "The Hyperliquid symbol of the currency",
+                description: "The Hyperliquid symbol for the currency",
               }),
             })
           ),
@@ -102,6 +75,9 @@ const Schema = {
           "The withdrawal data (encoded based on the withdrawing chain's vm type)",
       }),
       signer: Type.String({ description: "The signer of the withdrawal" }),
+      submitWithdrawalRequestParams: Type.Optional(
+        SubmitWithdrawalRequestParamsSchema
+      ),
       signature: Type.Optional(
         Type.String({
           description: "The allocator signature for the withdrawal",
@@ -114,12 +90,13 @@ const Schema = {
 
 export default {
   method: "POST",
-  url: "/requests/withdrawals/v1",
+  url: "/requests/withdrawals/v2",
   schema: Schema,
   handler: async (
     req: FastifyRequestTypeBox<typeof Schema>,
     reply: FastifyReplyTypeBox<typeof Schema>
   ) => {
+    // make sure we got EVM sig
     const signatureVmType = await getChain(req.body.ownerChainId).then(
       (c) => c.vmType
     );
@@ -130,18 +107,15 @@ export default {
       );
     }
 
+    // authentify the proof of withdrawal address balance
     const hash = createHash("sha256")
-      .update(
-        stringify({
-          ...req.body,
-          signature: undefined,
-        })!
-      )
+      .update(stringify(req.body.proofOfWithdrawalAddressBalance)!)
       .digest("hex");
+
     const isSignatureValid = await verifyMessage({
       address: req.body.owner as Address,
       message: {
-        raw: `0x${hash}`,
+        raw: hash as `0x${string}`,
       },
       signature: req.body.signature as Hex,
     });
@@ -152,13 +126,16 @@ export default {
     logger.info(
       "tracking",
       JSON.stringify({
-        msg: "Executing `withdrawal` request",
+        msg: "Executing `withdrawal` request (v2)",
         request: req.body,
       })
     );
 
     const requestHandler = new RequestHandlerService();
-    const result = await requestHandler.handleWithdrawal(req.body);
+
+    // Extract only the fields expected by the handler (exclude signature which is only for validation)
+    const { signature: _, ...requestBody } = req.body;
+    const result = await requestHandler.handleOnChainWithdrawal(requestBody);
 
     logger.info(
       "tracking",

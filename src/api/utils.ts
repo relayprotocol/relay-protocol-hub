@@ -88,3 +88,31 @@ export const buildContinuation = (...components: string[]) =>
 
 export const splitContinuation = (continuation: string) =>
   Buffer.from(continuation, "base64").toString("ascii").split("_");
+
+// schema for allocator submitWithdrawRequest
+export const SubmitWithdrawalRequestParamsSchema = Type.Object({
+  chainId: Type.String({
+    description: "The chain id of the allocator",
+  }),
+  depository: Type.String({
+    description: "The depository address of the allocator",
+  }),
+  currency: Type.String({
+    description: "The currency to withdraw",
+  }),
+  amount: Type.String({
+    description: "The amount to withdraw",
+  }),
+  spender: Type.String({
+    description: "The address of the spender",
+  }),
+  receiver: Type.String({
+    description: "The address of the receiver on the depository chain",
+  }),
+  data: Type.String({
+    description: "The data to include in the withdrawal request",
+  }),
+  nonce: Type.String({
+    description: "The nonce to include in the withdrawal request",
+  }),
+});
