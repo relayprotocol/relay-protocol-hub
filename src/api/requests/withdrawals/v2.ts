@@ -26,8 +26,8 @@ const Schema = {
     amount: Type.String({
       description: "The amount to withdraw",
     }),
-    recipient: Type.String({
-      description: "The address of the recipient for the withdrawal proceeds",
+    receiver: Type.String({
+      description: "The address of the receiver for the withdrawal proceeds",
     }),
     spender: Type.String({
       description:

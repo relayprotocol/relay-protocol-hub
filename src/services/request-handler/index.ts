@@ -70,7 +70,7 @@ type AllocatorSubmitRequestParams = {
   chainId: string;
   currency: string;
   amount: string;
-  recipient: string;
+  receiver: string;
   spender?: string;
   nonce?: string;
   additionalData?: {
@@ -109,7 +109,7 @@ type WithdrawalRequest = {
   chainId: string;
   currency: string;
   amount: string;
-  recipient: string;
+  receiver: string;
   additionalData?: {
     "bitcoin-vm"?: AdditionalDataBitcoinVm;
     "hyperliquid-vm"?: AdditionalDataHyperliquidVm;
@@ -864,7 +864,7 @@ export class RequestHandlerService {
       chain.metadata.allocatorChainId!,
       request.currency,
       request.amount,
-      request.recipient,
+      request.receiver,
       request.spender,
       request.nonce
     );
