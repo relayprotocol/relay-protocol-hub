@@ -61,11 +61,14 @@ export default {
       req.params.payloadId as Hex,
     ]);
 
-    const signature = await getSignatureFromContract(
-      req.query.chainId,
-      req.params.payloadId,
-      encodedData
-    );
+    let signature;
+    if (encodedData) {
+      signature = await getSignatureFromContract(
+        req.query.chainId,
+        req.params.payloadId,
+        encodedData
+      );
+    }
 
     return reply.status(200).send({
       encodedData,
