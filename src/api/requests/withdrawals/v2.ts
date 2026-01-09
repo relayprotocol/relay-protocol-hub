@@ -1,6 +1,5 @@
 import { Type } from "@fastify/type-provider-typebox";
 import { createHash } from "crypto";
-import stringify from "json-stable-stringify";
 import { Address, encodePacked, Hex, verifyMessage } from "viem";
 
 import {
