@@ -62,7 +62,7 @@ export default {
     ]);
 
     let signature;
-    if (encodedData) {
+    if (encodedData !== "0x") {
       signature = await getSignatureFromContract(
         req.query.chainId,
         req.params.payloadId,
