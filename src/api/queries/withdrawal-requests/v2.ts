@@ -18,6 +18,8 @@ const Schema = {
     payloadId: Type.String({
       description: "The payload id of the withdrawal request",
     }),
+  }),
+  querystring: Type.Object({
     chainId: Type.String({
       description: "The chain id of the depository",
     }),
@@ -59,11 +61,14 @@ export default {
       req.params.payloadId as Hex,
     ]);
 
-    const signature = await getSignatureFromContract(
-      req.params.chainId,
-      req.params.payloadId,
-      encodedData
-    );
+    let signature;
+    if (encodedData !== "0x") {
+      signature = await getSignatureFromContract(
+        req.query.chainId,
+        req.params.payloadId,
+        encodedData
+      );
+    }
 
     return reply.status(200).send({
       encodedData,

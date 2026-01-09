@@ -1,7 +1,7 @@
 import { Type } from "@fastify/type-provider-typebox";
 import { createHash } from "crypto";
 import stringify from "json-stable-stringify";
-import { Address, Hex, verifyMessage } from "viem";
+import { Address, encodePacked, Hex, verifyMessage } from "viem";
 
 import {
   Endpoint,
@@ -40,10 +40,6 @@ const Schema = {
     nonce: Type.String({
       description:
         "The nonce to be used when submitting the withdrawal request to the allocator",
-    }),
-    proofOfWithdrawalAddressBalance: Type.String({
-      description:
-        "The proof that withdrawal addres has funds returned by the oracle",
     }),
     signature: Type.String({
       description:
@@ -107,9 +103,19 @@ export default {
       );
     }
 
+    // recompute proof computed on the oracle
+    const proofOfWithdrawalAddressBalance = encodePacked(
+      ["address", "uint256", "bytes32"],
+      [
+        req.body.spender as `0x${string}`, // withdrawalAddress
+        BigInt(req.body.amount),
+        req.body.nonce as `0x${string}`,
+      ]
+    );
+
     // authentify the proof of withdrawal address balance
     const hash = createHash("sha256")
-      .update(stringify(req.body.proofOfWithdrawalAddressBalance)!)
+      .update(stringify(proofOfWithdrawalAddressBalance)!)
       .digest("hex");
 
     const isSignatureValid = await verifyMessage({
