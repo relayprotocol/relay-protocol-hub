@@ -18,6 +18,8 @@ const Schema = {
     payloadId: Type.String({
       description: "The payload id of the withdrawal request",
     }),
+  }),
+  querystring: Type.Object({
     chainId: Type.String({
       description: "The chain id of the depository",
     }),
@@ -60,7 +62,7 @@ export default {
     ]);
 
     const signature = await getSignatureFromContract(
-      req.params.chainId,
+      req.query.chainId,
       req.params.payloadId,
       encodedData
     );
