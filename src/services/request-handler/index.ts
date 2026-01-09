@@ -783,7 +783,7 @@ export class RequestHandlerService {
   ): PayloadParams {
     const defaultParams = {
       chainId: allocatorChainId!,
-      depository: depository!.toLowerCase(),
+      depository: depository,
       currency: currency.toLowerCase(),
       spender: spender.toLowerCase(),
       receiver: recipient.toLowerCase(),
