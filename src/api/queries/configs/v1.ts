@@ -34,7 +34,7 @@ export default {
     _req: FastifyRequestTypeBox<typeof Schema>,
     reply: FastifyReplyTypeBox<typeof Schema>
   ) => {
-    const { walletClient } = await getOnchainAllocator("ethereum");
+    const { walletClient } = await getOnchainAllocator();
 
     return reply.status(200).send({
       configs: {
