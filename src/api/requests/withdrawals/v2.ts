@@ -1,6 +1,5 @@
 import { Type } from "@fastify/type-provider-typebox";
 import { createHash } from "crypto";
-import stringify from "json-stable-stringify";
 import { Address, encodePacked, Hex, verifyMessage } from "viem";
 
 import {
@@ -115,13 +114,13 @@ export default {
 
     // authentify the proof of withdrawal address balance
     const hash = createHash("sha256")
-      .update(stringify(proofOfWithdrawalAddressBalance)!)
+      .update(proofOfWithdrawalAddressBalance)
       .digest("hex");
 
     const isSignatureValid = await verifyMessage({
       address: req.body.owner as Address,
       message: {
-        raw: hash as `0x${string}`,
+        raw: `0x${hash}`,
       },
       signature: req.body.signature as Hex,
     });
