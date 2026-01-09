@@ -112,13 +112,11 @@ export default {
       ]
     );
 
-    console.log({ proofOfWithdrawalAddressBalance });
     // authentify the proof of withdrawal address balance
     const hash = createHash("sha256")
       .update(proofOfWithdrawalAddressBalance)
       .digest("hex");
 
-    console.log({ owner: req.body.owner });
     const isSignatureValid = await verifyMessage({
       address: req.body.owner as Address,
       message: {
