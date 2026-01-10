@@ -9,6 +9,7 @@ import {
 import {
   getOnchainAllocator,
   getSignatureFromContract,
+  getSigner,
 } from "../../../utils/onchain-allocator";
 import { logger } from "../../../common/logger";
 import { Hex } from "viem";
@@ -33,7 +34,12 @@ const Schema = {
       signature: Type.Optional(
         Type.String({
           description:
-            "The sign data hash to be passed to the depository on exeuction",
+            "The sign data hash to be passed to the depository for execution",
+        })
+      ),
+      signer: Type.Optional(
+        Type.String({
+          description: "The MPC signer that signed the depository payload",
         })
       ),
     }),
@@ -62,17 +68,22 @@ export default {
     ]);
 
     let signature;
+    let signer;
+
     if (encodedData !== "0x") {
       signature = await getSignatureFromContract(
         req.query.chainId,
         req.params.payloadId,
         encodedData
       );
+
+      signer = await getSigner(req.query.chainId);
     }
 
     return reply.status(200).send({
       encodedData,
       signature,
+      signer,
     });
   },
 } as Endpoint;
