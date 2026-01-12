@@ -866,7 +866,8 @@ export class RequestHandlerService {
       request.amount,
       request.recipient,
       request.spender,
-      request.nonce
+      request.nonce,
+      request.additionalData
     );
 
     // This is needed before being able to submit withdraw requests
