@@ -54,7 +54,6 @@ import {
   saveWithdrawalRequest,
 } from "../../models/withdrawal-requests";
 
-// TODO: move to SDK
 type AdditionalDataBitcoinVm = {
   allocatorUtxos: { txid: string; vout: number; value: string }[];
   relayer: string;
@@ -74,6 +73,7 @@ type AllocatorSubmitRequestParams = {
   spender?: string;
   nonce?: string;
   additionalData?: {
+    "bitcoin-vm"?: AdditionalDataBitcoinVm;
     "hyperliquid-vm"?: AdditionalDataHyperliquidVm;
   };
 };
@@ -768,7 +768,7 @@ export class RequestHandlerService {
     );
   }
 
-  private _parseAllocatorPayloadParams(
+  public parseAllocatorPayloadParams(
     vmType: string,
     depository: string,
     allocatorChainId: string,
@@ -778,6 +778,7 @@ export class RequestHandlerService {
     spender: string,
     nonce?: string,
     additionalData?: {
+      "bitcoin-vm"?: AdditionalDataBitcoinVm;
       "hyperliquid-vm"?: AdditionalDataHyperliquidVm;
     }
   ): PayloadParams {
@@ -858,7 +859,7 @@ export class RequestHandlerService {
       request.spender = walletClient.account.address;
     }
 
-    const payloadParams = this._parseAllocatorPayloadParams(
+    const payloadParams = this.parseAllocatorPayloadParams(
       chain.vmType,
       chain.depository!,
       chain.metadata.allocatorChainId!,
