@@ -1,5 +1,5 @@
 import { describe, expect, it } from "@jest/globals";
-import { DepositoryDepositMessage } from "@reservoir0x/relay-protocol-sdk";
+import { DepositoryDepositMessage } from "@relay-protocol/settlement-sdk";
 import { zeroHash } from "viem";
 
 import { getBalance } from "../../src/models/balances";

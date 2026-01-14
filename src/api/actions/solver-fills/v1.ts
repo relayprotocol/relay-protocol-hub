@@ -1,5 +1,5 @@
 import { Type } from "@fastify/type-provider-typebox";
-import { getSolverFillMessageId } from "@reservoir0x/relay-protocol-sdk";
+import { getSolverFillMessageId } from "@relay-protocol/settlement-sdk";
 
 import { checkOracleSignatures } from "../utils";
 import {

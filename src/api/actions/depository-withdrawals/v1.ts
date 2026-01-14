@@ -1,5 +1,5 @@
 import { Type } from "@fastify/type-provider-typebox";
-import { getDepositoryWithdrawalMessageId } from "@reservoir0x/relay-protocol-sdk";
+import { getDepositoryWithdrawalMessageId } from "@relay-protocol/settlement-sdk";
 
 import { checkOracleSignatures } from "../utils";
 import {

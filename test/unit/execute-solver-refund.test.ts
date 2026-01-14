@@ -5,7 +5,7 @@ import {
   Order,
   SolverRefundMessage,
   SolverRefundStatus,
-} from "@reservoir0x/relay-protocol-sdk";
+} from "@relay-protocol/settlement-sdk";
 
 import { getBalance } from "../../src/models/balances";
 import { ActionExecutorService } from "../../src/services/action-executor";
