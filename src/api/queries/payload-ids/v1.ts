@@ -61,7 +61,7 @@ const Schema = {
 };
 
 export default {
-  method: "GET",
+  method: "POST",
   url: "/queries/payload-ids/v1",
   schema: Schema,
   handler: async (
