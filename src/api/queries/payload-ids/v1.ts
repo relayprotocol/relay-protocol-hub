@@ -21,7 +21,7 @@ const Schema = {
     amount: Type.String({
       description: "The amount to withdraw",
     }),
-    recipient: Type.String({
+    receiver: Type.String({
       description: "The address of the recipient for the withdrawal proceeds",
     }),
     spender: Type.String({
@@ -77,7 +77,7 @@ export default {
       chain.metadata.allocatorChainId!,
       req.body.currency,
       req.body.amount,
-      req.body.recipient,
+      req.body.receiver,
       req.body.spender,
       req.body.nonce,
       req.body.additionalData
