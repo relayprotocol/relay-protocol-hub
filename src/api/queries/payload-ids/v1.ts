@@ -1,4 +1,5 @@
 import { Type } from "@fastify/type-provider-typebox";
+import { getSubmitWithdrawRequestHash } from "@relay-protocol/settlement-sdk";
 
 import {
   Endpoint,
@@ -8,7 +9,6 @@ import {
 } from "../../utils";
 import { getChain } from "../../../common/chains";
 import { RequestHandlerService } from "../../../services/request-handler";
-import { getSubmitWithdrawRequestHash } from "@reservoir0x/relay-protocol-sdk";
 
 const Schema = {
   body: Type.Object({

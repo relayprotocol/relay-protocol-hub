@@ -1,4 +1,4 @@
-import { VmType } from "@reservoir0x/relay-protocol-sdk";
+import { VmType } from "@relay-protocol/settlement-sdk";
 import { PublicKey } from "@solana/web3.js";
 import * as bitcoin from "bitcoinjs-lib";
 import TronWeb from "tronweb";
