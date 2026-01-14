@@ -70,8 +70,8 @@ type AllocatorSubmitRequestParams = {
   currency: string;
   amount: string;
   recipient: string;
-  spender?: string;
-  nonce?: string;
+  spender: string;
+  nonce: string;
   additionalData?: {
     "bitcoin-vm"?: AdditionalDataBitcoinVm;
     "hyperliquid-vm"?: AdditionalDataHyperliquidVm;
@@ -91,9 +91,8 @@ type OnchainWithdrawalRequest = {
 
 type OnChainWithdrawalSignatureRequest = {
   data: {
-    chainId: string;
     payloadId: string;
-    payloadParams: PayloadParams;
+    payloadParams: AllocatorSubmitRequestParams;
   };
   result: {
     encodedData: string;
@@ -705,28 +704,43 @@ export class RequestHandlerService {
   public async handleOnChainWithdrawalSignature(
     request: OnChainWithdrawalSignatureRequest["data"]
   ): Promise<OnChainWithdrawalSignatureRequest["result"]> {
-    // will throw if withdrawal is not ready
+    // Will throw if the withdrawal is not ready
     this._withdrawalIsReady(request.payloadId);
 
-    // get data from the contract
+    // Get data from the contract
     const { contract } = await getOnchainAllocator();
     const encodedData = await contract.read.payloads([
       request.payloadId as Hex,
     ]);
 
-    // get signer address from near MPC
-    const signer = await getOnchainAllocatorForChain(request.chainId);
+    // Get signer address from near MPC
+    const signer = await getOnchainAllocatorForChain(
+      request.payloadParams.chainId
+    );
 
     // check if signature already exists
     const signature = await getSignatureFromContract(
-      request.chainId,
+      request.payloadParams.chainId,
       request.payloadId,
       encodedData
     );
 
-    // if not get one
+    // If not, then get one
     if (!signature) {
-      this._signPayload(request.payloadParams);
+      const chain = await getChain(request.payloadParams.chainId);
+      const payloadParams = this.parseAllocatorPayloadParams(
+        chain.vmType,
+        chain.depository!,
+        chain.metadata.allocatorChainId!,
+        request.payloadParams.currency,
+        request.payloadParams.amount,
+        request.payloadParams.recipient,
+        request.payloadParams.spender,
+        request.payloadParams.nonce,
+        request.payloadParams.additionalData
+      );
+
+      this._signPayload(payloadParams);
       return {
         encodedData,
         signer,
@@ -776,7 +790,7 @@ export class RequestHandlerService {
     amount: string,
     recipient: string,
     spender: string,
-    nonce?: string,
+    nonce: string,
     additionalData?: {
       "bitcoin-vm"?: AdditionalDataBitcoinVm;
       "hyperliquid-vm"?: AdditionalDataHyperliquidVm;
@@ -790,7 +804,7 @@ export class RequestHandlerService {
       receiver: recipient.toLowerCase(),
       amount: amount,
       data: "0x",
-      nonce: nonce || `0x${randomBytes(32).toString("hex")}`,
+      nonce,
     };
 
     switch (vmType) {
@@ -845,7 +859,18 @@ export class RequestHandlerService {
 
   private async _submitWithdrawRequest(
     chain: Chain,
-    request: AllocatorSubmitRequestParams
+    request: {
+      chainId: string;
+      currency: string;
+      amount: string;
+      recipient: string;
+      spender?: string;
+      nonce?: string;
+      additionalData?: {
+        "bitcoin-vm"?: AdditionalDataBitcoinVm;
+        "hyperliquid-vm"?: AdditionalDataHyperliquidVm;
+      };
+    }
   ): Promise<{
     id: string;
     encodedData: string;
@@ -856,7 +881,10 @@ export class RequestHandlerService {
       await getOnchainAllocator();
 
     if (!request.spender) {
-      request.spender = walletClient.account.address;
+      request.spender = walletClient.account.address.toLowerCase();
+    }
+    if (!request.nonce) {
+      request.nonce = `0x${randomBytes(32).toString("hex")}`;
     }
 
     const payloadParams = this.parseAllocatorPayloadParams(
