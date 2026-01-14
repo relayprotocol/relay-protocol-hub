@@ -3,7 +3,7 @@ import {
   encodeWithdrawal,
   getDecodedWithdrawalId,
   getVmTypeNativeCurrency,
-} from "@reservoir0x/relay-protocol-sdk";
+} from "@relay-protocol/settlement-sdk";
 import { PublicKey, Keypair, SystemProgram } from "@solana/web3.js";
 import * as bitcoin from "bitcoinjs-lib";
 import bs58 from "bs58";

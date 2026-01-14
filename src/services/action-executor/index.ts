@@ -6,7 +6,7 @@ import {
   SolverFillStatus,
   SolverRefundMessage,
   SolverRefundStatus,
-} from "@reservoir0x/relay-protocol-sdk";
+} from "@relay-protocol/settlement-sdk";
 import { zeroHash } from "viem";
 
 import { db } from "../../common/db";

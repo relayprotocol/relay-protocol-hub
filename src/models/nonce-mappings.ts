@@ -1,4 +1,4 @@
-import { getChainVmType } from "@reservoir0x/relay-protocol-sdk/dist/utils";
+import { getChainVmType } from "@relay-protocol/settlement-sdk/dist/utils";
 import { ITask } from "pg-promise";
 
 import { DbEntry, nvAddress } from "./utils";

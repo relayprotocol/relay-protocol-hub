@@ -3,7 +3,7 @@ import {
   DepositoryDepositMessage,
   DepositoryWithdrawalMessage,
   DepositoryWithdrawalStatus,
-} from "@reservoir0x/relay-protocol-sdk";
+} from "@relay-protocol/settlement-sdk";
 import { zeroHash } from "viem";
 
 import { getBalance } from "../../src/models/balances";
