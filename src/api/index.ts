@@ -15,6 +15,7 @@ import queriesBalancesV1 from "./queries/balances/v1";
 import queriesChainsV1 from "./queries/chains/v1";
 import queriesConfigsV1 from "./queries/configs/v1";
 import queriesNonceMappingsV1 from "./queries/nonce-mappings/v1";
+import queriesPayloadIdsV1 from "./queries/payload-ids/v1";
 import queriesWithdrawalRequestsV1 from "./queries/withdrawal-requests/v1";
 import queriesWithdrawalRequestsV2 from "./queries/withdrawal-requests/v2";
 
@@ -34,8 +35,9 @@ const endpoints = [
   queriesBalanceLocksV1,
   queriesBalancesV1,
   queriesChainsV1,
-  queriesNonceMappingsV1,
   queriesConfigsV1,
+  queriesNonceMappingsV1,
+  queriesPayloadIdsV1,
   queriesWithdrawalRequestsV1,
   queriesWithdrawalRequestsV2,
   requestsUnlocksV1,
