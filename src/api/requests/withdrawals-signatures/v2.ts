@@ -5,20 +5,54 @@ import {
   ErrorResponse,
   FastifyReplyTypeBox,
   FastifyRequestTypeBox,
-  SubmitWithdrawalRequestParamsSchema,
 } from "../../utils";
 import { logger } from "../../../common/logger";
 import { RequestHandlerService } from "../../../services/request-handler";
 
 const Schema = {
   body: Type.Object({
-    chainId: Type.String({
-      description: "The chain id of the withdrawal",
-    }),
     payloadId: Type.String({
       description: "The payload id of the withdrawal request",
     }),
-    payloadParams: SubmitWithdrawalRequestParamsSchema,
+    payloadParams: Type.Object({
+      chainId: Type.String({
+        description: "The chain id to withdraw on",
+      }),
+      currency: Type.String({
+        description: "The address of the currency to withdraw",
+      }),
+      amount: Type.String({
+        description: "The amount to withdraw",
+      }),
+      recipient: Type.String({
+        description: "The address of the recipient for the withdrawal proceeds",
+      }),
+      spender: Type.String({
+        description:
+          "The address of the spender (usually the withdrawal address)",
+      }),
+      nonce: Type.String({
+        description:
+          "The nonce to be used when submitting the withdrawal request to the allocator",
+      }),
+      additionalData: Type.Optional(
+        Type.Object(
+          {
+            "hyperliquid-vm": Type.Optional(
+              Type.Object({
+                currencyHyperliquidSymbol: Type.String({
+                  description: "The Hyperliquid symbol for the currency",
+                }),
+              })
+            ),
+          },
+          {
+            description:
+              "Additional data needed for generating the withdrawal request",
+          }
+        )
+      ),
+    }),
   }),
   response: {
     200: Type.Object({

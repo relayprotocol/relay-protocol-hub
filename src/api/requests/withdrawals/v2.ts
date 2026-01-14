@@ -32,17 +32,9 @@ const Schema = {
       description:
         "The address of the spender (usually the withdrawal address)",
     }),
-    owner: Type.String({
-      description: "The address of the owner (that triggered the withdrawal)",
-    }),
-    ownerChainId: Type.String({ description: "The chain id of the owner" }),
     nonce: Type.String({
       description:
         "The nonce to be used when submitting the withdrawal request to the allocator",
-    }),
-    signature: Type.String({
-      description:
-        "Signature attesting the owner authorized this particular withdrawal request",
     }),
     additionalData: Type.Optional(
       Type.Object(
@@ -61,6 +53,14 @@ const Schema = {
         }
       )
     ),
+    owner: Type.String({
+      description: "The address of the owner (that triggered the withdrawal)",
+    }),
+    ownerChainId: Type.String({ description: "The chain id of the owner" }),
+    signature: Type.String({
+      description:
+        "Signature attesting the owner authorized this particular withdrawal request",
+    }),
   }),
   response: {
     200: Type.Object({
