@@ -2,6 +2,7 @@ import { Type } from "@fastify/type-provider-typebox";
 import { getSubmitWithdrawRequestHash } from "@relay-protocol/settlement-sdk";
 
 import {
+  AdditionalDataSchema,
   Endpoint,
   ErrorResponse,
   FastifyReplyTypeBox,
@@ -32,23 +33,7 @@ const Schema = {
       description:
         "The nonce to be used when submitting the withdrawal request to the allocator",
     }),
-    additionalData: Type.Optional(
-      Type.Object(
-        {
-          "hyperliquid-vm": Type.Optional(
-            Type.Object({
-              currencyHyperliquidSymbol: Type.String({
-                description: "The Hyperliquid symbol for the currency",
-              }),
-            })
-          ),
-        },
-        {
-          description:
-            "Additional data needed for generating the withdrawal request",
-        }
-      )
-    ),
+    additionalData: Type.Optional(AdditionalDataSchema)
   }),
   response: {
     200: Type.Object({

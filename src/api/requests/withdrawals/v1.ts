@@ -4,6 +4,7 @@ import stringify from "json-stable-stringify";
 import { Address, Hex, verifyMessage } from "viem";
 
 import {
+  AdditionalDataSchema,
   Endpoint,
   ErrorResponse,
   FastifyReplyTypeBox,
@@ -39,60 +40,7 @@ const Schema = {
       description:
         "Signature attesting the owner authorized this particular withdrawal request",
     }),
-    additionalData: Type.Optional(
-      Type.Object(
-        {
-          "bitcoin-vm": Type.Optional(
-            Type.Object({
-              allocatorUtxos: Type.Array(
-                Type.Object(
-                  {
-                    txid: Type.String(),
-                    vout: Type.Number(),
-                    value: Type.String(),
-                  },
-                  {
-                    description:
-                      "Allocator UTXOs to be used for generating the withdrawal request",
-                  }
-                )
-              ),
-              relayer: Type.String({
-                description: "The address of the relayer",
-              }),
-              relayerUtxos: Type.Array(
-                Type.Object(
-                  {
-                    txid: Type.String(),
-                    vout: Type.Number(),
-                    value: Type.String(),
-                  },
-                  {
-                    description:
-                      "Relayer UTXOs to be used for the transaction fee payment",
-                  }
-                )
-              ),
-              transactionFee: Type.String({
-                description:
-                  "The transaction fee taken out of the specified relayer UTXOs",
-              }),
-            })
-          ),
-          "hyperliquid-vm": Type.Optional(
-            Type.Object({
-              currencyHyperliquidSymbol: Type.String({
-                description: "The Hyperliquid symbol of the currency",
-              }),
-            })
-          ),
-        },
-        {
-          description:
-            "Additional data needed for generating the withdrawal request",
-        }
-      )
-    ),
+    additionalData: Type.Optional(AdditionalDataSchema)
   }),
   response: {
     200: Type.Object({

@@ -116,3 +116,58 @@ export const SubmitWithdrawalRequestParamsSchema = Type.Object({
     description: "The nonce to include in the withdrawal request",
   }),
 });
+
+
+export const AdditionalDataSchema = Type.Object(
+    {
+      "bitcoin-vm": Type.Optional(
+        Type.Object({
+          allocatorUtxos: Type.Array(
+            Type.Object(
+              {
+                txid: Type.String(),
+                vout: Type.Number(),
+                value: Type.String(),
+              },
+              {
+                description:
+                  "Allocator UTXOs to be used for generating the withdrawal request",
+              }
+            )
+          ),
+          relayer: Type.String({
+            description: "The address of the relayer",
+          }),
+          relayerUtxos: Type.Array(
+            Type.Object(
+              {
+                txid: Type.String(),
+                vout: Type.Number(),
+                value: Type.String(),
+              },
+              {
+                description:
+                  "Relayer UTXOs to be used for the transaction fee payment",
+              }
+            )
+          ),
+          transactionFee: Type.String({
+            description:
+              "The transaction fee taken out of the specified relayer UTXOs",
+          }),
+        })
+      ),
+      "hyperliquid-vm": Type.Optional(
+        Type.Object({
+          currencyHyperliquidSymbol: Type.String({
+            description: "The Hyperliquid symbol of the currency",
+          }),
+        })
+      ),
+    },
+    {
+      description:
+        "Additional data needed for generating the withdrawal request",
+    }
+  )
+
