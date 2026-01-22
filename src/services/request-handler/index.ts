@@ -83,8 +83,8 @@ type OnchainWithdrawalRequest = {
   result: {
     id: string;
     encodedData: string;
-    payloadId: string;
-    submitWithdrawalRequestParams: PayloadParams;
+    payloadId?: string;
+    submitWithdrawalRequestParams?: PayloadParams;
     signer: string;
   };
 };
@@ -435,82 +435,12 @@ export class RequestHandlerService {
         if (request.mode === "onchain") {
           throw externalError("Onchain allocator mode not implemented");
         } else {
-          const expiration = Math.floor(Date.now() / 1000) + 5 * 60;
-
-          const data = {
-            calls:
-              request.currency === getVmTypeNativeCurrency("tron-vm")
-                ? [
-                    {
-                      to: TronWeb.utils.address.toHex(request.recipient),
-                      data: "0x",
-                      value: request.amount,
-                      allowFailure: false,
-                    },
-                  ]
-                : [
-                    {
-                      to: TronWeb.utils.address.toHex(request.currency),
-                      data: new TronWeb.utils.ethersUtils.Interface([
-                        "function transfer(address to, uint256 amount)",
-                      ]).encodeFunctionData("transfer", [
-                        TronWeb.utils.address
-                          .toHex(request.recipient)
-                          .replace(
-                            TronWeb.utils.address.ADDRESS_PREFIX_REGEX,
-                            "0x"
-                          ),
-                        request.amount,
-                      ]),
-                      value: "0",
-                      allowFailure: false,
-                    },
-                  ],
-            nonce: BigInt("0x" + randomBytes(32).toString("hex")).toString(),
-            expiration,
-          };
-
-          id = getDecodedWithdrawalId({
-            vmType: chain.vmType,
-            withdrawal: data,
-          });
-
-          encodedData = encodeWithdrawal({
-            vmType: chain.vmType,
-            withdrawal: data,
-          });
-
-          const domain = {
-            name: "RelayDepository",
-            version: "1",
-            chainId: (chain.metadata as ChainMetadataTronVm).chainId,
-            verifyingContract: TronWeb.utils.address.toHex(chain.depository!),
-          };
-
-          const types = {
-            CallRequest: [
-              { name: "calls", type: "Call[]" },
-              { name: "nonce", type: "uint256" },
-              { name: "expiration", type: "uint256" },
-            ],
-            Call: [
-              { name: "to", type: "address" },
-              { name: "data", type: "bytes" },
-              { name: "value", type: "uint256" },
-              { name: "allowFailure", type: "bool" },
-            ],
-          };
-
-          const privateKey = config.ecdsaPrivateKey.startsWith("0x")
-            ? config.ecdsaPrivateKey.slice(2)
-            : config.ecdsaPrivateKey;
-
-          signature = TronWeb.Trx._signTypedData(
-            domain,
-            types,
-            data,
-            privateKey
-          );
+          ({ id, encodedData, signature } = this._makeTronSignature(
+            chain,
+            request.currency,
+            request.amount,
+            request.recipient
+          ));
 
           break;
         }
@@ -640,7 +570,16 @@ export class RequestHandlerService {
       }
 
       case "tron-vm": {
-        throw externalError("Onchain allocator mode not implemented");
+        // Use _makeTronSignature to generate id and encodedData
+        ({ id, encodedData } = this._makeTronSignature(
+          chain,
+          request.currency,
+          request.amount,
+          request.recipient,
+          request.nonce
+        ));
+        
+        break;
       }
 
       default: {
@@ -851,6 +790,21 @@ export class RequestHandlerService {
         };
       }
 
+      case "tron-vm": {
+        // Convert Tron addresses (base58) to hex format for payload params
+        const toHex = (address: string) =>
+          TronWeb.utils.address.toHex(address).toLowerCase();
+        return {
+          ...defaultParams,
+          currency:
+            currency === getVmTypeNativeCurrency(vmType)
+              ? ""
+              : toHex(currency),
+          receiver: toHex(recipient),
+          spender: toHex(spender),
+        };
+      }
+
       default: {
         throw externalError("Vm type not implemented for payload params");
       }
@@ -965,5 +919,92 @@ export class RequestHandlerService {
       },
       0,
     ]);
+  }
+
+  private _makeTronSignature(
+    chain: Chain,
+    currency: string,
+    amount: string,
+    recipient: string,
+    nonce?: string
+  ): { id: string; encodedData: string; signature: string } {
+    const expiration = Math.floor(Date.now() / 1000) + 5 * 60;
+
+    const data = {
+      calls:
+        currency === getVmTypeNativeCurrency("tron-vm")
+          ? [
+              {
+                to: TronWeb.utils.address.toHex(recipient),
+                data: "0x",
+                value: amount,
+                allowFailure: false,
+              },
+            ]
+          : [
+              {
+                to: TronWeb.utils.address.toHex(currency),
+                data: new TronWeb.utils.ethersUtils.Interface([
+                  "function transfer(address to, uint256 amount)",
+                ]).encodeFunctionData("transfer", [
+                  TronWeb.utils.address
+                    .toHex(recipient)
+                    .replace(
+                      TronWeb.utils.address.ADDRESS_PREFIX_REGEX,
+                      "0x"
+                    ),
+                  amount,
+                ]),
+                value: "0",
+                allowFailure: false,
+              },
+            ],
+      nonce: nonce ?? BigInt("0x" + randomBytes(32).toString("hex")).toString(),
+      expiration,
+    };
+
+    const id = getDecodedWithdrawalId({
+      vmType: "tron-vm",
+      withdrawal: data,
+    });
+
+    const encodedData = encodeWithdrawal({
+      vmType: "tron-vm",
+      withdrawal: data,
+    });
+
+    const domain = {
+      name: "RelayDepository",
+      version: "1",
+      chainId: (chain.metadata as ChainMetadataTronVm).chainId,
+      verifyingContract: TronWeb.utils.address.toHex(chain.depository!),
+    };
+
+    const types = {
+      CallRequest: [
+        { name: "calls", type: "Call[]" },
+        { name: "nonce", type: "uint256" },
+        { name: "expiration", type: "uint256" },
+      ],
+      Call: [
+        { name: "to", type: "address" },
+        { name: "data", type: "bytes" },
+        { name: "value", type: "uint256" },
+        { name: "allowFailure", type: "bool" },
+      ],
+    };
+
+    const privateKey = config.ecdsaPrivateKey.startsWith("0x")
+      ? config.ecdsaPrivateKey.slice(2)
+      : config.ecdsaPrivateKey;
+
+    const signature = TronWeb.Trx._signTypedData(
+      domain,
+      types,
+      data,
+      privateKey
+    );
+
+    return { id, encodedData, signature };
   }
 }
