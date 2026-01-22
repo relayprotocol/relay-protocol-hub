@@ -73,7 +73,7 @@ export default {
     // we add a default value so the endpoint do not break 
     // and return a value for vm that are not supported
     // by current allocator (like Tron or Bitcoin)
-    const allocatorChainId = chain.metadata.allocatorChainId || "0n"
+    const allocatorChainId = chain.metadata.allocatorChainId || "0"
 
     const requestHandler = new RequestHandlerService();
     const payloadParams = requestHandler.parseAllocatorPayloadParams(
