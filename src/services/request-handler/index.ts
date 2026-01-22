@@ -790,20 +790,6 @@ export class RequestHandlerService {
         };
       }
 
-      case "tron-vm": {
-        // Convert Tron addresses (base58) to hex format for payload params
-        const toHex = (address: string) =>
-          TronWeb.utils.address.toHex(address).toLowerCase();
-        return {
-          ...defaultParams,
-          currency:
-            currency === getVmTypeNativeCurrency(vmType)
-              ? ""
-              : toHex(currency),
-          receiver: toHex(recipient),
-          spender: toHex(spender),
-        };
-      }
 
       default: {
         throw externalError("Vm type not implemented for payload params");
