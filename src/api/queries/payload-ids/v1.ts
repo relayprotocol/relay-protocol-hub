@@ -70,11 +70,16 @@ export default {
   ) => {
     const chain = await getChain(req.body.chainId);
 
+    // we add a default value so the endpoint do not break 
+    // and return a value for vm that are not supported
+    // by current allocator (like Tron or Bitcoin)
+    const allocatorChainId = chain.metadata.allocatorChainId || "0n"
+
     const requestHandler = new RequestHandlerService();
     const payloadParams = requestHandler.parseAllocatorPayloadParams(
       chain.vmType,
       chain.depository!,
-      chain.metadata.allocatorChainId!,
+      allocatorChainId,
       req.body.currency,
       req.body.amount,
       req.body.recipient,
