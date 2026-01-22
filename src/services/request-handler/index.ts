@@ -752,7 +752,8 @@ export class RequestHandlerService {
       }
 
       // We dont have a payload builder for "tron-vm" 
-      // but return params for consitency of onchain withdrawal flow
+      // but return params for consistency during the
+      // onchain withdrawal flow
       case "tron-vm": {
         return defaultParams;
       }
