@@ -751,6 +751,12 @@ export class RequestHandlerService {
         return defaultParams;
       }
 
+      // We dont have a payload builder for "tron-vm" 
+      // but return params for consitency of onchain withdrawal flow
+      case "tron-vm": {
+        return defaultParams;
+      }
+      
       case "solana-vm": {
         // The "solana-vm" payload builder expects addresses to be hex-encoded
         const toHexString = (address: string) =>
