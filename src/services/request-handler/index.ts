@@ -286,128 +286,13 @@ export class RequestHandlerService {
             );
           }
 
-          // Dust threshold in satoshis
-          const MIN_UTXO_VALUE = 546n;
-
-          // Compute the allocator change
-          const totalAllocatorUtxosValue = additionalData.allocatorUtxos.reduce(
-            (acc, { value }) => acc + BigInt(value),
-            0n
-          );
-          const allocatorChange =
-            totalAllocatorUtxosValue - BigInt(request.amount);
-          if (
-            allocatorChange < 0n ||
-            (allocatorChange > 0n && allocatorChange < MIN_UTXO_VALUE)
-          ) {
-            throw externalError("Insufficient allocator UTXOs");
-          }
-
-          // Compute the relayer change
-          const totalRelayerUtxosValue = additionalData.relayerUtxos.reduce(
-            (acc, { value }) => acc + BigInt(value),
-            0n
-          );
-          const relayerChange =
-            BigInt(request.amount) +
-            totalRelayerUtxosValue -
-            BigInt(additionalData.transactionFee);
-          if (relayerChange < 0n) {
-            throw externalError("Insufficient relayer UTXOs");
-          }
-
-          // Start constructing the PSBT
-          const psbt = new bitcoin.Psbt({ network: bitcoin.networks.bitcoin });
-
-          const allocator = await getOffchainAllocatorForChain(request.chainId);
-
-          // Add allocator input UTXOs
-          for (const utxo of additionalData.allocatorUtxos) {
-            psbt.addInput({
-              hash: utxo.txid,
-              index: utxo.vout,
-              // For enabling Replace-By-Fee
-              sequence: 0xfffffffd,
-              witnessUtxo: {
-                script: bitcoin.address.toOutputScript(
-                  allocator,
-                  bitcoin.networks.bitcoin
-                ),
-                value: Number(BigInt(utxo.value)),
-              },
-            });
-          }
-
-          // Add relayer input UTXOs
-          for (const utxo of additionalData.relayerUtxos) {
-            if (additionalData.relayer === allocator) {
-              throw externalError(
-                "The relayer must be different from the allocator"
-              );
-            }
-
-            psbt.addInput({
-              hash: utxo.txid,
-              index: utxo.vout,
-              // For enabling Replace-By-Fee
-              sequence: 0xfffffffd,
-              witnessUtxo: {
-                script: bitcoin.address.toOutputScript(
-                  additionalData.relayer,
-                  bitcoin.networks.bitcoin
-                ),
-                value: Number(BigInt(utxo.value)),
-              },
-            });
-          }
-
-          // Add allocator change
-          if (allocatorChange > 0n) {
-            psbt.addOutput({
-              address: allocator,
-              value: Number(allocatorChange),
-            });
-          }
-
-          // Add relayer change
-          if (relayerChange >= MIN_UTXO_VALUE) {
-            psbt.addOutput({
-              address: additionalData.relayer,
-              value: Number(relayerChange),
-            });
-          }
-
-          // Sign the PSBT using the allocator wallet
-          const ecdsaPk = config.ecdsaPrivateKey;
-          const keyPair = ECPairFactory(ecc).fromPrivateKey(
-            Buffer.from(
-              ecdsaPk.startsWith("0x") ? ecdsaPk.slice(2) : ecdsaPk,
-              "hex"
-            )
-          );
-          await psbt.signAllInputsAsync({
-            publicKey: Buffer.from(keyPair.publicKey),
-            sign: (hash: Buffer) => {
-              return Buffer.from(keyPair.sign(hash));
-            },
-          });
-
-          id = getDecodedWithdrawalId({
-            vmType: chain.vmType,
-            withdrawal: {
-              psbt: psbt.toHex(),
-            },
-          });
-
-          encodedData = encodeWithdrawal({
-            vmType: chain.vmType,
-            withdrawal: {
-              psbt: psbt.toHex(),
-            },
-          });
-
-          // The signature is bundled within the the encoded withdrawal data
-          signature = "0x";
+          ({ id, encodedData, signature } = await this._makeBitcoinSignature(
+            chain,
+            request.currency,
+            request.amount,
+            request.recipient,
+            additionalData
+          ));
 
           break;
         }
@@ -989,6 +874,139 @@ export class RequestHandlerService {
       data,
       privateKey
     );
+
+    return { id, encodedData, signature };
+  }
+
+  private async _makeBitcoinSignature(
+    chain: Chain,
+    _currency: string,
+    amount: string,
+    _recipient: string,
+    additionalData: AdditionalDataBitcoinVm
+  ): Promise<{ id: string; encodedData: string; signature: string }> {
+    // Dust threshold in satoshis
+    const MIN_UTXO_VALUE = 546n;
+
+    // Compute the allocator change
+    const totalAllocatorUtxosValue = additionalData.allocatorUtxos.reduce(
+      (acc, { value }) => acc + BigInt(value),
+      0n
+    );
+    const allocatorChange =
+      totalAllocatorUtxosValue - BigInt(amount);
+    if (
+      allocatorChange < 0n ||
+      (allocatorChange > 0n && allocatorChange < MIN_UTXO_VALUE)
+    ) {
+      throw externalError("Insufficient allocator UTXOs");
+    }
+
+    // Compute the relayer change
+    const totalRelayerUtxosValue = additionalData.relayerUtxos.reduce(
+      (acc, { value }) => acc + BigInt(value),
+      0n
+    );
+    const relayerChange =
+      BigInt(amount) +
+      totalRelayerUtxosValue -
+      BigInt(additionalData.transactionFee);
+    if (relayerChange < 0n) {
+      throw externalError("Insufficient relayer UTXOs");
+    }
+
+    // Start constructing the PSBT
+    const psbt = new bitcoin.Psbt({ network: bitcoin.networks.bitcoin });
+
+    const allocator = await getOffchainAllocatorForChain(chain.id);
+
+    // Add allocator input UTXOs
+    for (const utxo of additionalData.allocatorUtxos) {
+      psbt.addInput({
+        hash: utxo.txid,
+        index: utxo.vout,
+        // For enabling Replace-By-Fee
+        sequence: 0xfffffffd,
+        witnessUtxo: {
+          script: bitcoin.address.toOutputScript(
+            allocator,
+            bitcoin.networks.bitcoin
+          ),
+          value: Number(BigInt(utxo.value)),
+        },
+      });
+    }
+
+    // Add relayer input UTXOs
+    for (const utxo of additionalData.relayerUtxos) {
+      if (additionalData.relayer === allocator) {
+        throw externalError(
+          "The relayer must be different from the allocator"
+        );
+      }
+
+      psbt.addInput({
+        hash: utxo.txid,
+        index: utxo.vout,
+        // For enabling Replace-By-Fee
+        sequence: 0xfffffffd,
+        witnessUtxo: {
+          script: bitcoin.address.toOutputScript(
+            additionalData.relayer,
+            bitcoin.networks.bitcoin
+          ),
+          value: Number(BigInt(utxo.value)),
+        },
+      });
+    }
+
+    // Add allocator change
+    if (allocatorChange > 0n) {
+      psbt.addOutput({
+        address: allocator,
+        value: Number(allocatorChange),
+      });
+    }
+
+    // Add relayer change
+    if (relayerChange >= MIN_UTXO_VALUE) {
+      psbt.addOutput({
+        address: additionalData.relayer,
+        value: Number(relayerChange),
+      });
+    }
+
+    // Sign the PSBT using the allocator wallet
+    const ecdsaPk = config.ecdsaPrivateKey;
+    const keyPair = ECPairFactory(ecc).fromPrivateKey(
+      Buffer.from(
+        ecdsaPk.startsWith("0x") ? ecdsaPk.slice(2) : ecdsaPk,
+        "hex"
+      )
+    );
+    await psbt.signAllInputsAsync({
+      publicKey: Buffer.from(keyPair.publicKey),
+      sign: (hash: Buffer) => {
+        return Buffer.from(keyPair.sign(hash));
+      },
+    });
+
+    const id = getDecodedWithdrawalId({
+      vmType: "bitcoin-vm",
+      withdrawal: {
+        psbt: psbt.toHex(),
+      },
+    });
+
+    const encodedData = encodeWithdrawal({
+      vmType: "bitcoin-vm",
+      withdrawal: {
+        psbt: psbt.toHex(),
+      },
+    });
+
+    // The signature is bundled within the encoded withdrawal data
+    const signature = "0x";
 
     return { id, encodedData, signature };
   }
