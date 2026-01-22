@@ -790,7 +790,6 @@ export class RequestHandlerService {
         };
       }
 
-
       default: {
         throw externalError("Vm type not implemented for payload params");
       }
