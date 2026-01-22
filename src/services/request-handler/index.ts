@@ -587,12 +587,15 @@ export class RequestHandlerService {
       }
     }
 
+    const isOffchainAllocator = ["tron-vm", "bitcoin-vm"].includes(chain.vmType)
     return {
       id,
       encodedData,
       payloadId,
       submitWithdrawalRequestParams: payloadParams,
-      signer: await getOnchainAllocatorForChain(request.chainId),
+      signer: isOffchainAllocator ? 
+        await getOffchainAllocatorForChain(request.chainId)
+        : await getOnchainAllocatorForChain(request.chainId)
     };
   }
 
