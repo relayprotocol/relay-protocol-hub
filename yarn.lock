@@ -1559,10 +1559,10 @@
   resolved "https://registry.yarnpkg.com/@protobuf-ts/runtime/-/runtime-2.11.1.tgz#ee2bf2fac6e2d8deac0ca63471a77481548e5553"
   integrity sha512-KuDaT1IfHkugM2pyz+FwiY80ejWrkH1pAtOBOZFuR6SXEFTsnb/jiQWQ1rCIrcKx2BtyxnxW6BWwsVSA/Ie+WQ==
 
-"@relay-protocol/settlement-sdk@0.0.79":
-  version "0.0.79"
-  resolved "https://registry.yarnpkg.com/@relay-protocol/settlement-sdk/-/settlement-sdk-0.0.79.tgz#dbf3cbc2159e7cb95bd5113f335a85686b85e9fd"
-  integrity sha512-xzwwyYn9etFCmiLO4B8r7P5KRAOkvP0IfAjhKeeTbdSQFBDhI0M9IxUzTR9MGEhwLmRSACvASw4LVoYV4R0MJw==
+"@relay-protocol/settlement-sdk@0.0.83":
+  version "0.0.83"
+  resolved "https://registry.yarnpkg.com/@relay-protocol/settlement-sdk/-/settlement-sdk-0.0.83.tgz#1bcde1e9e5ef7019422653232404a1f150ffc39a"
+  integrity sha512-0s9fZrB4wkm+0ToL8gRwT5C2GehKI0WwpdQW3abo2Fspi5x40U4lPNRpzm8ZZzAzsN88AO29GJwt5HNEP9DGSA==
   dependencies:
     "@coral-xyz/anchor" "^0.31.1"
     "@mysten/sui" "^1.24.0"
