@@ -571,16 +571,7 @@ export class RequestHandlerService {
       }
 
       case "tron-vm": {
-        // Use _makeTronSignature to generate id and encodedData
-        ({ id, encodedData, signature } = this._makeTronSignature(
-          chain,
-          request.currency,
-          request.amount,
-          request.recipient,
-          request.nonce
-        ));
-
-        break;
+        throw externalError("Onchain allocator mode not implemented");
       }
 
       default: {
@@ -588,18 +579,13 @@ export class RequestHandlerService {
       }
     }
 
-    const isOffchainAllocator = ["tron-vm", "bitcoin-vm"].includes(
-      chain.vmType
-    );
     return {
       id,
       encodedData,
       signature,
       payloadId,
       submitWithdrawalRequestParams: payloadParams,
-      signer: isOffchainAllocator
-        ? await getOffchainAllocatorForChain(request.chainId)
-        : await getOnchainAllocatorForChain(request.chainId),
+      signer: await getOnchainAllocatorForChain(request.chainId),
     };
   }
 
