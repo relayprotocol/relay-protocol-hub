@@ -83,6 +83,7 @@ type OnchainWithdrawalRequest = {
   result: {
     id: string;
     encodedData: string;
+    signature?: string;
     payloadId?: string;
     submitWithdrawalRequestParams?: PayloadParams;
     signer: string;
@@ -414,7 +415,7 @@ export class RequestHandlerService {
   ): Promise<OnchainWithdrawalRequest["result"]> {
     let id: string;
     let encodedData: string;
-
+    let signature: string | undefined;
     let payloadId: string | undefined;
     let payloadParams: PayloadParams | undefined;
 
@@ -456,14 +457,14 @@ export class RequestHandlerService {
 
       case "tron-vm": {
         // Use _makeTronSignature to generate id and encodedData
-        ({ id, encodedData } = this._makeTronSignature(
+        ({ id, encodedData, signature } = this._makeTronSignature(
           chain,
           request.currency,
           request.amount,
           request.recipient,
           request.nonce
         ));
-        
+
         break;
       }
 
@@ -472,12 +473,18 @@ export class RequestHandlerService {
       }
     }
 
+    const isOffchainAllocator = ["tron-vm", "bitcoin-vm"].includes(
+      chain.vmType
+    );
     return {
       id,
       encodedData,
+      signature,
       payloadId,
       submitWithdrawalRequestParams: payloadParams,
-      signer: await getOnchainAllocatorForChain(request.chainId),
+      signer: isOffchainAllocator
+        ? await getOffchainAllocatorForChain(request.chainId)
+        : await getOnchainAllocatorForChain(request.chainId),
     };
   }
 
@@ -636,13 +643,13 @@ export class RequestHandlerService {
         return defaultParams;
       }
 
-      // We dont have a payload builder for "tron-vm" 
+      // We dont have a payload builder for "tron-vm"
       // but return params for consistency during the
       // onchain withdrawal flow
       case "tron-vm": {
         return defaultParams;
       }
-      
+
       case "solana-vm": {
         // The "solana-vm" payload builder expects addresses to be hex-encoded
         const toHexString = (address: string) =>
@@ -826,10 +833,7 @@ export class RequestHandlerService {
                 ]).encodeFunctionData("transfer", [
                   TronWeb.utils.address
                     .toHex(recipient)
-                    .replace(
-                      TronWeb.utils.address.ADDRESS_PREFIX_REGEX,
-                      "0x"
-                    ),
+                    .replace(TronWeb.utils.address.ADDRESS_PREFIX_REGEX, "0x"),
                   amount,
                 ]),
                 value: "0",
