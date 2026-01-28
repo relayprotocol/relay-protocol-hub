@@ -436,6 +436,8 @@ export class RequestHandlerService {
         if (request.mode === "onchain") {
           ({ id, encodedData, payloadId, payloadParams } =
             await this._submitWithdrawRequest(chain, request));
+
+          break;
         } else {
           const expiration = Math.floor(Date.now() / 1000) + 5 * 60;
 
