@@ -1,5 +1,6 @@
 import { JsonRpcProvider } from "@near-js/providers";
 import bs58 from "bs58";
+import TronWeb from "tronweb";
 import {
   Account,
   Address,
@@ -144,7 +145,7 @@ export const handleOneTimeApproval = async () => {
 
 const extractEcdsaSignature = (rawNearSignature: string): string => {
   const parsedSignature = JSON.parse(
-    fromHex(rawNearSignature as Hex, "string")
+    fromHex(rawNearSignature as Hex, "string"),
   );
 
   const {
@@ -162,7 +163,7 @@ const extractEcdsaSignature = (rawNearSignature: string): string => {
 
 const extractEddsaSignature = (rawNearSignature: string): string => {
   const parsedSignature = JSON.parse(
-    fromHex(rawNearSignature as Hex, "string")
+    fromHex(rawNearSignature as Hex, "string"),
   );
 
   const { signature } = parsedSignature;
@@ -181,7 +182,8 @@ export const getSigner = async (chainId: string) => {
   let domainId: number | undefined;
   switch (vmType) {
     case "ethereum-vm":
-    case "hyperliquid-vm": {
+    case "hyperliquid-vm":
+    case "tron-vm": {
       domainId = 0;
       break;
     }
@@ -210,18 +212,19 @@ export const getSigner = async (chainId: string) => {
   const result = await nearRpc.callFunction(
     "v1.signer",
     "derived_public_key",
-    args
+    args,
   );
 
   const [, publicKey] = result!.toString().split(":");
   switch (vmType) {
     case "ethereum-vm":
-    case "hyperliquid-vm": {
+    case "hyperliquid-vm":
+    case "tron-vm": {
       _getSignerCache.set(
         chainId,
         publicKeyToAddress(
-          `0x04${Buffer.from(bs58.decode(publicKey)).toString("hex")}`
-        ).toLowerCase()
+          `0x04${Buffer.from(bs58.decode(publicKey)).toString("hex")}`,
+        ).toLowerCase(),
       );
 
       break;
@@ -244,12 +247,12 @@ export const getSigner = async (chainId: string) => {
 export const getSignatureFromContract = async (
   chainId: string,
   payloadId: string,
-  encodedData: string
+  encodedData: string,
 ) => {
   const chain = await getChain(chainId);
   if (!chain.depository || !chain.metadata.allocatorChainId) {
     throw externalError(
-      "Depository or allocator chain id not configured for chain"
+      "Depository or allocator chain id not configured for chain",
     );
   }
 
@@ -267,10 +270,15 @@ export const getSignatureFromContract = async (
 
   switch (chain.vmType) {
     case "ethereum-vm":
-    case "hyperliquid-vm": {
+    case "hyperliquid-vm":
+    case "tron-vm": {
       const hashToSign = await payloadBuilder.contract.read.hashToSign([
         BigInt(chain.metadata.allocatorChainId),
-        chain.depository,
+        chain.vmType === "tron-vm"
+          ? TronWeb.utils.address
+              .toHex(chain.depository)
+              .replace(TronWeb.utils.address.ADDRESS_PREFIX_REGEX, "0x")
+          : chain.depository,
         encodedData as Hex,
         0,
       ]);
@@ -320,6 +328,6 @@ export const getSignature = async (id: string) => {
   return getSignatureFromContract(
     withdrawalRequest.chainId,
     withdrawalRequest.payloadId!,
-    withdrawalRequest.encodedData
+    withdrawalRequest.encodedData,
   );
 };

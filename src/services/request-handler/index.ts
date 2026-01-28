@@ -10,6 +10,7 @@ import bs58 from "bs58";
 import { randomBytes } from "crypto";
 import { ECPairFactory } from "ecpair";
 import * as ecc from "tiny-secp256k1";
+import TronWeb from "tronweb";
 import nacl from "tweetnacl";
 import {
   Address,
@@ -23,7 +24,6 @@ import {
   zeroHash,
 } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
-import TronWeb from "tronweb";
 
 import {
   ChainMetadataEthereumVm,
