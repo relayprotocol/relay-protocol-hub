@@ -823,9 +823,9 @@ export class RequestHandlerService {
             .replace(TronWeb.utils.address.ADDRESS_PREFIX_REGEX, "0x");
         return {
           ...defaultParams,
-          depository: toHex(defaultParams.depository),
-          currency: toHex(defaultParams.currency),
-          receiver: toHex(defaultParams.receiver),
+          depository: toHex(depository),
+          currency: toHex(currency),
+          receiver: toHex(recipient),
         };
       }
 
