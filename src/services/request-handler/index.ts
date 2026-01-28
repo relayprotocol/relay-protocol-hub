@@ -268,8 +268,8 @@ export class RequestHandlerService {
               nacl.sign.detached(
                 Buffer.from(id.slice(2), "hex"),
                 Keypair.fromSecretKey(bs58.decode(config.ed25519PrivateKey))
-                  .secretKey
-              )
+                  .secretKey,
+              ),
             ).toString("hex");
 
           break;
@@ -283,7 +283,7 @@ export class RequestHandlerService {
           const additionalData = request.additionalData?.["bitcoin-vm"];
           if (!additionalData) {
             throw externalError(
-              "Additional data is required for generating the withdrawal request"
+              "Additional data is required for generating the withdrawal request",
             );
           }
 
@@ -293,7 +293,7 @@ export class RequestHandlerService {
           // Compute the allocator change
           const totalAllocatorUtxosValue = additionalData.allocatorUtxos.reduce(
             (acc, { value }) => acc + BigInt(value),
-            0n
+            0n,
           );
           const allocatorChange =
             totalAllocatorUtxosValue - BigInt(request.amount);
@@ -307,7 +307,7 @@ export class RequestHandlerService {
           // Compute the relayer change
           const totalRelayerUtxosValue = additionalData.relayerUtxos.reduce(
             (acc, { value }) => acc + BigInt(value),
-            0n
+            0n,
           );
           const relayerChange =
             BigInt(request.amount) +
@@ -332,7 +332,7 @@ export class RequestHandlerService {
               witnessUtxo: {
                 script: bitcoin.address.toOutputScript(
                   allocator,
-                  bitcoin.networks.bitcoin
+                  bitcoin.networks.bitcoin,
                 ),
                 value: Number(BigInt(utxo.value)),
               },
@@ -343,7 +343,7 @@ export class RequestHandlerService {
           for (const utxo of additionalData.relayerUtxos) {
             if (additionalData.relayer === allocator) {
               throw externalError(
-                "The relayer must be different from the allocator"
+                "The relayer must be different from the allocator",
               );
             }
 
@@ -355,7 +355,7 @@ export class RequestHandlerService {
               witnessUtxo: {
                 script: bitcoin.address.toOutputScript(
                   additionalData.relayer,
-                  bitcoin.networks.bitcoin
+                  bitcoin.networks.bitcoin,
                 ),
                 value: Number(BigInt(utxo.value)),
               },
@@ -383,8 +383,8 @@ export class RequestHandlerService {
           const keyPair = ECPairFactory(ecc).fromPrivateKey(
             Buffer.from(
               ecdsaPk.startsWith("0x") ? ecdsaPk.slice(2) : ecdsaPk,
-              "hex"
-            )
+              "hex",
+            ),
           );
           await psbt.signAllInputsAsync({
             publicKey: Buffer.from(keyPair.publicKey),
@@ -419,7 +419,7 @@ export class RequestHandlerService {
           const additionalData = request.additionalData?.["hyperliquid-vm"];
           if (!additionalData) {
             throw externalError(
-              "Additional data is required for generating the withdrawal request"
+              "Additional data is required for generating the withdrawal request",
             );
           }
 
@@ -434,14 +434,85 @@ export class RequestHandlerService {
 
       case "tron-vm": {
         if (request.mode === "onchain") {
-          throw externalError("Onchain allocator mode not implemented");
+          ({ id, encodedData, payloadId, payloadParams } =
+            await this._submitWithdrawRequest(chain, request));
         } else {
-          ({ id, encodedData, signature } = this._makeTronSignature(
-            chain,
-            request.currency,
-            request.amount,
-            request.recipient
-          ));
+          const expiration = Math.floor(Date.now() / 1000) + 5 * 60;
+
+          const data = {
+            calls:
+              request.currency === getVmTypeNativeCurrency("tron-vm")
+                ? [
+                    {
+                      to: TronWeb.utils.address.toHex(request.recipient),
+                      data: "0x",
+                      value: request.amount,
+                      allowFailure: false,
+                    },
+                  ]
+                : [
+                    {
+                      to: TronWeb.utils.address.toHex(request.currency),
+                      data: new TronWeb.utils.ethersUtils.Interface([
+                        "function transfer(address to, uint256 amount)",
+                      ]).encodeFunctionData("transfer", [
+                        TronWeb.utils.address
+                          .toHex(request.recipient)
+                          .replace(
+                            TronWeb.utils.address.ADDRESS_PREFIX_REGEX,
+                            "0x",
+                          ),
+                        request.amount,
+                      ]),
+                      value: "0",
+                      allowFailure: false,
+                    },
+                  ],
+            nonce: BigInt("0x" + randomBytes(32).toString("hex")).toString(),
+            expiration,
+          };
+
+          id = getDecodedWithdrawalId({
+            vmType: chain.vmType,
+            withdrawal: data,
+          });
+
+          encodedData = encodeWithdrawal({
+            vmType: chain.vmType,
+            withdrawal: data,
+          });
+
+          const domain = {
+            name: "RelayDepository",
+            version: "1",
+            chainId: (chain.metadata as ChainMetadataTronVm).chainId,
+            verifyingContract: TronWeb.utils.address.toHex(chain.depository!),
+          };
+
+          const types = {
+            CallRequest: [
+              { name: "calls", type: "Call[]" },
+              { name: "nonce", type: "uint256" },
+              { name: "expiration", type: "uint256" },
+            ],
+            Call: [
+              { name: "to", type: "address" },
+              { name: "data", type: "bytes" },
+              { name: "value", type: "uint256" },
+              { name: "allowFailure", type: "bool" },
+            ],
+          };
+
+          const privateKey = config.ecdsaPrivateKey.startsWith("0x")
+            ? config.ecdsaPrivateKey.slice(2)
+            : config.ecdsaPrivateKey;
+
+          signature = TronWeb.Trx._signTypedData(
+            domain,
+            types,
+            data,
+            privateKey,
+          );
 
           break;
         }
@@ -467,7 +538,7 @@ export class RequestHandlerService {
             currency: request.currency,
             amount: request.amount,
           },
-          { tx }
+          { tx },
         );
         if (!newBalance) {
           throw externalError("Failed to save balance lock");
@@ -479,7 +550,7 @@ export class RequestHandlerService {
             msg: "Executing `withdrawal` request",
             request,
             newBalance: newBalance ?? null,
-          })
+          }),
         );
       }
 
@@ -497,7 +568,7 @@ export class RequestHandlerService {
           payloadId,
           payloadParams,
         },
-        { tx }
+        { tx },
       );
       if (!withdrawalRequest) {
         throw externalError("Failed to save withdrawal request");
@@ -509,7 +580,7 @@ export class RequestHandlerService {
           msg: "Executing `withdrawal` request",
           request,
           withdrawalRequest: withdrawalRequest ?? null,
-        })
+        }),
       );
     });
 
@@ -526,7 +597,7 @@ export class RequestHandlerService {
   }
 
   public async handleOnChainWithdrawal(
-    request: OnchainWithdrawalRequest["data"]
+    request: OnchainWithdrawalRequest["data"],
   ): Promise<OnchainWithdrawalRequest["result"]> {
     let id: string;
     let encodedData: string;
@@ -559,7 +630,7 @@ export class RequestHandlerService {
           const additionalData = request.additionalData?.["hyperliquid-vm"];
           if (!additionalData) {
             throw externalError(
-              "Additional data is required for generating the withdrawal request"
+              "Additional data is required for generating the withdrawal request",
             );
           }
         }
@@ -622,7 +693,7 @@ export class RequestHandlerService {
           msg: "Executing `withdrawal-signature` request",
           request,
           newBalance: newBalance ?? null,
-        })
+        }),
       );
     }
 
@@ -634,7 +705,7 @@ export class RequestHandlerService {
   }
 
   public async handleOnChainWithdrawalSignature(
-    request: OnChainWithdrawalSignatureRequest["data"]
+    request: OnChainWithdrawalSignatureRequest["data"],
   ): Promise<OnChainWithdrawalSignatureRequest["result"]> {
     // Will throw if the withdrawal is not ready
     this._withdrawalIsReady(request.payloadId);
@@ -647,14 +718,14 @@ export class RequestHandlerService {
 
     // Get signer address from near MPC
     const signer = await getOnchainAllocatorForChain(
-      request.payloadParams.chainId
+      request.payloadParams.chainId,
     );
 
     // check if signature already exists
     const signature = await getSignatureFromContract(
       request.payloadParams.chainId,
       request.payloadId,
-      encodedData
+      encodedData,
     );
 
     // If not, then get one
@@ -669,7 +740,7 @@ export class RequestHandlerService {
         request.payloadParams.recipient,
         request.payloadParams.spender,
         request.payloadParams.nonce,
-        request.payloadParams.additionalData
+        request.payloadParams.additionalData,
       );
 
       this._signPayload(payloadParams);
@@ -693,7 +764,7 @@ export class RequestHandlerService {
     }
     if (balanceLock.source !== "deposit") {
       throw externalError(
-        "Only 'deposit' balance locks can be unlocked via this flow"
+        "Only 'deposit' balance locks can be unlocked via this flow",
       );
     }
 
@@ -710,7 +781,7 @@ export class RequestHandlerService {
         msg: "Executing `unlock` request",
         request,
         newBalance: newBalance ?? null,
-      })
+      }),
     );
   }
 
@@ -726,7 +797,7 @@ export class RequestHandlerService {
     additionalData?: {
       "bitcoin-vm"?: AdditionalDataBitcoinVm;
       "hyperliquid-vm"?: AdditionalDataHyperliquidVm;
-    }
+    },
   ): PayloadParams {
     const defaultParams = {
       chainId: allocatorChainId!,
@@ -744,11 +815,18 @@ export class RequestHandlerService {
         return defaultParams;
       }
 
-      // We dont have a payload builder for "tron-vm"
-      // but return params for consistency during the
-      // onchain withdrawal flow
       case "tron-vm": {
-        return defaultParams;
+        // The "tron-vm" payload builder (which is the "ethereum-vm" one) expects addresses to be hex-encoded
+        const toHex = (address: string) =>
+          TronWeb.utils.address
+            .toHex(address)
+            .replace(TronWeb.utils.address.ADDRESS_PREFIX_REGEX, "0x");
+        return {
+          ...defaultParams,
+          depository: toHex(defaultParams.depository),
+          currency: toHex(defaultParams.currency),
+          receiver: toHex(defaultParams.receiver),
+        };
       }
 
       case "solana-vm": {
@@ -776,7 +854,7 @@ export class RequestHandlerService {
           ? encodeAbiParameters([{ type: "uint64" }], [BigInt(Date.now())])
           : encodeAbiParameters(
               [{ type: "uint64" }, { type: "string" }, { type: "string" }],
-              [BigInt(Date.now()), currencyDex, currencyDex]
+              [BigInt(Date.now()), currencyDex, currencyDex],
             );
 
         return {
@@ -809,7 +887,7 @@ export class RequestHandlerService {
         "bitcoin-vm"?: AdditionalDataBitcoinVm;
         "hyperliquid-vm"?: AdditionalDataHyperliquidVm;
       };
-    }
+    },
   ): Promise<{
     id: string;
     encodedData: string;
@@ -835,7 +913,7 @@ export class RequestHandlerService {
       request.recipient,
       request.spender,
       request.nonce,
-      request.additionalData
+      request.additionalData,
     );
 
     // This is needed before being able to submit withdraw requests
@@ -853,19 +931,19 @@ export class RequestHandlerService {
               l.address.toLowerCase() === contract.address.toLowerCase() &&
               // We need the "PayloadBuild" event
               l.topics[0] ===
-                "0x007d52d35e656ce646ba5807d55724e47d53e72435a328e89eb6ce56b0e95d6a"
-          )?.topics[1]
+                "0x007d52d35e656ce646ba5807d55724e47d53e72435a328e89eb6ce56b0e95d6a",
+          )?.topics[1],
       );
     if (!payloadId) {
       throw externalError(
-        "Withdrawal request submission failed to generate payload"
+        "Withdrawal request submission failed to generate payload",
       );
     }
 
     const encodedData = await contract.read.payloads([payloadId as Hex]);
 
     const id = getDecodedWithdrawalId(
-      decodeWithdrawal(encodedData, chain.vmType)
+      decodeWithdrawal(encodedData, chain.vmType),
     );
 
     return {
@@ -904,89 +982,5 @@ export class RequestHandlerService {
       },
       0,
     ]);
-  }
-
-  private _makeTronSignature(
-    chain: Chain,
-    currency: string,
-    amount: string,
-    recipient: string,
-    nonce?: string
-  ): { id: string; encodedData: string; signature: string } {
-    const expiration = Math.floor(Date.now() / 1000) + 5 * 60;
-
-    const data = {
-      calls:
-        currency === getVmTypeNativeCurrency("tron-vm")
-          ? [
-              {
-                to: TronWeb.utils.address.toHex(recipient),
-                data: "0x",
-                value: amount,
-                allowFailure: false,
-              },
-            ]
-          : [
-              {
-                to: TronWeb.utils.address.toHex(currency),
-                data: new TronWeb.utils.ethersUtils.Interface([
-                  "function transfer(address to, uint256 amount)",
-                ]).encodeFunctionData("transfer", [
-                  TronWeb.utils.address
-                    .toHex(recipient)
-                    .replace(TronWeb.utils.address.ADDRESS_PREFIX_REGEX, "0x"),
-                  amount,
-                ]),
-                value: "0",
-                allowFailure: false,
-              },
-            ],
-      nonce: nonce ?? BigInt("0x" + randomBytes(32).toString("hex")).toString(),
-      expiration,
-    };
-
-    const id = getDecodedWithdrawalId({
-      vmType: "tron-vm",
-      withdrawal: data,
-    });
-
-    const encodedData = encodeWithdrawal({
-      vmType: "tron-vm",
-      withdrawal: data,
-    });
-
-    const domain = {
-      name: "RelayDepository",
-      version: "1",
-      chainId: (chain.metadata as ChainMetadataTronVm).chainId,
-      verifyingContract: TronWeb.utils.address.toHex(chain.depository!),
-    };
-
-    const types = {
-      CallRequest: [
-        { name: "calls", type: "Call[]" },
-        { name: "nonce", type: "uint256" },
-        { name: "expiration", type: "uint256" },
-      ],
-      Call: [
-        { name: "to", type: "address" },
-        { name: "data", type: "bytes" },
-        { name: "value", type: "uint256" },
-        { name: "allowFailure", type: "bool" },
-      ],
-    };
-
-    const privateKey = config.ecdsaPrivateKey.startsWith("0x")
-      ? config.ecdsaPrivateKey.slice(2)
-      : config.ecdsaPrivateKey;
-
-    const signature = TronWeb.Trx._signTypedData(
-      domain,
-      types,
-      data,
-      privateKey
-    );
-
-    return { id, encodedData, signature };
   }
 }
