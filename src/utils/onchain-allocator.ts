@@ -256,11 +256,18 @@ export const getSignatureFromContract = async (
     );
   }
 
+  const depository =
+    chain.vmType === "tron-vm"
+      ? TronWeb.utils.address
+          .toHex(chain.depository)
+          .replace(TronWeb.utils.address.ADDRESS_PREFIX_REGEX, "0x")
+      : chain.depository;
+
   const onchainAllocator = await getOnchainAllocator();
   const payloadBuilderAddress =
     await onchainAllocator.contract.read.payloadBuilders([
       BigInt(chain.metadata.allocatorChainId),
-      chain.depository,
+      depository,
     ]);
   if (payloadBuilderAddress === zeroAddress) {
     throw externalError("No payload builder configured for chain");
@@ -274,11 +281,7 @@ export const getSignatureFromContract = async (
     case "tron-vm": {
       const hashToSign = await payloadBuilder.contract.read.hashToSign([
         BigInt(chain.metadata.allocatorChainId),
-        chain.vmType === "tron-vm"
-          ? TronWeb.utils.address
-              .toHex(chain.depository)
-              .replace(TronWeb.utils.address.ADDRESS_PREFIX_REGEX, "0x")
-          : chain.depository,
+        depository,
         encodedData as Hex,
         0,
       ]);
@@ -297,7 +300,7 @@ export const getSignatureFromContract = async (
     case "solana-vm": {
       const hashToSign = await payloadBuilder.contract.read.hashToSign([
         BigInt(chain.metadata.allocatorChainId),
-        chain.depository,
+        depository,
         encodedData as Hex,
         0,
       ]);
