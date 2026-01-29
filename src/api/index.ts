@@ -9,6 +9,9 @@ import actionsNonceMappingsV1 from "./actions/nonce-mappings/v1";
 import actionsSolverFillsV1 from "./actions/solver-fills/v1";
 import actionsSolverRefundsV1 from "./actions/solver-refunds/v1";
 
+// Lives
+import livesV1 from "./lives/v1";
+
 // Queries
 import queriesBalanceLocksV1 from "./queries/balance-locks/v1";
 import queriesBalancesV1 from "./queries/balances/v1";
@@ -32,6 +35,7 @@ const endpoints = [
   actionsNonceMappingsV1,
   actionsSolverFillsV1,
   actionsSolverRefundsV1,
+  livesV1,
   queriesBalanceLocksV1,
   queriesBalancesV1,
   queriesChainsV1,
@@ -52,6 +56,6 @@ export const setupEndpoints = (app: FastifyInstance) => {
     app.route({
       ...endpoint,
       handler: errorWrapper(endpoint.url, endpoint.handler),
-    })
+    }),
   );
 };

@@ -49,7 +49,11 @@ setupSwagger().then(() => {
   // Setup authentication
   httpServer.addHook("preHandler", (req, reply, done) => {
     // Skip these routes
-    if (req.url === "/" || req.url.startsWith("/documentation")) {
+    if (
+      req.url === "/" ||
+      req.url.startsWith("/documentation") ||
+      req.url.startsWith("/lives")
+    ) {
       return done();
     }
 
@@ -79,12 +83,12 @@ setupSwagger().then(() => {
           JSON.stringify({
             msg: `Failed to start http server: ${error}`,
             stack: error?.stack,
-          })
+          }),
         );
         process.exit(1);
       }
 
       logger.info(COMPONENT, JSON.stringify({ msg: "Http server started" }));
-    }
+    },
   );
 });
