@@ -79,7 +79,7 @@ jobs:
     timeout-minutes: 15
     needs: [build]
     environment: prod
-    if: github.ref == 'refs/heads/testnets'
+    if: github.ref == 'refs/heads/main'
     steps:
       - name: Checkout repository k8s-configs
         uses: actions/checkout@v3
