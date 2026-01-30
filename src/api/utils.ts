@@ -44,14 +44,14 @@ export const ErrorResponse = {
   400: Type.Object({
     message: Type.String({ description: "Error message" }),
     code: Type.Optional(
-      Type.String({ description: "Standardized error code" })
+      Type.String({ description: "Standardized error code" }),
     ),
   }),
 };
 
 export const errorWrapper = (
   url: string,
-  handler: (req: FastifyRequest, reply: FastifyReply) => Promise<void>
+  handler: (req: FastifyRequest, reply: FastifyReply) => Promise<void>,
 ): ((req: FastifyRequest, reply: FastifyReply) => Promise<void>) => {
   return async (req: FastifyRequest, reply: FastifyReply) => {
     try {
@@ -65,7 +65,7 @@ export const errorWrapper = (
           errorMsg: error.msg,
           errorResponse: error.response?.data ?? error.response?.body,
           errorStack: error.stack,
-        })
+        }),
       );
 
       if (isExternalError(error)) {
@@ -89,7 +89,7 @@ export const buildContinuation = (...components: string[]) =>
 export const splitContinuation = (continuation: string) =>
   Buffer.from(continuation, "base64").toString("ascii").split("_");
 
-// schema for allocator submitWithdrawRequest
+// Schema for allocator `submitWithdrawRequest`
 export const SubmitWithdrawalRequestParamsSchema = Type.Object({
   chainId: Type.String({
     description: "The chain id of the allocator",
@@ -109,10 +109,24 @@ export const SubmitWithdrawalRequestParamsSchema = Type.Object({
   receiver: Type.String({
     description: "The address of the receiver on the depository chain",
   }),
-  data: Type.String({
-    description: "The data to include in the withdrawal request",
-  }),
   nonce: Type.String({
     description: "The nonce to include in the withdrawal request",
   }),
+  additionalData: Type.Optional(
+    Type.Object(
+      {
+        "hyperliquid-vm": Type.Optional(
+          Type.Object({
+            currencyHyperliquidSymbol: Type.String({
+              description: "The Hyperliquid symbol for the currency",
+            }),
+          }),
+        ),
+      },
+      {
+        description:
+          "Additional data needed for generating the withdrawal request",
+      },
+    ),
+  ),
 });
