@@ -73,6 +73,28 @@ jobs:
         run: |
           ./utils/version_update_batch.sh relay-protocol-hub ${{ github.sha }} $(grep -rl 'application: relay-protocol-hub' dev/platform/ | tr '\n' ' ')
 
+  deploy-testnets:
+    name: Deploy to Testnet
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: [build]
+    environment: prod
+    if: github.ref == 'refs/heads/testnets'
+    steps:
+      - name: Checkout repository k8s-configs
+        uses: actions/checkout@v3
+        with:
+          repository: unevenlabs/k8s-configs
+          token: ${{ secrets.DEVOPSBOT_TOKEN }}
+          path: k8s-configs
+
+      - name: Deploy to Testnet Environment
+        working-directory: k8s-configs
+        env:
+          DEVOPSBOT_GPG_PRIVATE_KEY: ${{ secrets.DEVOPSBOT_GPG_PRIVATE_KEY }}
+        run: |
+          ./utils/version_update_batch.sh relay-protocol-hub-testnets ${{ github.sha }} $(grep -rl 'application: relay-protocol-hub-testnets' prod/platform/ | tr '\n' ' ')
+
   deploy-production:
     name: Deploy to Production
     runs-on: ubuntu-latest
