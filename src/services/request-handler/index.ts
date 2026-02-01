@@ -639,12 +639,13 @@ export class RequestHandlerService {
 
         ({ id, encodedData, payloadId, payloadParams } =
           await this._submitWithdrawRequest(chain, request));
-
         break;
       }
 
       case "tron-vm": {
-        throw externalError("Onchain allocator mode not implemented");
+        ({ id, encodedData, payloadId, payloadParams } =
+          await this._submitWithdrawRequest(chain, request));
+        break;
       }
 
       default: {
