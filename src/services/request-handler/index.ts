@@ -63,6 +63,7 @@ type AdditionalDataBitcoinVm = {
 
 type AdditionalDataHyperliquidVm = {
   currencyHyperliquidSymbol: string;
+  currentTime?: number;
 };
 
 type AllocatorSubmitRequestParams = {
@@ -849,15 +850,21 @@ export class RequestHandlerService {
       case "hyperliquid-vm": {
         const isNativeCurrency = currency === getVmTypeNativeCurrency(vmType);
 
+        // TODO: We probably shouldn't be letting the user choose the time in order
+        // to preserve the assumption that the time is always incrementing. However
+        // at the moment we need these for deterministic payload ids.
+        const currentTime = BigInt(
+          additionalData!["hyperliquid-vm"]!.currentTime ?? Date.now(),
+        );
         const currencyDex =
           currency.slice(34) === ""
             ? "spot"
             : Buffer.from(currency.slice(34), "hex").toString("ascii");
         const data = isNativeCurrency
-          ? encodeAbiParameters([{ type: "uint64" }], [BigInt(Date.now())])
+          ? encodeAbiParameters([{ type: "uint64" }], [currentTime])
           : encodeAbiParameters(
               [{ type: "uint64" }, { type: "string" }, { type: "string" }],
-              [BigInt(Date.now()), currencyDex, currencyDex],
+              [currentTime, currencyDex, currencyDex],
             );
 
         return {

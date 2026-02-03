@@ -44,14 +44,18 @@ const Schema = {
               currencyHyperliquidSymbol: Type.String({
                 description: "The Hyperliquid symbol for the currency",
               }),
-            })
+              currentTime: Type.Number({
+                description:
+                  "The timestamp to be used for the Hyperliquid transaction",
+              }),
+            }),
           ),
         },
         {
           description:
             "Additional data needed for generating the withdrawal request",
-        }
-      )
+        },
+      ),
     ),
     owner: Type.String({
       description: "The address of the owner (that triggered the withdrawal)",
@@ -71,12 +75,12 @@ const Schema = {
       }),
       signer: Type.String({ description: "The signer of the withdrawal" }),
       submitWithdrawalRequestParams: Type.Optional(
-        SubmitWithdrawalRequestParamsSchema
+        SubmitWithdrawalRequestParamsSchema,
       ),
       signature: Type.Optional(
         Type.String({
           description: "The allocator signature for the withdrawal",
-        })
+        }),
       ),
     }),
     ...ErrorResponse,
@@ -89,16 +93,16 @@ export default {
   schema: Schema,
   handler: async (
     req: FastifyRequestTypeBox<typeof Schema>,
-    reply: FastifyReplyTypeBox<typeof Schema>
+    reply: FastifyReplyTypeBox<typeof Schema>,
   ) => {
     // make sure we got EVM sig
     const signatureVmType = await getChain(req.body.ownerChainId).then(
-      (c) => c.vmType
+      (c) => c.vmType,
     );
     if (signatureVmType !== "ethereum-vm") {
       throw externalError(
         "Only 'ethereum-vm' signatures are supported",
-        "UNSUPPORTED_SIGNATURE"
+        "UNSUPPORTED_SIGNATURE",
       );
     }
 
@@ -109,7 +113,7 @@ export default {
         req.body.spender as `0x${string}`, // withdrawalAddress
         BigInt(req.body.amount),
         req.body.nonce as `0x${string}`,
-      ]
+      ],
     );
 
     // authentify the proof of withdrawal address balance
@@ -133,7 +137,7 @@ export default {
       JSON.stringify({
         msg: "Executing `withdrawal` request (v2)",
         request: req.body,
-      })
+      }),
     );
 
     const requestHandler = new RequestHandlerService();
@@ -148,7 +152,7 @@ export default {
         msg: "Executed `withdrawal` request",
         request: req.body,
         result,
-      })
+      }),
     );
 
     return reply.status(200).send(result);

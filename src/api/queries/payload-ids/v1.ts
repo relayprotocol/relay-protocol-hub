@@ -40,6 +40,10 @@ const Schema = {
               currencyHyperliquidSymbol: Type.String({
                 description: "The Hyperliquid symbol for the currency",
               }),
+              currentTime: Type.Number({
+                description:
+                  "The timestamp to be used for the Hyperliquid transaction",
+              }),
             }),
           ),
         },
