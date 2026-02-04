@@ -56,10 +56,12 @@ import {
 
 type AdditionalDataBitcoinVm = {
   allocatorUtxos: { txid: string; vout: number; value: string }[];
-  relayer: string;
-  relayerUtxos: { txid: string; vout: number; value: string }[];
-  transactionFee: string;
-  feeRate: string;
+  // Used by offchain allocator
+  relayer?: string;
+  relayerUtxos?: { txid: string; vout: number; value: string }[];
+  transactionFee?: string;
+  // Used by onchain allocator
+  feeRate?: string;
 };
 
 type AdditionalDataHyperliquidVm = {
@@ -317,14 +319,14 @@ export class RequestHandlerService {
           }
 
           // Compute the relayer change
-          const totalRelayerUtxosValue = additionalData.relayerUtxos.reduce(
+          const totalRelayerUtxosValue = additionalData.relayerUtxos!.reduce(
             (acc, { value }) => acc + BigInt(value),
             0n,
           );
           const relayerChange =
             BigInt(request.amount) +
             totalRelayerUtxosValue -
-            BigInt(additionalData.transactionFee);
+            BigInt(additionalData.transactionFee!);
           if (relayerChange < 0n) {
             throw externalError("Insufficient relayer UTXOs");
           }
@@ -352,7 +354,7 @@ export class RequestHandlerService {
           }
 
           // Add relayer input UTXOs
-          for (const utxo of additionalData.relayerUtxos) {
+          for (const utxo of additionalData.relayerUtxos!) {
             if (additionalData.relayer === allocator) {
               throw externalError(
                 "The relayer must be different from the allocator",
@@ -366,7 +368,7 @@ export class RequestHandlerService {
               sequence: 0xfffffffd,
               witnessUtxo: {
                 script: bitcoin.address.toOutputScript(
-                  additionalData.relayer,
+                  additionalData.relayer!,
                   bitcoin.networks.bitcoin,
                 ),
                 value: Number(BigInt(utxo.value)),
@@ -385,7 +387,7 @@ export class RequestHandlerService {
           // Add relayer change
           if (relayerChange >= MIN_UTXO_VALUE) {
             psbt.addOutput({
-              address: additionalData.relayer,
+              address: additionalData.relayer!,
               value: Number(relayerChange),
             });
           }
@@ -684,7 +686,7 @@ export class RequestHandlerService {
       throw externalError("Withdrawal request not using 'onchain' mode");
     }
 
-    // will throw if withdrawal is not ready
+    // Will throw if the withdrawal is not ready
     this._withdrawalIsReady(withdrawalRequest.payloadId);
 
     // Lock the balance (if we don't already have a lock on it)
@@ -736,7 +738,7 @@ export class RequestHandlerService {
       request.payloadParams.chainId,
     );
 
-    // check if signature already exists
+    // Check if the signature already exists
     const signature = await getSignatureFromContract(
       request.payloadParams.chainId,
       request.payloadId,
@@ -872,7 +874,7 @@ export class RequestHandlerService {
               value: BigInt(utxo.value),
               scriptPubKey: allocatorScriptPubKey,
             })),
-            BigInt(bitcoinAdditionalData.feeRate),
+            BigInt(bitcoinAdditionalData.feeRate!),
           ],
         );
 

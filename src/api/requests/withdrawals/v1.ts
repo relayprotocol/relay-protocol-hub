@@ -19,7 +19,7 @@ const Schema = {
     mode: Type.Optional(
       Type.Union([Type.Literal("offchain"), Type.Literal("onchain")], {
         description: "Allocation mode to use",
-      })
+      }),
     ),
     ownerChainId: Type.String({ description: "The chain id of the owner" }),
     owner: Type.String({ description: "The address of the owner" }),
@@ -54,8 +54,8 @@ const Schema = {
                   {
                     description:
                       "Allocator UTXOs to be used for generating the withdrawal request",
-                  }
-                )
+                  },
+                ),
               ),
               relayer: Type.String({
                 description: "The address of the relayer",
@@ -70,31 +70,28 @@ const Schema = {
                   {
                     description:
                       "Relayer UTXOs to be used for the transaction fee payment",
-                  }
-                )
+                  },
+                ),
               ),
               transactionFee: Type.String({
                 description:
                   "The transaction fee taken out of the specified relayer UTXOs",
               }),
-              feeRate: Type.String({
-                description: "The transaction fee rate in satoshis per byte",
-              }),
-            })
+            }),
           ),
           "hyperliquid-vm": Type.Optional(
             Type.Object({
               currencyHyperliquidSymbol: Type.String({
                 description: "The Hyperliquid symbol of the currency",
               }),
-            })
+            }),
           ),
         },
         {
           description:
             "Additional data needed for generating the withdrawal request",
-        }
-      )
+        },
+      ),
     ),
   }),
   response: {
@@ -108,7 +105,7 @@ const Schema = {
       signature: Type.Optional(
         Type.String({
           description: "The allocator signature for the withdrawal",
-        })
+        }),
       ),
     }),
     ...ErrorResponse,
@@ -121,15 +118,15 @@ export default {
   schema: Schema,
   handler: async (
     req: FastifyRequestTypeBox<typeof Schema>,
-    reply: FastifyReplyTypeBox<typeof Schema>
+    reply: FastifyReplyTypeBox<typeof Schema>,
   ) => {
     const signatureVmType = await getChain(req.body.ownerChainId).then(
-      (c) => c.vmType
+      (c) => c.vmType,
     );
     if (signatureVmType !== "ethereum-vm") {
       throw externalError(
         "Only 'ethereum-vm' signatures are supported",
-        "UNSUPPORTED_SIGNATURE"
+        "UNSUPPORTED_SIGNATURE",
       );
     }
 
@@ -138,7 +135,7 @@ export default {
         stringify({
           ...req.body,
           signature: undefined,
-        })!
+        })!,
       )
       .digest("hex");
     const isSignatureValid = await verifyMessage({
@@ -157,7 +154,7 @@ export default {
       JSON.stringify({
         msg: "Executing `withdrawal` request",
         request: req.body,
-      })
+      }),
     );
 
     const requestHandler = new RequestHandlerService();
@@ -169,7 +166,7 @@ export default {
         msg: "Executed `withdrawal` request",
         request: req.body,
         result,
-      })
+      }),
     );
 
     return reply.status(200).send(result);
