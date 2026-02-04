@@ -856,25 +856,32 @@ export class RequestHandlerService {
         const data = encodeAbiParameters(
           [
             {
-              type: "tuple[]",
-              name: "utxos",
+              type: "tuple",
               components: [
-                { type: "bytes32", name: "txid" },
-                { type: "uint32", name: "index" },
-                { type: "uint64", name: "value" },
-                { type: "bytes", name: "scriptPubKey" },
+                {
+                  type: "tuple[]",
+                  name: "utxos",
+                  components: [
+                    { type: "bytes32", name: "txid" },
+                    { type: "uint32", name: "index" },
+                    { type: "uint64", name: "value" },
+                    { type: "bytes", name: "scriptPubKey" },
+                  ],
+                },
+                { type: "uint64", name: "feeRate" },
               ],
             },
-            { type: "uint64", name: "feeRate" },
           ],
           [
-            bitcoinAdditionalData.allocatorUtxos.map((utxo) => ({
-              txid: toLittleEndianTxid(utxo.txid),
-              index: utxo.vout,
-              value: BigInt(utxo.value),
-              scriptPubKey: allocatorScriptPubKey,
-            })),
-            BigInt(bitcoinAdditionalData.feeRate!),
+            {
+              utxos: bitcoinAdditionalData.allocatorUtxos.map((utxo) => ({
+                txid: toLittleEndianTxid(utxo.txid),
+                index: utxo.vout,
+                value: BigInt(utxo.value),
+                scriptPubKey: allocatorScriptPubKey,
+              })),
+              feeRate: BigInt(bitcoinAdditionalData.feeRate!),
+            },
           ],
         );
 
