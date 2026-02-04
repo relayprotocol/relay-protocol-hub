@@ -1,5 +1,5 @@
 import { JsonRpcProvider } from "@near-js/providers";
-import bitcoin from "bitcoinjs-lib";
+import * as bitcoin from "bitcoinjs-lib";
 import bs58 from "bs58";
 import TronWeb from "tronweb";
 import {
