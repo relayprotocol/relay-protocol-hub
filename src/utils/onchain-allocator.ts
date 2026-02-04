@@ -1,4 +1,5 @@
 import { JsonRpcProvider } from "@near-js/providers";
+import bitcoin from "bitcoinjs-lib";
 import bs58 from "bs58";
 import TronWeb from "tronweb";
 import {
@@ -181,6 +182,7 @@ export const getSigner = async (chainId: string) => {
 
   let domainId: number | undefined;
   switch (vmType) {
+    case "bitcoin-vm":
     case "ethereum-vm":
     case "hyperliquid-vm":
     case "tron-vm": {
@@ -217,6 +219,29 @@ export const getSigner = async (chainId: string) => {
 
   const [, publicKey] = result!.toString().split(":");
   switch (vmType) {
+    case "bitcoin-vm": {
+      const raw = Buffer.from(bs58.decode(publicKey));
+
+      const x = raw.subarray(0, 32);
+      const y = raw.subarray(32, 64);
+      const yIsEven = (y[31] & 1) === 0;
+      const prefix = yIsEven ? 0x02 : 0x03;
+      const pubKeyCompressed = Buffer.concat([
+        Buffer.from([prefix]),
+        Buffer.from(x),
+      ]);
+
+      _getSignerCache.set(
+        chainId,
+        bitcoin.payments.p2pkh({
+          network: bitcoin.networks.bitcoin,
+          pubkey: pubKeyCompressed,
+        }).address!,
+      );
+
+      break;
+    }
+
     case "ethereum-vm":
     case "hyperliquid-vm":
     case "tron-vm": {
