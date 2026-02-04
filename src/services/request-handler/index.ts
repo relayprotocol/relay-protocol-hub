@@ -59,6 +59,7 @@ type AdditionalDataBitcoinVm = {
   relayer: string;
   relayerUtxos: { txid: string; vout: number; value: string }[];
   transactionFee: string;
+  feeRate: string;
 };
 
 type AdditionalDataHyperliquidVm = {
@@ -279,7 +280,17 @@ export class RequestHandlerService {
 
       case "bitcoin-vm": {
         if (request.mode === "onchain") {
-          throw externalError("Onchain allocator mode not implemented");
+          const additionalData = request.additionalData?.["bitcoin-vm"];
+          if (!additionalData) {
+            throw externalError(
+              "Additional data is required for generating the withdrawal request",
+            );
+          }
+
+          ({ id, encodedData, payloadId, payloadParams } =
+            await this._submitWithdrawRequest(chain, request));
+
+          break;
         } else {
           const additionalData = request.additionalData?.["bitcoin-vm"];
           if (!additionalData) {
@@ -817,6 +828,61 @@ export class RequestHandlerService {
     switch (vmType) {
       case "ethereum-vm": {
         return defaultParams;
+      }
+
+      case "bitcoin-vm": {
+        const bitcoinAdditionalData = additionalData?.["bitcoin-vm"];
+        if (!bitcoinAdditionalData) {
+          throw externalError("Additional data is required for bitcoin-vm");
+        }
+
+        const allocatorScriptPubKey = `0x${bitcoin.address
+          .toOutputScript(depository, bitcoin.networks.bitcoin)
+          .toString("hex")}` as Hex;
+
+        const toLittleEndianTxid = (txid: string): Hex => {
+          const normalizedTxid = txid.startsWith("0x") ? txid.slice(2) : txid;
+          if (!/^[0-9a-fA-F]{64}$/.test(normalizedTxid)) {
+            throw externalError("Invalid bitcoin UTXO txid");
+          }
+
+          return `0x${Buffer.from(normalizedTxid, "hex")
+            .reverse()
+            .toString("hex")}` as Hex;
+        };
+
+        const data = encodeAbiParameters(
+          [
+            {
+              type: "tuple[]",
+              name: "utxos",
+              components: [
+                { type: "bytes32", name: "txid" },
+                { type: "uint32", name: "index" },
+                { type: "uint64", name: "value" },
+                { type: "bytes", name: "scriptPubKey" },
+              ],
+            },
+            { type: "uint64", name: "feeRate" },
+          ],
+          [
+            bitcoinAdditionalData.allocatorUtxos.map((utxo) => ({
+              txid: toLittleEndianTxid(utxo.txid),
+              index: utxo.vout,
+              value: BigInt(utxo.value),
+              scriptPubKey: allocatorScriptPubKey,
+            })),
+            BigInt(bitcoinAdditionalData.feeRate),
+          ],
+        );
+
+        return {
+          ...defaultParams,
+          receiver: bitcoin.address
+            .toOutputScript(recipient, bitcoin.networks.bitcoin)
+            .toString("base64"),
+          data,
+        };
       }
 
       case "tron-vm": {
