@@ -39,6 +39,26 @@ const Schema = {
     additionalData: Type.Optional(
       Type.Object(
         {
+          "bitcoin-vm": Type.Optional(
+            Type.Object({
+              allocatorUtxos: Type.Array(
+                Type.Object(
+                  {
+                    txid: Type.String(),
+                    vout: Type.Number(),
+                    value: Type.String(),
+                  },
+                  {
+                    description:
+                      "Allocator UTXOs to be used for generating the withdrawal request",
+                  },
+                ),
+              ),
+              feeRate: Type.String({
+                description: "The transaction fee rate in satoshis per byte",
+              }),
+            }),
+          ),
           "hyperliquid-vm": Type.Optional(
             Type.Object({
               currencyHyperliquidSymbol: Type.String({

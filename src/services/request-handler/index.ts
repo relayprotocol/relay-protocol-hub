@@ -56,9 +56,12 @@ import {
 
 type AdditionalDataBitcoinVm = {
   allocatorUtxos: { txid: string; vout: number; value: string }[];
-  relayer: string;
-  relayerUtxos: { txid: string; vout: number; value: string }[];
-  transactionFee: string;
+  // Used by offchain allocator
+  relayer?: string;
+  relayerUtxos?: { txid: string; vout: number; value: string }[];
+  transactionFee?: string;
+  // Used by onchain allocator
+  feeRate?: string;
 };
 
 type AdditionalDataHyperliquidVm = {
@@ -279,7 +282,17 @@ export class RequestHandlerService {
 
       case "bitcoin-vm": {
         if (request.mode === "onchain") {
-          throw externalError("Onchain allocator mode not implemented");
+          const additionalData = request.additionalData?.["bitcoin-vm"];
+          if (!additionalData) {
+            throw externalError(
+              "Additional data is required for generating the withdrawal request",
+            );
+          }
+
+          ({ id, encodedData, payloadId, payloadParams } =
+            await this._submitWithdrawRequest(chain, request));
+
+          break;
         } else {
           const additionalData = request.additionalData?.["bitcoin-vm"];
           if (!additionalData) {
@@ -306,14 +319,14 @@ export class RequestHandlerService {
           }
 
           // Compute the relayer change
-          const totalRelayerUtxosValue = additionalData.relayerUtxos.reduce(
+          const totalRelayerUtxosValue = additionalData.relayerUtxos!.reduce(
             (acc, { value }) => acc + BigInt(value),
             0n,
           );
           const relayerChange =
             BigInt(request.amount) +
             totalRelayerUtxosValue -
-            BigInt(additionalData.transactionFee);
+            BigInt(additionalData.transactionFee!);
           if (relayerChange < 0n) {
             throw externalError("Insufficient relayer UTXOs");
           }
@@ -341,7 +354,7 @@ export class RequestHandlerService {
           }
 
           // Add relayer input UTXOs
-          for (const utxo of additionalData.relayerUtxos) {
+          for (const utxo of additionalData.relayerUtxos!) {
             if (additionalData.relayer === allocator) {
               throw externalError(
                 "The relayer must be different from the allocator",
@@ -355,7 +368,7 @@ export class RequestHandlerService {
               sequence: 0xfffffffd,
               witnessUtxo: {
                 script: bitcoin.address.toOutputScript(
-                  additionalData.relayer,
+                  additionalData.relayer!,
                   bitcoin.networks.bitcoin,
                 ),
                 value: Number(BigInt(utxo.value)),
@@ -374,7 +387,7 @@ export class RequestHandlerService {
           // Add relayer change
           if (relayerChange >= MIN_UTXO_VALUE) {
             psbt.addOutput({
-              address: additionalData.relayer,
+              address: additionalData.relayer!,
               value: Number(relayerChange),
             });
           }
@@ -673,7 +686,7 @@ export class RequestHandlerService {
       throw externalError("Withdrawal request not using 'onchain' mode");
     }
 
-    // will throw if withdrawal is not ready
+    // Will throw if the withdrawal is not ready
     this._withdrawalIsReady(withdrawalRequest.payloadId);
 
     // Lock the balance (if we don't already have a lock on it)
@@ -725,7 +738,7 @@ export class RequestHandlerService {
       request.payloadParams.chainId,
     );
 
-    // check if signature already exists
+    // Check if the signature already exists
     const signature = await getSignatureFromContract(
       request.payloadParams.chainId,
       request.payloadId,
@@ -817,6 +830,61 @@ export class RequestHandlerService {
     switch (vmType) {
       case "ethereum-vm": {
         return defaultParams;
+      }
+
+      case "bitcoin-vm": {
+        const bitcoinAdditionalData = additionalData?.["bitcoin-vm"];
+        if (!bitcoinAdditionalData) {
+          throw externalError("Additional data is required for bitcoin-vm");
+        }
+
+        const allocatorScriptPubKey = `0x${bitcoin.address
+          .toOutputScript(depository, bitcoin.networks.bitcoin)
+          .toString("hex")}` as Hex;
+
+        const toLittleEndianTxid = (txid: string): Hex => {
+          const normalizedTxid = txid.startsWith("0x") ? txid.slice(2) : txid;
+          if (!/^[0-9a-fA-F]{64}$/.test(normalizedTxid)) {
+            throw externalError("Invalid bitcoin UTXO txid");
+          }
+
+          return `0x${Buffer.from(normalizedTxid, "hex")
+            .reverse()
+            .toString("hex")}` as Hex;
+        };
+
+        const data = encodeAbiParameters(
+          [
+            {
+              type: "tuple[]",
+              name: "utxos",
+              components: [
+                { type: "bytes32", name: "txid" },
+                { type: "uint32", name: "index" },
+                { type: "uint64", name: "value" },
+                { type: "bytes", name: "scriptPubKey" },
+              ],
+            },
+            { type: "uint64", name: "feeRate" },
+          ],
+          [
+            bitcoinAdditionalData.allocatorUtxos.map((utxo) => ({
+              txid: toLittleEndianTxid(utxo.txid),
+              index: utxo.vout,
+              value: BigInt(utxo.value),
+              scriptPubKey: allocatorScriptPubKey,
+            })),
+            BigInt(bitcoinAdditionalData.feeRate!),
+          ],
+        );
+
+        return {
+          ...defaultParams,
+          receiver: bitcoin.address
+            .toOutputScript(recipient, bitcoin.networks.bitcoin)
+            .toString("base64"),
+          data,
+        };
       }
 
       case "tron-vm": {
