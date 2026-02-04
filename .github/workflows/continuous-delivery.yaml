@@ -93,4 +93,5 @@ jobs:
         env:
           DEVOPSBOT_GPG_PRIVATE_KEY: ${{ secrets.DEVOPSBOT_GPG_PRIVATE_KEY }}
         run: |
+          ./utils/version_update_batch.sh relay-protocol-hub ${{ github.sha }} $(grep -rl 'application: relay-protocol-hub' stag/platform/ | tr '\n' ' ')
           ./utils/version_update_batch.sh relay-protocol-hub ${{ github.sha }} $(grep -rl 'application: relay-protocol-hub' prod/platform/ | tr '\n' ' ')
