@@ -54,7 +54,7 @@ const Schema = {
                   },
                 ),
               ),
-              feeRate: Type.String({
+              feeRate: Type.Number({
                 description: "The transaction fee rate in satoshis per byte",
               }),
             }),

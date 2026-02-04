@@ -61,7 +61,7 @@ type AdditionalDataBitcoinVm = {
   relayerUtxos?: { txid: string; vout: number; value: string }[];
   transactionFee?: string;
   // Used by onchain allocator
-  feeRate?: string;
+  feeRate?: number;
 };
 
 type AdditionalDataHyperliquidVm = {

@@ -77,6 +77,9 @@ const Schema = {
                 description:
                   "The transaction fee taken out of the specified relayer UTXOs",
               }),
+              feeRate: Type.Number({
+                description: "The transaction fee rate in satoshis per byte",
+              }),
             }),
           ),
           "hyperliquid-vm": Type.Optional(
