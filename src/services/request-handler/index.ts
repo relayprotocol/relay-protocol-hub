@@ -39,6 +39,7 @@ import { db } from "../../common/db";
 import { externalError } from "../../common/error";
 import { logger } from "../../common/logger";
 import {
+  getBitcoinSignerPubkey,
   getOnchainAllocator,
   getSignature,
   getSignatureFromContract,
@@ -1029,8 +1030,9 @@ export class RequestHandlerService {
     const rawEncodedData = await contract.read.payloads([payloadId as Hex]);
     const encodedData =
       chain.vmType === "bitcoin-vm"
-        ? this._convertBitcoinTransactionDataToPsbtWithdrawal(
+        ? await this._convertBitcoinTransactionDataToPsbtWithdrawal(
             rawEncodedData as Hex,
+            request.chainId,
           )
         : rawEncodedData;
 
@@ -1046,9 +1048,10 @@ export class RequestHandlerService {
     };
   }
 
-  private _convertBitcoinTransactionDataToPsbtWithdrawal(
+  private async _convertBitcoinTransactionDataToPsbtWithdrawal(
     encodedData: Hex,
-  ): string {
+    chainId: string,
+  ): Promise<string> {
     const transactionData = decodeAbiParameters(
       [
         {
@@ -1089,6 +1092,7 @@ export class RequestHandlerService {
     };
 
     const psbt = new bitcoin.Psbt({ network: bitcoin.networks.bitcoin });
+    const signerPubkey = await getBitcoinSignerPubkey(chainId);
 
     for (const input of transactionData.inputs) {
       const txid = Buffer.from(input.txid.slice(2), "hex")
@@ -1102,6 +1106,14 @@ export class RequestHandlerService {
           script: Buffer.from(input.script.slice(2), "hex"),
           value: Number(fromLittleEndian(input.value)),
         },
+        // The allocator pubkey is included so signers can identify inputs by key.
+        bip32Derivation: [
+          {
+            masterFingerprint: Buffer.alloc(4),
+            path: "m",
+            pubkey: signerPubkey,
+          },
+        ],
       });
     }
 

@@ -181,6 +181,7 @@ const extractEddsaSignature = (rawNearSignature: string): string => {
 };
 
 let _getSignerCache = new Map<string, string>();
+let _getBitcoinSignerPubkeyCache = new Map<string, Buffer>();
 export const getSigner = async (chainId: string) => {
   if (_getSignerCache.has(chainId)) {
     return _getSignerCache.get(chainId)!;
@@ -238,6 +239,7 @@ export const getSigner = async (chainId: string) => {
         Buffer.from([prefix]),
         Buffer.from(x),
       ]);
+      _getBitcoinSignerPubkeyCache.set(chainId, pubKeyCompressed);
 
       _getSignerCache.set(
         chainId,
@@ -275,6 +277,23 @@ export const getSigner = async (chainId: string) => {
   }
 
   return _getSignerCache.get(chainId)!;
+};
+
+export const getBitcoinSignerPubkey = async (chainId: string) => {
+  const vmType = await getChain(chainId).then((c) => c.vmType);
+  if (vmType !== "bitcoin-vm") {
+    throw externalError("Chain is not bitcoin-vm");
+  }
+
+  if (!_getBitcoinSignerPubkeyCache.has(chainId)) {
+    await getSigner(chainId);
+  }
+
+  if (!_getBitcoinSignerPubkeyCache.has(chainId)) {
+    throw externalError("Bitcoin signer pubkey not found");
+  }
+
+  return Buffer.from(_getBitcoinSignerPubkeyCache.get(chainId)!);
 };
 
 export const getSignatureFromContract = async (
