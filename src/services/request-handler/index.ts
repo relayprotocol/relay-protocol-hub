@@ -1092,8 +1092,9 @@ export class RequestHandlerService {
     };
 
     const psbt = new bitcoin.Psbt({ network: bitcoin.networks.bitcoin });
-    const signerPubkey = await getBitcoinSignerPubkey(chainId);
+    psbt.setVersion(1);
 
+    const signerPubkey = await getBitcoinSignerPubkey(chainId);
     for (const input of transactionData.inputs) {
       const txid = Buffer.from(input.txid.slice(2), "hex")
         .reverse()
@@ -1102,6 +1103,8 @@ export class RequestHandlerService {
       psbt.addInput({
         hash: txid,
         index: Number(fromLittleEndian(input.index)),
+        sequence: 0xfffffffd,
+        sighashType: bitcoin.Transaction.SIGHASH_ALL,
         witnessUtxo: {
           script: Buffer.from(input.script.slice(2), "hex"),
           value: Number(fromLittleEndian(input.value)),
