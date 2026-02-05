@@ -355,37 +355,43 @@ export const getSignatureFromContract = async (
       const unsignedPayload = await onchainAllocator.contract.read.payloads([
         payloadId as Hex,
       ]);
-      const transactionData = decodeAbiParameters(
-        [
-          {
-            type: "tuple",
-            components: [
-              {
-                type: "tuple[]",
-                name: "inputs",
-                components: [
-                  { type: "bytes", name: "txid" },
-                  { type: "bytes", name: "index" },
-                  { type: "bytes", name: "script" },
-                  { type: "bytes", name: "value" },
-                ],
-              },
-              {
-                type: "tuple[]",
-                name: "outputs",
-                components: [
-                  { type: "bytes", name: "value" },
-                  { type: "bytes", name: "script" },
-                ],
-              },
-            ],
-          },
-        ],
+
+      const decodeBitcoinTransactionData = (encodedData: Hex) =>
+        decodeAbiParameters(
+          [
+            {
+              type: "tuple",
+              components: [
+                {
+                  type: "tuple[]",
+                  name: "inputs",
+                  components: [
+                    { type: "bytes", name: "txid" },
+                    { type: "bytes", name: "index" },
+                    { type: "bytes", name: "script" },
+                    { type: "bytes", name: "value" },
+                  ],
+                },
+                {
+                  type: "tuple[]",
+                  name: "outputs",
+                  components: [
+                    { type: "bytes", name: "value" },
+                    { type: "bytes", name: "script" },
+                  ],
+                },
+              ],
+            },
+          ],
+          encodedData,
+        )[0] as {
+          inputs: { txid: Hex; index: Hex; script: Hex; value: Hex }[];
+          outputs: { value: Hex; script: Hex }[];
+        };
+
+      const transactionData = decodeBitcoinTransactionData(
         unsignedPayload as Hex,
-      )[0] as {
-        inputs: { txid: Hex; index: Hex; script: Hex; value: Hex }[];
-        outputs: { value: Hex; script: Hex }[];
-      };
+      );
 
       const signatures = await Promise.all(
         transactionData.inputs.map(async (_, index) => {

@@ -739,7 +739,6 @@ export class RequestHandlerService {
     const signer = await getOnchainAllocatorForChain(
       request.payloadParams.chainId,
     );
-
     // Check if the signature already exists
     const signature = await getSignatureFromContract(
       request.payloadParams.chainId,
