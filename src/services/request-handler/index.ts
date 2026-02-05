@@ -1031,8 +1031,8 @@ export class RequestHandlerService {
     const encodedData =
       chain.vmType === "bitcoin-vm"
         ? await this._convertBitcoinTransactionDataToPsbtWithdrawal(
-            rawEncodedData as Hex,
             request.chainId,
+            rawEncodedData as Hex,
           )
         : rawEncodedData;
 
@@ -1049,8 +1049,8 @@ export class RequestHandlerService {
   }
 
   private async _convertBitcoinTransactionDataToPsbtWithdrawal(
-    encodedData: Hex,
     chainId: string,
+    encodedData: Hex,
   ): Promise<string> {
     const transactionData = decodeAbiParameters(
       [
@@ -1106,7 +1106,7 @@ export class RequestHandlerService {
           script: Buffer.from(input.script.slice(2), "hex"),
           value: Number(fromLittleEndian(input.value)),
         },
-        // The allocator pubkey is included so signers can identify inputs by key.
+        // The allocator pubkey is included so signers can identify inputs by key
         bip32Derivation: [
           {
             masterFingerprint: Buffer.alloc(4),
