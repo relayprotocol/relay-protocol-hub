@@ -33,6 +33,7 @@ import {
   getOnchainAllocatorForChain,
   getChain,
   Chain,
+  getChains,
 } from "../../common/chains";
 import { db } from "../../common/db";
 import { externalError } from "../../common/error";
@@ -1063,7 +1064,12 @@ export class RequestHandlerService {
       callbackGas: 20_000_000_000_000n,
     };
 
-    const chain = await getChain(payloadParams.chainId);
+    const chain = await getChains().then(
+      (chains) =>
+        Object.values(chains).find(
+          (c) => c.metadata.allocatorChainId === payloadParams.chainId,
+        )!,
+    );
     if (chain.vmType === "bitcoin-vm") {
       const decodedData = decodeAbiParameters(
         [
