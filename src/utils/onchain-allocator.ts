@@ -15,7 +15,11 @@ import {
   zeroAddress,
   maxUint256,
 } from "viem";
-import { privateKeyToAccount, publicKeyToAddress } from "viem/accounts";
+import {
+  nonceManager,
+  privateKeyToAccount,
+  publicKeyToAddress,
+} from "viem/accounts";
 
 import { KmsSigner } from "./viem-kms-signer";
 import { getChain } from "../common/chains";
@@ -55,9 +59,11 @@ const getPublicAndWalletClients = async () => {
       region: config.onchainAllocatorSenderAwsKmsKeyRegion,
     });
 
-    account = await kmsSigner.getAccount();
+    account = await kmsSigner.getAccount({ nonceManager });
   } else if (config.onchainAllocatorSenderPk) {
-    account = privateKeyToAccount(config.onchainAllocatorSenderPk as Hex);
+    account = privateKeyToAccount(config.onchainAllocatorSenderPk as Hex, {
+      nonceManager,
+    });
   } else {
     throw externalError("No available onchain allocator sender");
   }

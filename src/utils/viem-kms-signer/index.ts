@@ -1,4 +1,4 @@
-import { LocalAccount, toAccount } from "viem/accounts";
+import { LocalAccount, NonceManager, toAccount } from "viem/accounts";
 import {
   getEthereumAddress,
   getPublicKey,
@@ -24,12 +24,15 @@ export class KmsSigner {
     this.kmsCredentials = kmsCredentials;
   }
 
-  async getAccount(): Promise<LocalAccount> {
+  async getAccount(options?: {
+    nonceManager?: NonceManager;
+  }): Promise<LocalAccount> {
     const address = await this.getAddress();
     const credentials = this.kmsCredentials;
 
     return toAccount({
       address,
+      nonceManager: options?.nonceManager,
       async signMessage({ message }): Promise<`0x${string}`> {
         return await signDigestHex(hashMessage(message), credentials, address);
       },

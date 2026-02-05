@@ -15,6 +15,7 @@ import nacl from "tweetnacl";
 import {
   Address,
   createWalletClient,
+  decodeAbiParameters,
   encodeFunctionData,
   Hex,
   http,
@@ -1056,16 +1057,61 @@ export class RequestHandlerService {
   private async _signPayload(payloadParams: PayloadParams) {
     const { contract } = await getOnchainAllocator();
 
-    // TODO: Once we integrate Bitcoin we might need to make multiple calls
-    await contract.write.signWithdrawPayloadHash([
-      payloadParams as any,
-      "0x",
-      // These are both the default recommended values
-      {
-        signGas: 30_000_000_000_000n,
-        callbackGas: 20_000_000_000_000n,
-      },
-      0,
-    ]);
+    // These are both the default recommended values
+    const gasSettings = {
+      signGas: 30_000_000_000_000n,
+      callbackGas: 20_000_000_000_000n,
+    };
+
+    const chain = await getChain(payloadParams.chainId);
+    if (chain.vmType === "bitcoin-vm") {
+      const decodedData = decodeAbiParameters(
+        [
+          {
+            type: "tuple",
+            components: [
+              {
+                type: "tuple[]",
+                name: "utxos",
+                components: [
+                  { type: "bytes32", name: "txid" },
+                  { type: "uint32", name: "index" },
+                  { type: "uint64", name: "value" },
+                  { type: "bytes", name: "scriptPubKey" },
+                ],
+              },
+              { type: "uint64", name: "feeRate" },
+            ],
+          },
+        ],
+        payloadParams.data as Hex,
+      )[0] as {
+        utxos: {
+          txid: Hex;
+          index: number;
+          value: bigint;
+          scriptPubKey: Hex;
+        }[];
+        feeRate: bigint;
+      };
+
+      await Promise.all(
+        decodedData.utxos.map((_, i) =>
+          contract.write.signWithdrawPayloadHash([
+            payloadParams as any,
+            "0x",
+            gasSettings,
+            i,
+          ]),
+        ),
+      );
+    } else {
+      await contract.write.signWithdrawPayloadHash([
+        payloadParams as any,
+        "0x",
+        gasSettings,
+        0,
+      ]);
+    }
   }
 }
