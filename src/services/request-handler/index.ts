@@ -1027,7 +1027,13 @@ export class RequestHandlerService {
       );
     }
 
-    const encodedData = await contract.read.payloads([payloadId as Hex]);
+    const rawEncodedData = await contract.read.payloads([payloadId as Hex]);
+    const encodedData =
+      chain.vmType === "bitcoin-vm"
+        ? this._convertBitcoinTransactionDataToPsbtWithdrawal(
+            rawEncodedData as Hex,
+          )
+        : rawEncodedData;
 
     const id = getDecodedWithdrawalId(
       decodeWithdrawal(encodedData, chain.vmType),
@@ -1039,6 +1045,78 @@ export class RequestHandlerService {
       payloadId,
       payloadParams,
     };
+  }
+
+  private _convertBitcoinTransactionDataToPsbtWithdrawal(
+    encodedData: Hex,
+  ): string {
+    const transactionData = decodeAbiParameters(
+      [
+        {
+          type: "tuple",
+          components: [
+            {
+              type: "tuple[]",
+              name: "inputs",
+              components: [
+                { type: "bytes", name: "txid" },
+                { type: "bytes", name: "index" },
+                { type: "bytes", name: "script" },
+                { type: "bytes", name: "value" },
+              ],
+            },
+            {
+              type: "tuple[]",
+              name: "outputs",
+              components: [
+                { type: "bytes", name: "value" },
+                { type: "bytes", name: "script" },
+              ],
+            },
+          ],
+        },
+      ],
+      encodedData,
+    )[0] as {
+      inputs: { txid: Hex; index: Hex; script: Hex; value: Hex }[];
+      outputs: { value: Hex; script: Hex }[];
+    };
+
+    const fromLittleEndian = (value: Hex): bigint => {
+      const bytes = Buffer.from(value.slice(2), "hex");
+      const reversed = Buffer.from(bytes).reverse();
+      const normalized = reversed.toString("hex").replace(/^0+/, "") || "0";
+      return BigInt(`0x${normalized}`);
+    };
+
+    const psbt = new bitcoin.Psbt({ network: bitcoin.networks.bitcoin });
+
+    for (const input of transactionData.inputs) {
+      const txid = Buffer.from(input.txid.slice(2), "hex")
+        .reverse()
+        .toString("hex");
+
+      psbt.addInput({
+        hash: txid,
+        index: Number(fromLittleEndian(input.index)),
+        witnessUtxo: {
+          script: Buffer.from(input.script.slice(2), "hex"),
+          value: Number(fromLittleEndian(input.value)),
+        },
+      });
+    }
+
+    for (const output of transactionData.outputs) {
+      psbt.addOutput({
+        script: Buffer.from(output.script.slice(2), "hex"),
+        value: Number(fromLittleEndian(output.value)),
+      });
+    }
+
+    return encodeWithdrawal({
+      vmType: "bitcoin-vm",
+      withdrawal: { psbt: psbt.toHex() },
+    });
   }
 
   private async _withdrawalIsReady(payloadId: string) {

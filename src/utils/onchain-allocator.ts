@@ -352,6 +352,9 @@ export const getSignatureFromContract = async (
     }
 
     case "bitcoin-vm": {
+      const unsignedPayload = await onchainAllocator.contract.read.payloads([
+        payloadId as Hex,
+      ]);
       const transactionData = decodeAbiParameters(
         [
           {
@@ -378,7 +381,7 @@ export const getSignatureFromContract = async (
             ],
           },
         ],
-        encodedData as Hex,
+        unsignedPayload as Hex,
       )[0] as {
         inputs: { txid: Hex; index: Hex; script: Hex; value: Hex }[];
         outputs: { value: Hex; script: Hex }[];
@@ -389,7 +392,7 @@ export const getSignatureFromContract = async (
           const hashToSign = await payloadBuilder.contract.read.hashToSign([
             BigInt(allocatorChainId),
             depository,
-            encodedData as Hex,
+            unsignedPayload as Hex,
             index,
           ]);
 
