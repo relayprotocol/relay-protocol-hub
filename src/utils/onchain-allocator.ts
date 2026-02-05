@@ -7,6 +7,8 @@ import {
   Address,
   createPublicClient,
   createWalletClient,
+  decodeAbiParameters,
+  encodeAbiParameters,
   fromHex,
   getContract,
   Hex,
@@ -287,6 +289,8 @@ export const getSignatureFromContract = async (
     );
   }
 
+  const allocatorChainId = chain.metadata.allocatorChainId;
+
   const depository =
     chain.vmType === "tron-vm"
       ? TronWeb.utils.address
@@ -297,7 +301,7 @@ export const getSignatureFromContract = async (
   const onchainAllocator = await getOnchainAllocator();
   const payloadBuilderAddress =
     await onchainAllocator.contract.read.payloadBuilders([
-      BigInt(chain.metadata.allocatorChainId),
+      BigInt(allocatorChainId),
       depository,
     ]);
   if (payloadBuilderAddress === zeroAddress) {
@@ -311,7 +315,7 @@ export const getSignatureFromContract = async (
     case "hyperliquid-vm":
     case "tron-vm": {
       const hashToSign = await payloadBuilder.contract.read.hashToSign([
-        BigInt(chain.metadata.allocatorChainId),
+        BigInt(allocatorChainId),
         depository,
         encodedData as Hex,
         0,
@@ -330,7 +334,7 @@ export const getSignatureFromContract = async (
 
     case "solana-vm": {
       const hashToSign = await payloadBuilder.contract.read.hashToSign([
-        BigInt(chain.metadata.allocatorChainId),
+        BigInt(allocatorChainId),
         depository,
         encodedData as Hex,
         0,
@@ -345,6 +349,71 @@ export const getSignatureFromContract = async (
       } else {
         return extractEddsaSignature(signature);
       }
+    }
+
+    case "bitcoin-vm": {
+      const transactionData = decodeAbiParameters(
+        [
+          {
+            type: "tuple",
+            components: [
+              {
+                type: "tuple[]",
+                name: "inputs",
+                components: [
+                  { type: "bytes", name: "txid" },
+                  { type: "bytes", name: "index" },
+                  { type: "bytes", name: "script" },
+                  { type: "bytes", name: "value" },
+                ],
+              },
+              {
+                type: "tuple[]",
+                name: "outputs",
+                components: [
+                  { type: "bytes", name: "value" },
+                  { type: "bytes", name: "script" },
+                ],
+              },
+            ],
+          },
+        ],
+        encodedData as Hex,
+      )[0] as {
+        inputs: { txid: Hex; index: Hex; script: Hex; value: Hex }[];
+        outputs: { value: Hex; script: Hex }[];
+      };
+
+      const signatures = await Promise.all(
+        transactionData.inputs.map(async (_, index) => {
+          const hashToSign = await payloadBuilder.contract.read.hashToSign([
+            BigInt(allocatorChainId),
+            depository,
+            encodedData as Hex,
+            index,
+          ]);
+
+          const signature = await onchainAllocator.contract.read.signedPayloads(
+            [payloadId as Hex, hashToSign],
+          );
+
+          if (signature === "0x") {
+            return undefined;
+          }
+
+          return extractEcdsaSignature(signature) as Hex;
+        }),
+      );
+
+      if (signatures.some((signature) => !signature)) {
+        return undefined;
+      }
+
+      const finalizedSignatures = signatures.filter(
+        (signature): signature is Hex => !!signature,
+      );
+
+      return encodeAbiParameters([{ type: "bytes[]" }], [finalizedSignatures]);
     }
 
     default: {
