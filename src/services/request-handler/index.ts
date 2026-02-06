@@ -639,7 +639,17 @@ export class RequestHandlerService {
       }
 
       case "bitcoin-vm": {
-        throw externalError("Onchain allocator mode not implemented");
+        const additionalData = request.additionalData?.["bitcoin-vm"];
+        if (!additionalData) {
+          throw externalError(
+            "Additional data is required for generating the withdrawal request",
+          );
+        }
+
+        ({ id, encodedData, payloadId, payloadParams } =
+          await this._submitWithdrawRequest(chain, request));
+
+        break;
       }
 
       case "hyperliquid-vm": {
