@@ -1,5 +1,6 @@
 import { Type } from "@fastify/type-provider-typebox";
 
+import { enhanceEncodedData } from "./utils";
 import {
   Endpoint,
   ErrorResponse,
@@ -23,7 +24,7 @@ const Schema = {
     chainId: Type.Optional(
       Type.String({
         description: "The chain id to query for",
-      })
+      }),
     ),
   }),
   response: {
@@ -43,7 +44,7 @@ const Schema = {
         }),
         {
           description: "Pending withdrawal requests owned by the queried owner",
-        }
+        },
       ),
     }),
     ...ErrorResponse,
@@ -56,11 +57,11 @@ export default {
   schema: Schema,
   handler: async (
     req: FastifyRequestTypeBox<typeof Schema>,
-    reply: FastifyReplyTypeBox<typeof Schema>
+    reply: FastifyReplyTypeBox<typeof Schema>,
   ) => {
     const withdrawalRequests = await getPendingWithdrawalRequestsByOwner(
       req.params.owner,
-      req.query.chainId
+      req.query.chainId,
     );
 
     return reply.status(200).send({
@@ -68,10 +69,16 @@ export default {
         withdrawalRequests.map(async (w) => {
           let signer: string;
           let signature: string | undefined;
+          let encodedData = w.encodedData;
           if (w.payloadId) {
             // Signed using "onchain" mode, signature might be available onchain
             signer = await getOnchainAllocatorForChain(w.chainId);
             signature = await getSignature(w.id);
+            encodedData = await enhanceEncodedData(
+              w.chainId,
+              encodedData,
+              signature,
+            );
           } else {
             // Signed using "offchain" mode, signature already available
             signer = await getOffchainAllocatorForChain(w.chainId);
@@ -86,11 +93,11 @@ export default {
             currency: w.currency,
             amount: w.amount,
             recipient: w.recipient,
-            encodedData: w.encodedData,
+            encodedData,
             signer,
             signature,
           };
-        })
+        }),
       ),
     });
   },
