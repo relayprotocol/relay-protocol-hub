@@ -1,6 +1,5 @@
 import { Type } from "@fastify/type-provider-typebox";
 
-import { enhanceEncodedData } from "./utils";
 import {
   Endpoint,
   ErrorResponse,
@@ -69,16 +68,10 @@ export default {
         withdrawalRequests.map(async (w) => {
           let signer: string;
           let signature: string | undefined;
-          let encodedData = w.encodedData;
           if (w.payloadId) {
             // Signed using "onchain" mode, signature might be available onchain
             signer = await getOnchainAllocatorForChain(w.chainId);
             signature = await getSignature(w.id);
-            encodedData = await enhanceEncodedData(
-              w.chainId,
-              encodedData,
-              signature,
-            );
           } else {
             // Signed using "offchain" mode, signature already available
             signer = await getOffchainAllocatorForChain(w.chainId);
@@ -93,7 +86,7 @@ export default {
             currency: w.currency,
             amount: w.amount,
             recipient: w.recipient,
-            encodedData,
+            encodedData: w.encodedData,
             signer,
             signature,
           };

@@ -1,7 +1,4 @@
-import {
-  decodeWithdrawal,
-  encodeWithdrawal,
-} from "@relay-protocol/settlement-sdk";
+import { encodeWithdrawal } from "@relay-protocol/settlement-sdk";
 import * as bitcoin from "bitcoinjs-lib";
 import { decodeAbiParameters, Hex } from "viem";
 
@@ -55,23 +52,92 @@ const enhanceBitcoinWithdrawalEncodedData = async (
     return encodedData;
   }
 
-  const decoded = decodeWithdrawal(encodedData, "bitcoin-vm") as {
-    vmType: "bitcoin-vm";
-    withdrawal: { psbt: string };
-  };
-  const psbt = bitcoin.Psbt.fromHex(stripHexPrefix(decoded.withdrawal.psbt));
-
   const signatures = decodeAbiParameters(
     [{ type: "bytes[]" }],
     signature as Hex,
   )[0];
-  if (signatures.length !== psbt.txInputs.length) {
+
+  const transactionData = decodeAbiParameters(
+    [
+      {
+        type: "tuple",
+        components: [
+          {
+            type: "tuple[]",
+            name: "inputs",
+            components: [
+              { type: "bytes", name: "txid" },
+              { type: "bytes", name: "index" },
+              { type: "bytes", name: "script" },
+              { type: "bytes", name: "value" },
+            ],
+          },
+          {
+            type: "tuple[]",
+            name: "outputs",
+            components: [
+              { type: "bytes", name: "value" },
+              { type: "bytes", name: "script" },
+            ],
+          },
+        ],
+      },
+    ],
+    encodedData as Hex,
+  )[0] as {
+    inputs: { txid: Hex; index: Hex; script: Hex; value: Hex }[];
+    outputs: { value: Hex; script: Hex }[];
+  };
+
+  const fromLittleEndian = (value: Hex): bigint => {
+    const bytes = Buffer.from(value.slice(2), "hex");
+    const reversed = Buffer.from(bytes).reverse();
+    const normalized = reversed.toString("hex").replace(/^0+/, "") || "0";
+    return BigInt(`0x${normalized}`);
+  };
+
+  const psbt = new bitcoin.Psbt({ network: bitcoin.networks.bitcoin });
+  psbt.setVersion(1);
+
+  const signerPublicKey = await getBitcoinSignerPubkey(chainId);
+  for (const input of transactionData.inputs) {
+    const txid = Buffer.from(input.txid.slice(2), "hex")
+      .reverse()
+      .toString("hex");
+
+    psbt.addInput({
+      hash: txid,
+      index: Number(fromLittleEndian(input.index)),
+      sequence: 0xfffffffd,
+      sighashType: bitcoin.Transaction.SIGHASH_ALL,
+      witnessUtxo: {
+        script: Buffer.from(input.script.slice(2), "hex"),
+        value: Number(fromLittleEndian(input.value)),
+      },
+      // The allocator pubkey is included so signers can identify inputs by key
+      bip32Derivation: [
+        {
+          masterFingerprint: Buffer.alloc(4),
+          path: "m",
+          pubkey: signerPublicKey,
+        },
+      ],
+    });
+  }
+
+  for (const output of transactionData.outputs) {
+    psbt.addOutput({
+      script: Buffer.from(output.script.slice(2), "hex"),
+      value: Number(fromLittleEndian(output.value)),
+    });
+  }
+
+  if (signatures.length !== transactionData.inputs.length) {
     throw externalError(
-      `Invalid bitcoin signature count: expected ${psbt.txInputs.length}, got ${signatures.length}`,
+      `Invalid bitcoin signature count: expected ${transactionData.inputs.length}, got ${signatures.length}`,
     );
   }
 
-  const signerPublicKey = await getBitcoinSignerPubkey(chainId);
   for (let i = 0; i < signatures.length; i++) {
     const partialSig = psbt.data.inputs[i].partialSig ?? [];
     const normalizedSignature = normalizeBitcoinPartialSignature(
@@ -105,11 +171,7 @@ export const enhanceEncodedData = async (
 
   switch (vmType) {
     case "bitcoin-vm":
-      return enhanceBitcoinWithdrawalEncodedData(
-        chainId,
-        encodedData,
-        signature,
-      );
+      return enhanceBitcoinWithdrawalEncodedData(chainId, encodedData, signature);
 
     default:
       return encodedData;

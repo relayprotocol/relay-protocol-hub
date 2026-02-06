@@ -285,17 +285,7 @@ export class RequestHandlerService {
 
       case "bitcoin-vm": {
         if (request.mode === "onchain") {
-          const additionalData = request.additionalData?.["bitcoin-vm"];
-          if (!additionalData) {
-            throw externalError(
-              "Additional data is required for generating the withdrawal request",
-            );
-          }
-
-          ({ id, encodedData, payloadId, payloadParams } =
-            await this._submitWithdrawRequest(chain, request));
-
-          break;
+          throw externalError("Onchain allocator mode not implemented");
         } else {
           const additionalData = request.additionalData?.["bitcoin-vm"];
           if (!additionalData) {
