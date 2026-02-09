@@ -23,7 +23,7 @@ const Schema = {
     chainId: Type.Optional(
       Type.String({
         description: "The chain id to query for",
-      })
+      }),
     ),
   }),
   response: {
@@ -43,7 +43,7 @@ const Schema = {
         }),
         {
           description: "Pending withdrawal requests owned by the queried owner",
-        }
+        },
       ),
     }),
     ...ErrorResponse,
@@ -56,11 +56,11 @@ export default {
   schema: Schema,
   handler: async (
     req: FastifyRequestTypeBox<typeof Schema>,
-    reply: FastifyReplyTypeBox<typeof Schema>
+    reply: FastifyReplyTypeBox<typeof Schema>,
   ) => {
     const withdrawalRequests = await getPendingWithdrawalRequestsByOwner(
       req.params.owner,
-      req.query.chainId
+      req.query.chainId,
     );
 
     return reply.status(200).send({
@@ -90,7 +90,7 @@ export default {
             signer,
             signature,
           };
-        })
+        }),
       ),
     });
   },

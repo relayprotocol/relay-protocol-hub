@@ -1,5 +1,7 @@
 import { Type } from "@fastify/type-provider-typebox";
+import { Hex } from "viem";
 
+import { enhanceEncodedData } from "./utils";
 import {
   Endpoint,
   ErrorResponse,
@@ -12,7 +14,6 @@ import {
   getSigner,
 } from "../../../utils/onchain-allocator";
 import { logger } from "../../../common/logger";
-import { Hex } from "viem";
 
 const Schema = {
   params: Type.Object({
@@ -35,12 +36,12 @@ const Schema = {
         Type.String({
           description:
             "The sign data hash to be passed to the depository for execution",
-        })
+        }),
       ),
       signer: Type.Optional(
         Type.String({
           description: "The MPC signer that signed the depository payload",
-        })
+        }),
       ),
     }),
     ...ErrorResponse,
@@ -53,31 +54,34 @@ export default {
   schema: Schema,
   handler: async (
     req: FastifyRequestTypeBox<typeof Schema>,
-    reply: FastifyReplyTypeBox<typeof Schema>
+    reply: FastifyReplyTypeBox<typeof Schema>,
   ) => {
     logger.info(
       "tracking",
       JSON.stringify({
         msg: "Querying if withdrawal exists from the Allocator contract",
         data: req.body,
-      })
+      }),
     );
     const { contract } = await getOnchainAllocator();
-    const encodedData = await contract.read.payloads([
+
+    let signature: string | undefined;
+    let signer: string | undefined;
+    let encodedData: string = await contract.read.payloads([
       req.params.payloadId as Hex,
     ]);
-
-    let signature;
-    let signer;
-
     if (encodedData !== "0x") {
       signature = await getSignatureFromContract(
         req.query.chainId,
         req.params.payloadId,
-        encodedData
+        encodedData,
       );
-
       signer = await getSigner(req.query.chainId);
+      encodedData = await enhanceEncodedData(
+        req.query.chainId,
+        encodedData,
+        signature,
+      );
     }
 
     return reply.status(200).send({

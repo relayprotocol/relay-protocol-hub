@@ -15,6 +15,7 @@ import nacl from "tweetnacl";
 import {
   Address,
   createWalletClient,
+  decodeAbiParameters,
   encodeFunctionData,
   Hex,
   http,
@@ -32,11 +33,13 @@ import {
   getOnchainAllocatorForChain,
   getChain,
   Chain,
+  getChains,
 } from "../../common/chains";
 import { db } from "../../common/db";
 import { externalError } from "../../common/error";
 import { logger } from "../../common/logger";
 import {
+  getBitcoinSignerPubkey,
   getOnchainAllocator,
   getSignature,
   getSignatureFromContract,
@@ -56,13 +59,17 @@ import {
 
 type AdditionalDataBitcoinVm = {
   allocatorUtxos: { txid: string; vout: number; value: string }[];
-  relayer: string;
-  relayerUtxos: { txid: string; vout: number; value: string }[];
-  transactionFee: string;
+  // Used by offchain allocator
+  relayer?: string;
+  relayerUtxos?: { txid: string; vout: number; value: string }[];
+  transactionFee?: string;
+  // Used by onchain allocator
+  feeRate?: number;
 };
 
 type AdditionalDataHyperliquidVm = {
   currencyHyperliquidSymbol: string;
+  currentTime?: number;
 };
 
 type AllocatorSubmitRequestParams = {
@@ -305,14 +312,14 @@ export class RequestHandlerService {
           }
 
           // Compute the relayer change
-          const totalRelayerUtxosValue = additionalData.relayerUtxos.reduce(
+          const totalRelayerUtxosValue = additionalData.relayerUtxos!.reduce(
             (acc, { value }) => acc + BigInt(value),
             0n,
           );
           const relayerChange =
             BigInt(request.amount) +
             totalRelayerUtxosValue -
-            BigInt(additionalData.transactionFee);
+            BigInt(additionalData.transactionFee!);
           if (relayerChange < 0n) {
             throw externalError("Insufficient relayer UTXOs");
           }
@@ -340,7 +347,7 @@ export class RequestHandlerService {
           }
 
           // Add relayer input UTXOs
-          for (const utxo of additionalData.relayerUtxos) {
+          for (const utxo of additionalData.relayerUtxos!) {
             if (additionalData.relayer === allocator) {
               throw externalError(
                 "The relayer must be different from the allocator",
@@ -354,7 +361,7 @@ export class RequestHandlerService {
               sequence: 0xfffffffd,
               witnessUtxo: {
                 script: bitcoin.address.toOutputScript(
-                  additionalData.relayer,
+                  additionalData.relayer!,
                   bitcoin.networks.bitcoin,
                 ),
                 value: Number(BigInt(utxo.value)),
@@ -373,7 +380,7 @@ export class RequestHandlerService {
           // Add relayer change
           if (relayerChange >= MIN_UTXO_VALUE) {
             psbt.addOutput({
-              address: additionalData.relayer,
+              address: additionalData.relayer!,
               value: Number(relayerChange),
             });
           }
@@ -622,7 +629,17 @@ export class RequestHandlerService {
       }
 
       case "bitcoin-vm": {
-        throw externalError("Onchain allocator mode not implemented");
+        const additionalData = request.additionalData?.["bitcoin-vm"];
+        if (!additionalData) {
+          throw externalError(
+            "Additional data is required for generating the withdrawal request",
+          );
+        }
+
+        ({ id, encodedData, payloadId, payloadParams } =
+          await this._submitWithdrawRequest(chain, request));
+
+        break;
       }
 
       case "hyperliquid-vm": {
@@ -639,12 +656,13 @@ export class RequestHandlerService {
 
         ({ id, encodedData, payloadId, payloadParams } =
           await this._submitWithdrawRequest(chain, request));
-
         break;
       }
 
       case "tron-vm": {
-        throw externalError("Onchain allocator mode not implemented");
+        ({ id, encodedData, payloadId, payloadParams } =
+          await this._submitWithdrawRequest(chain, request));
+        break;
       }
 
       default: {
@@ -671,7 +689,7 @@ export class RequestHandlerService {
       throw externalError("Withdrawal request not using 'onchain' mode");
     }
 
-    // will throw if withdrawal is not ready
+    // Will throw if the withdrawal is not ready
     this._withdrawalIsReady(withdrawalRequest.payloadId);
 
     // Lock the balance (if we don't already have a lock on it)
@@ -722,8 +740,7 @@ export class RequestHandlerService {
     const signer = await getOnchainAllocatorForChain(
       request.payloadParams.chainId,
     );
-
-    // check if signature already exists
+    // Check if the signature already exists
     const signature = await getSignatureFromContract(
       request.payloadParams.chainId,
       request.payloadId,
@@ -817,6 +834,68 @@ export class RequestHandlerService {
         return defaultParams;
       }
 
+      case "bitcoin-vm": {
+        const bitcoinAdditionalData = additionalData?.["bitcoin-vm"];
+        if (!bitcoinAdditionalData) {
+          throw externalError("Additional data is required for bitcoin-vm");
+        }
+
+        const allocatorScriptPubKey = `0x${bitcoin.address
+          .toOutputScript(depository, bitcoin.networks.bitcoin)
+          .toString("hex")}` as Hex;
+
+        const toLittleEndianTxid = (txid: string): Hex => {
+          const normalizedTxid = txid.startsWith("0x") ? txid.slice(2) : txid;
+          if (!/^[0-9a-fA-F]{64}$/.test(normalizedTxid)) {
+            throw externalError("Invalid bitcoin UTXO txid");
+          }
+
+          return `0x${Buffer.from(normalizedTxid, "hex")
+            .reverse()
+            .toString("hex")}` as Hex;
+        };
+
+        const data = encodeAbiParameters(
+          [
+            {
+              type: "tuple",
+              components: [
+                {
+                  type: "tuple[]",
+                  name: "utxos",
+                  components: [
+                    { type: "bytes32", name: "txid" },
+                    { type: "uint32", name: "index" },
+                    { type: "uint64", name: "value" },
+                    { type: "bytes", name: "scriptPubKey" },
+                  ],
+                },
+                { type: "uint64", name: "feeRate" },
+              ],
+            },
+          ],
+          [
+            {
+              utxos: bitcoinAdditionalData.allocatorUtxos.map((utxo) => ({
+                txid: toLittleEndianTxid(utxo.txid),
+                index: utxo.vout,
+                value: BigInt(utxo.value),
+                scriptPubKey: allocatorScriptPubKey,
+              })),
+              feeRate: BigInt(bitcoinAdditionalData.feeRate!),
+            },
+          ],
+        );
+
+        return {
+          ...defaultParams,
+          receiver: bitcoin.address
+            .toOutputScript(recipient, bitcoin.networks.bitcoin)
+            .toString("base64"),
+          data,
+        };
+      }
+
       case "tron-vm": {
         // The "tron-vm" payload builder (which is the "ethereum-vm" one) expects addresses to be hex-encoded
         const toHex = (address: string) =>
@@ -848,15 +927,21 @@ export class RequestHandlerService {
       case "hyperliquid-vm": {
         const isNativeCurrency = currency === getVmTypeNativeCurrency(vmType);
 
+        // TODO: We probably shouldn't be letting the user choose the time in order
+        // to preserve the assumption that the time is always incrementing. However
+        // at the moment we need these for deterministic payload ids.
+        const currentTime = BigInt(
+          additionalData!["hyperliquid-vm"]!.currentTime ?? Date.now(),
+        );
         const currencyDex =
           currency.slice(34) === ""
             ? "spot"
             : Buffer.from(currency.slice(34), "hex").toString("ascii");
         const data = isNativeCurrency
-          ? encodeAbiParameters([{ type: "uint64" }], [BigInt(Date.now())])
+          ? encodeAbiParameters([{ type: "uint64" }], [currentTime])
           : encodeAbiParameters(
               [{ type: "uint64" }, { type: "string" }, { type: "string" }],
-              [BigInt(Date.now()), currencyDex, currencyDex],
+              [currentTime, currencyDex, currencyDex],
             );
 
         return {
@@ -942,7 +1027,14 @@ export class RequestHandlerService {
       );
     }
 
-    const encodedData = await contract.read.payloads([payloadId as Hex]);
+    const rawEncodedData = await contract.read.payloads([payloadId as Hex]);
+    const encodedData =
+      chain.vmType === "bitcoin-vm"
+        ? await this._convertBitcoinTransactionDataToPsbtWithdrawal(
+            request.chainId,
+            rawEncodedData as Hex,
+          )
+        : rawEncodedData;
 
     const id = getDecodedWithdrawalId(
       decodeWithdrawal(encodedData, chain.vmType),
@@ -954,6 +1046,91 @@ export class RequestHandlerService {
       payloadId,
       payloadParams,
     };
+  }
+
+  private async _convertBitcoinTransactionDataToPsbtWithdrawal(
+    chainId: string,
+    encodedData: Hex,
+  ): Promise<string> {
+    const transactionData = decodeAbiParameters(
+      [
+        {
+          type: "tuple",
+          components: [
+            {
+              type: "tuple[]",
+              name: "inputs",
+              components: [
+                { type: "bytes", name: "txid" },
+                { type: "bytes", name: "index" },
+                { type: "bytes", name: "script" },
+                { type: "bytes", name: "value" },
+              ],
+            },
+            {
+              type: "tuple[]",
+              name: "outputs",
+              components: [
+                { type: "bytes", name: "value" },
+                { type: "bytes", name: "script" },
+              ],
+            },
+          ],
+        },
+      ],
+      encodedData,
+    )[0] as {
+      inputs: { txid: Hex; index: Hex; script: Hex; value: Hex }[];
+      outputs: { value: Hex; script: Hex }[];
+    };
+
+    const fromLittleEndian = (value: Hex): bigint => {
+      const bytes = Buffer.from(value.slice(2), "hex");
+      const reversed = Buffer.from(bytes).reverse();
+      const normalized = reversed.toString("hex").replace(/^0+/, "") || "0";
+      return BigInt(`0x${normalized}`);
+    };
+
+    const psbt = new bitcoin.Psbt({ network: bitcoin.networks.bitcoin });
+    psbt.setVersion(1);
+
+    const signerPubkey = await getBitcoinSignerPubkey(chainId);
+    for (const input of transactionData.inputs) {
+      const txid = Buffer.from(input.txid.slice(2), "hex")
+        .reverse()
+        .toString("hex");
+
+      psbt.addInput({
+        hash: txid,
+        index: Number(fromLittleEndian(input.index)),
+        sequence: 0xfffffffd,
+        sighashType: bitcoin.Transaction.SIGHASH_ALL,
+        witnessUtxo: {
+          script: Buffer.from(input.script.slice(2), "hex"),
+          value: Number(fromLittleEndian(input.value)),
+        },
+        // The allocator pubkey is included so signers can identify inputs by key
+        bip32Derivation: [
+          {
+            masterFingerprint: Buffer.alloc(4),
+            path: "m",
+            pubkey: signerPubkey,
+          },
+        ],
+      });
+    }
+
+    for (const output of transactionData.outputs) {
+      psbt.addOutput({
+        script: Buffer.from(output.script.slice(2), "hex"),
+        value: Number(fromLittleEndian(output.value)),
+      });
+    }
+
+    return encodeWithdrawal({
+      vmType: "bitcoin-vm",
+      withdrawal: { psbt: psbt.toHex() },
+    });
   }
 
   private async _withdrawalIsReady(payloadId: string) {
@@ -973,16 +1150,66 @@ export class RequestHandlerService {
   private async _signPayload(payloadParams: PayloadParams) {
     const { contract } = await getOnchainAllocator();
 
-    // TODO: Once we integrate Bitcoin we might need to make multiple calls
-    await contract.write.signWithdrawPayloadHash([
-      payloadParams as any,
-      "0x",
-      // These are both the default recommended values
-      {
-        signGas: 30_000_000_000_000n,
-        callbackGas: 20_000_000_000_000n,
-      },
-      0,
-    ]);
+    // These are both the default recommended values
+    const gasSettings = {
+      signGas: 30_000_000_000_000n,
+      callbackGas: 20_000_000_000_000n,
+    };
+
+    const chain = await getChains().then(
+      (chains) =>
+        Object.values(chains).find(
+          (c) => c.metadata.allocatorChainId === payloadParams.chainId,
+        )!,
+    );
+    if (chain.vmType === "bitcoin-vm") {
+      const decodedData = decodeAbiParameters(
+        [
+          {
+            type: "tuple",
+            components: [
+              {
+                type: "tuple[]",
+                name: "utxos",
+                components: [
+                  { type: "bytes32", name: "txid" },
+                  { type: "uint32", name: "index" },
+                  { type: "uint64", name: "value" },
+                  { type: "bytes", name: "scriptPubKey" },
+                ],
+              },
+              { type: "uint64", name: "feeRate" },
+            ],
+          },
+        ],
+        payloadParams.data as Hex,
+      )[0] as {
+        utxos: {
+          txid: Hex;
+          index: number;
+          value: bigint;
+          scriptPubKey: Hex;
+        }[];
+        feeRate: bigint;
+      };
+
+      await Promise.all(
+        decodedData.utxos.map((_, i) =>
+          contract.write.signWithdrawPayloadHash([
+            payloadParams as any,
+            "0x",
+            gasSettings,
+            i,
+          ]),
+        ),
+      );
+    } else {
+      await contract.write.signWithdrawPayloadHash([
+        payloadParams as any,
+        "0x",
+        gasSettings,
+        0,
+      ]);
+    }
   }
 }

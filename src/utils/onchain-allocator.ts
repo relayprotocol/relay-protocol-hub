@@ -1,4 +1,5 @@
 import { JsonRpcProvider } from "@near-js/providers";
+import * as bitcoin from "bitcoinjs-lib";
 import bs58 from "bs58";
 import TronWeb from "tronweb";
 import {
@@ -6,6 +7,8 @@ import {
   Address,
   createPublicClient,
   createWalletClient,
+  decodeAbiParameters,
+  encodeAbiParameters,
   fromHex,
   getContract,
   Hex,
@@ -172,6 +175,7 @@ const extractEddsaSignature = (rawNearSignature: string): string => {
 };
 
 let _getSignerCache = new Map<string, string>();
+let _getBitcoinSignerPubkeyCache = new Map<string, Buffer>();
 export const getSigner = async (chainId: string) => {
   if (_getSignerCache.has(chainId)) {
     return _getSignerCache.get(chainId)!;
@@ -181,6 +185,7 @@ export const getSigner = async (chainId: string) => {
 
   let domainId: number | undefined;
   switch (vmType) {
+    case "bitcoin-vm":
     case "ethereum-vm":
     case "hyperliquid-vm":
     case "tron-vm": {
@@ -217,6 +222,30 @@ export const getSigner = async (chainId: string) => {
 
   const [, publicKey] = result!.toString().split(":");
   switch (vmType) {
+    case "bitcoin-vm": {
+      const raw = Buffer.from(bs58.decode(publicKey));
+
+      const x = raw.subarray(0, 32);
+      const y = raw.subarray(32, 64);
+      const yIsEven = (y[31] & 1) === 0;
+      const prefix = yIsEven ? 0x02 : 0x03;
+      const pubKeyCompressed = Buffer.concat([
+        Buffer.from([prefix]),
+        Buffer.from(x),
+      ]);
+      _getBitcoinSignerPubkeyCache.set(chainId, pubKeyCompressed);
+
+      _getSignerCache.set(
+        chainId,
+        bitcoin.payments.p2pkh({
+          network: bitcoin.networks.bitcoin,
+          pubkey: pubKeyCompressed,
+        }).address!,
+      );
+
+      break;
+    }
+
     case "ethereum-vm":
     case "hyperliquid-vm":
     case "tron-vm": {
@@ -244,6 +273,23 @@ export const getSigner = async (chainId: string) => {
   return _getSignerCache.get(chainId)!;
 };
 
+export const getBitcoinSignerPubkey = async (chainId: string) => {
+  const vmType = await getChain(chainId).then((c) => c.vmType);
+  if (vmType !== "bitcoin-vm") {
+    throw externalError("Chain is not bitcoin-vm");
+  }
+
+  if (!_getBitcoinSignerPubkeyCache.has(chainId)) {
+    await getSigner(chainId);
+  }
+
+  if (!_getBitcoinSignerPubkeyCache.has(chainId)) {
+    throw externalError("Bitcoin signer pubkey not found");
+  }
+
+  return Buffer.from(_getBitcoinSignerPubkeyCache.get(chainId)!);
+};
+
 export const getSignatureFromContract = async (
   chainId: string,
   payloadId: string,
@@ -256,6 +302,8 @@ export const getSignatureFromContract = async (
     );
   }
 
+  const allocatorChainId = chain.metadata.allocatorChainId;
+
   const depository =
     chain.vmType === "tron-vm"
       ? TronWeb.utils.address
@@ -266,7 +314,7 @@ export const getSignatureFromContract = async (
   const onchainAllocator = await getOnchainAllocator();
   const payloadBuilderAddress =
     await onchainAllocator.contract.read.payloadBuilders([
-      BigInt(chain.metadata.allocatorChainId),
+      BigInt(allocatorChainId),
       depository,
     ]);
   if (payloadBuilderAddress === zeroAddress) {
@@ -280,7 +328,7 @@ export const getSignatureFromContract = async (
     case "hyperliquid-vm":
     case "tron-vm": {
       const hashToSign = await payloadBuilder.contract.read.hashToSign([
-        BigInt(chain.metadata.allocatorChainId),
+        BigInt(allocatorChainId),
         depository,
         encodedData as Hex,
         0,
@@ -299,7 +347,7 @@ export const getSignatureFromContract = async (
 
     case "solana-vm": {
       const hashToSign = await payloadBuilder.contract.read.hashToSign([
-        BigInt(chain.metadata.allocatorChainId),
+        BigInt(allocatorChainId),
         depository,
         encodedData as Hex,
         0,
@@ -314,6 +362,80 @@ export const getSignatureFromContract = async (
       } else {
         return extractEddsaSignature(signature);
       }
+    }
+
+    case "bitcoin-vm": {
+      const unsignedPayload = await onchainAllocator.contract.read.payloads([
+        payloadId as Hex,
+      ]);
+
+      const decodeBitcoinTransactionData = (encodedData: Hex) =>
+        decodeAbiParameters(
+          [
+            {
+              type: "tuple",
+              components: [
+                {
+                  type: "tuple[]",
+                  name: "inputs",
+                  components: [
+                    { type: "bytes", name: "txid" },
+                    { type: "bytes", name: "index" },
+                    { type: "bytes", name: "script" },
+                    { type: "bytes", name: "value" },
+                  ],
+                },
+                {
+                  type: "tuple[]",
+                  name: "outputs",
+                  components: [
+                    { type: "bytes", name: "value" },
+                    { type: "bytes", name: "script" },
+                  ],
+                },
+              ],
+            },
+          ],
+          encodedData,
+        )[0] as {
+          inputs: { txid: Hex; index: Hex; script: Hex; value: Hex }[];
+          outputs: { value: Hex; script: Hex }[];
+        };
+
+      const transactionData = decodeBitcoinTransactionData(
+        unsignedPayload as Hex,
+      );
+
+      const signatures = await Promise.all(
+        transactionData.inputs.map(async (_, index) => {
+          const hashToSign = await payloadBuilder.contract.read.hashToSign([
+            BigInt(allocatorChainId),
+            depository,
+            unsignedPayload as Hex,
+            index,
+          ]);
+
+          const signature = await onchainAllocator.contract.read.signedPayloads(
+            [payloadId as Hex, hashToSign],
+          );
+
+          if (signature === "0x") {
+            return undefined;
+          }
+
+          return extractEcdsaSignature(signature) as Hex;
+        }),
+      );
+
+      if (signatures.some((signature) => !signature)) {
+        return undefined;
+      }
+
+      const finalizedSignatures = signatures.filter(
+        (signature): signature is Hex => !!signature,
+      );
+
+      return encodeAbiParameters([{ type: "bytes[]" }], [finalizedSignatures]);
     }
 
     default: {
