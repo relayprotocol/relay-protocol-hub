@@ -889,6 +889,7 @@ export class RequestHandlerService {
 
         return {
           ...defaultParams,
+          depository: "1KT3zCYUrmQxjcveUNs1Rs7WcXDcPQZ4av",
           receiver: bitcoin.address
             .toOutputScript(recipient, bitcoin.networks.bitcoin)
             .toString("base64"),
