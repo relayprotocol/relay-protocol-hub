@@ -1,19 +1,17 @@
 -- Up Migration
 
--- Insert Ethereum Sepolia
 INSERT INTO chains (
   id,
   vm_type,
   depository,
   metadata
 ) VALUES (
-  'ethereum-sepolia',
+  'sepolia',
   'ethereum-vm',
   '0x5Feab8dB4534F9F7E2669Bb260c57a01aD1c12e3',
   '{"chainId": 11155111}'::jsonb
 ) ON CONFLICT (id) DO NOTHING;
 
--- Insert Base Sepolia
 INSERT INTO chains (
   id,
   vm_type,
@@ -29,4 +27,4 @@ INSERT INTO chains (
 -- Down Migration
 
 DELETE FROM chains 
-WHERE id IN ('ethereum-sepolia', 'base-sepolia');
+WHERE id IN ('sepolia', 'base-sepolia');
