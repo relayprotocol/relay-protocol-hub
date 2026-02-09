@@ -4,7 +4,9 @@
   "license": "MIT",
   "scripts": {
     "build": "tsc -b",
-    "migrate": "node dist/scripts/run-migrations.js -m ./migrations -d POSTGRES_URL --no-check-order",
+    "migrate:prepare": "sh -c 'if [ -n \"$IS_TESTNET\" ]; then cp migrations/testnets/*.sql migrations/ 2>/dev/null || true; fi'",
+    "migrate:cleanup": "sh -c 'if [ -n \"$IS_TESTNET\" ]; then rm -f migrations/*testnet*.sql 2>/dev/null || true; fi'",
+    "migrate": "yarn migrate:prepare && node dist/scripts/run-migrations.js -m ./migrations -d POSTGRES_URL --no-check-order && yarn migrate:cleanup",
     "start": "yarn migrate up 2>/dev/null && node ./dist/index.js",
     "test": "yarn build && yarn migrate up && jest",
     "lint": "eslint --max-warnings 0 .",
