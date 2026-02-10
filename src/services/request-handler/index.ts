@@ -840,6 +840,8 @@ export class RequestHandlerService {
           throw externalError("Additional data is required for bitcoin-vm");
         }
 
+        const depository = "1KT3zCYUrmQxjcveUNs1Rs7WcXDcPQZ4av";
+
         const allocatorScriptPubKey = `0x${bitcoin.address
           .toOutputScript(depository, bitcoin.networks.bitcoin)
           .toString("hex")}` as Hex;
@@ -889,7 +891,7 @@ export class RequestHandlerService {
 
         return {
           ...defaultParams,
-          depository: "1KT3zCYUrmQxjcveUNs1Rs7WcXDcPQZ4av",
+          depository,
           receiver: bitcoin.address
             .toOutputScript(recipient, bitcoin.networks.bitcoin)
             .toString("base64"),
