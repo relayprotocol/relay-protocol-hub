@@ -1153,7 +1153,8 @@ export class RequestHandlerService {
   }
 
   private async _signPayload(payloadParams: PayloadParams) {
-    const { contract } = await getOnchainAllocator();
+    const { contract, publicClient, walletClient } =
+      await getOnchainAllocator();
 
     // These are both the default recommended values
     const gasSettings = {
@@ -1215,7 +1216,8 @@ export class RequestHandlerService {
         payloadId as Hex,
       ]);
 
-      await Promise.all(
+      // Determine which inputs need signing (parallel reads)
+      const inputsToSign = await Promise.all(
         decodedData.utxos.map(async (_, i) => {
           const hashToSign = await payloadBuilder.contract.read.hashToSign([
             BigInt(chain.metadata.allocatorChainId!),
@@ -1230,17 +1232,33 @@ export class RequestHandlerService {
           ]);
 
           if (existingSignature !== "0x") {
-            return;
+            return null;
           }
 
-          return contract.write.signWithdrawPayloadHash([
-            payloadParams as any,
-            "0x",
-            gasSettings,
-            i,
-          ]);
+          return i;
         }),
       );
+
+      const indicesToSign = inputsToSign.filter(
+        (i): i is number => i !== null,
+      );
+
+      if (indicesToSign.length > 0) {
+        // Use a nonce manager to avoid nonce conflicts when sending
+        // multiple transactions concurrently
+        const nonce = await publicClient.getTransactionCount({
+          address: walletClient.account.address,
+        });
+
+        await Promise.all(
+          indicesToSign.map((i, offset) =>
+            contract.write.signWithdrawPayloadHash(
+              [payloadParams as any, "0x", gasSettings, i],
+              { nonce: nonce + offset },
+            ),
+          ),
+        );
+      }
     } else {
       await contract.write.signWithdrawPayloadHash([
         payloadParams as any,
