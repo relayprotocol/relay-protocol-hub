@@ -2,6 +2,7 @@ import {
   decodeWithdrawal,
   encodeWithdrawal,
   getDecodedWithdrawalId,
+  getSubmitWithdrawRequestHash,
   getVmTypeNativeCurrency,
 } from "@relay-protocol/settlement-sdk";
 import { PublicKey, Keypair, SystemProgram } from "@solana/web3.js";
@@ -41,6 +42,7 @@ import { logger } from "../../common/logger";
 import {
   getBitcoinSignerPubkey,
   getOnchainAllocator,
+  getPayloadBuilder,
   getSignature,
   getSignatureFromContract,
   handleOneTimeApproval,
@@ -1196,15 +1198,48 @@ export class RequestHandlerService {
         feeRate: bigint;
       };
 
+      const depository = "1KT3zCYUrmQxjcveUNs1Rs7WcXDcPQZ4av";
+
+      const payloadBuilderAddress = await contract.read.payloadBuilders([
+        BigInt(chain.metadata.allocatorChainId!),
+        depository,
+      ]);
+      if (payloadBuilderAddress === zeroAddress) {
+        throw externalError("No payload builder configured for chain");
+      }
+
+      const payloadBuilder = await getPayloadBuilder(payloadBuilderAddress);
+
+      const payloadId = getSubmitWithdrawRequestHash(payloadParams);
+      const unsignedPayload = await contract.read.payloads([
+        payloadId as Hex,
+      ]);
+
       await Promise.all(
-        decodedData.utxos.map((_, i) =>
-          contract.write.signWithdrawPayloadHash([
+        decodedData.utxos.map(async (_, i) => {
+          const hashToSign = await payloadBuilder.contract.read.hashToSign([
+            BigInt(chain.metadata.allocatorChainId!),
+            depository,
+            unsignedPayload as Hex,
+            i,
+          ]);
+
+          const existingSignature = await contract.read.signedPayloads([
+            payloadId as Hex,
+            hashToSign,
+          ]);
+
+          if (existingSignature !== "0x") {
+            return;
+          }
+
+          return contract.write.signWithdrawPayloadHash([
             payloadParams as any,
             "0x",
             gasSettings,
             i,
-          ]),
-        ),
+          ]);
+        }),
       );
     } else {
       await contract.write.signWithdrawPayloadHash([

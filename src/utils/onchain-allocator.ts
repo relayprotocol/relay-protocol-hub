@@ -73,7 +73,7 @@ const getPublicAndWalletClients = async () => {
   return { publicClient, walletClient };
 };
 
-const getPayloadBuilder = async (address: string) => {
+export const getPayloadBuilder = async (address: string) => {
   const { publicClient, walletClient } = await getPublicAndWalletClients();
 
   return {
