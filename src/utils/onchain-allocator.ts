@@ -304,15 +304,12 @@ export const getSignatureFromContract = async (
 
   const allocatorChainId = chain.metadata.allocatorChainId;
 
-  let depository =
+  const depository =
     chain.vmType === "tron-vm"
       ? TronWeb.utils.address
           .toHex(chain.depository)
           .replace(TronWeb.utils.address.ADDRESS_PREFIX_REGEX, "0x")
       : chain.depository;
-  if (chain.vmType === "bitcoin-vm") {
-    depository = "1KT3zCYUrmQxjcveUNs1Rs7WcXDcPQZ4av";
-  }
 
   const onchainAllocator = await getOnchainAllocator();
   const payloadBuilderAddress =
