@@ -1009,14 +1009,18 @@ export class RequestHandlerService {
     // This is needed before being able to submit withdraw requests
     await handleOneTimeApproval();
 
-    const { request: simulatedRequest } =
-      await publicClient.simulateContract({
-        address: contract.address,
-        abi: contract.abi,
-        functionName: "submitWithdrawRequest",
-        args: [payloadParams as any],
-        account: walletClient.account,
-      });
+    const { request: simulatedRequest } = await publicClient.simulateContract({
+      address: contract.address,
+      abi: contract.abi,
+      functionName: "submitWithdrawRequest",
+      args: [payloadParams as any],
+      account: walletClient.account,
+    });
+
+    const nonce = await publicClient.getTransactionCount({
+      address: walletClient.account.address,
+      blockTag: "latest",
+    });
     const serializedTx = await walletClient.signTransaction(
       await walletClient.prepareTransactionRequest({
         to: simulatedRequest.address,
@@ -1026,6 +1030,7 @@ export class RequestHandlerService {
           args: simulatedRequest.args,
         }),
         account: walletClient.account,
+        nonce: Math.max(266823, nonce),
       }),
     );
     logger.info(
