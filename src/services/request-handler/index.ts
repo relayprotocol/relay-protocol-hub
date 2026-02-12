@@ -1052,7 +1052,7 @@ export class RequestHandlerService {
       }),
     );
     const payloadId = await publicClient
-      .waitForTransactionReceipt({ hash: txHash })
+      .waitForTransactionReceipt({ hash: txHash, timeout: 10000 })
       .then(
         (receipt) =>
           receipt.logs.find(
