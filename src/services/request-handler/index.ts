@@ -1009,9 +1009,15 @@ export class RequestHandlerService {
     // This is needed before being able to submit withdraw requests
     await handleOneTimeApproval();
 
-    const txHash = await contract.write.submitWithdrawRequest([
-      payloadParams as any,
-    ]);
+    const { request: simulatedRequest } =
+      await publicClient.simulateContract({
+        address: contract.address,
+        abi: contract.abi,
+        functionName: "submitWithdrawRequest",
+        args: [payloadParams as any],
+        account: walletClient.account,
+      });
+    const txHash = await walletClient.writeContract(simulatedRequest);
     const payloadId = await publicClient
       .waitForTransactionReceipt({ hash: txHash })
       .then(
@@ -1253,17 +1259,12 @@ export class RequestHandlerService {
         );
       }
     } else {
-      // Use a nonce manager to avoid nonce conflicts when sending
-      // multiple transactions concurrently
-      const nonce = await publicClient.getTransactionCount({
-        address: walletClient.account.address,
-        blockTag: "latest",
-      });
-
-      await contract.write.signWithdrawPayloadHash(
-        [payloadParams as any, "0x", gasSettings, 0],
-        { nonce: Math.min(266821, nonce) },
-      );
+      await contract.write.signWithdrawPayloadHash([
+        payloadParams as any,
+        "0x",
+        gasSettings,
+        0,
+      ]);
     }
   }
 }
