@@ -1009,50 +1009,14 @@ export class RequestHandlerService {
     // This is needed before being able to submit withdraw requests
     await handleOneTimeApproval();
 
-    const { request: simulatedRequest } = await publicClient.simulateContract({
-      address: contract.address,
-      abi: contract.abi,
-      functionName: "submitWithdrawRequest",
-      args: [payloadParams as any],
-      account: walletClient.account,
-    });
-
-    const nonce = await publicClient.getTransactionCount({
-      address: walletClient.account.address,
-      blockTag: "latest",
-    });
-    const serializedTx = await walletClient.signTransaction(
-      await walletClient.prepareTransactionRequest({
-        to: simulatedRequest.address,
-        data: encodeFunctionData({
-          abi: simulatedRequest.abi,
-          functionName: simulatedRequest.functionName,
-          args: simulatedRequest.args,
-        }),
-        account: walletClient.account,
-        nonce: Math.max(266823, nonce),
-      }),
-    );
-    logger.info(
-      "debug",
-      JSON.stringify({
-        msg: "Signed raw transaction for submitWithdrawRequest",
-        serializedTx,
-      }),
-    );
-    const txHash = await publicClient.request({
-      method: "eth_sendRawTransaction",
-      params: [serializedTx],
-    });
-    logger.info(
-      "debug",
-      JSON.stringify({
-        msg: "eth_sendRawTransaction response",
-        txHash,
-      }),
-    );
+    const txHash = await contract.write.submitWithdrawRequest([
+      payloadParams as any,
+    ]);
     const payloadId = await publicClient
-      .waitForTransactionReceipt({ hash: txHash, timeout: 10000 })
+      .waitForTransactionReceipt({
+        hash: txHash,
+        timeout: 5000,
+      })
       .then(
         (receipt) =>
           receipt.logs.find(
