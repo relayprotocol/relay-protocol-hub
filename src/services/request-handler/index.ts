@@ -1013,7 +1013,10 @@ export class RequestHandlerService {
       payloadParams as any,
     ]);
     const payloadId = await publicClient
-      .waitForTransactionReceipt({ hash: txHash })
+      .waitForTransactionReceipt({
+        hash: txHash,
+        timeout: 5000,
+      })
       .then(
         (receipt) =>
           receipt.logs.find(
@@ -1240,6 +1243,7 @@ export class RequestHandlerService {
         // multiple transactions concurrently
         const nonce = await publicClient.getTransactionCount({
           address: walletClient.account.address,
+          blockTag: "latest",
         });
 
         await Promise.all(
