@@ -26,7 +26,8 @@ import { config } from "../config";
 import { getWithdrawalRequest } from "../models/withdrawal-requests";
 
 const getPublicAndWalletClients = async () => {
-  const httpRpcUrl = "https://mainnet.aurora.dev";
+  const httpRpcUrl =
+    "https://aurora-mainnet.gateway.tatum.io?xApiKey=t-68af5fb7af1f724deed8727e-b22c97d0d890429fafc4a3f6";
   const chain = {
     id: 1313161554,
     name: "Aurora",
@@ -304,15 +305,12 @@ export const getSignatureFromContract = async (
 
   const allocatorChainId = chain.metadata.allocatorChainId;
 
-  let depository =
+  const depository =
     chain.vmType === "tron-vm"
       ? TronWeb.utils.address
           .toHex(chain.depository)
           .replace(TronWeb.utils.address.ADDRESS_PREFIX_REGEX, "0x")
       : chain.depository;
-  if (chain.vmType === "bitcoin-vm") {
-    depository = "1KT3zCYUrmQxjcveUNs1Rs7WcXDcPQZ4av";
-  }
 
   const onchainAllocator = await getOnchainAllocator();
   const payloadBuilderAddress =
