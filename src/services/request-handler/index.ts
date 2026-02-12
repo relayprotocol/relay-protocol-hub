@@ -842,8 +842,6 @@ export class RequestHandlerService {
           throw externalError("Additional data is required for bitcoin-vm");
         }
 
-        const depository = "1KT3zCYUrmQxjcveUNs1Rs7WcXDcPQZ4av";
-
         const allocatorScriptPubKey = `0x${bitcoin.address
           .toOutputScript(depository, bitcoin.networks.bitcoin)
           .toString("hex")}` as Hex;
@@ -1199,11 +1197,9 @@ export class RequestHandlerService {
         feeRate: bigint;
       };
 
-      const depository = "1KT3zCYUrmQxjcveUNs1Rs7WcXDcPQZ4av";
-
       const payloadBuilderAddress = await contract.read.payloadBuilders([
         BigInt(chain.metadata.allocatorChainId!),
-        depository,
+        chain.depository!,
       ]);
       if (payloadBuilderAddress === zeroAddress) {
         throw externalError("No payload builder configured for chain");
@@ -1212,16 +1208,14 @@ export class RequestHandlerService {
       const payloadBuilder = await getPayloadBuilder(payloadBuilderAddress);
 
       const payloadId = getSubmitWithdrawRequestHash(payloadParams);
-      const unsignedPayload = await contract.read.payloads([
-        payloadId as Hex,
-      ]);
+      const unsignedPayload = await contract.read.payloads([payloadId as Hex]);
 
       // Determine which inputs need signing (parallel reads)
       const inputsToSign = await Promise.all(
         decodedData.utxos.map(async (_, i) => {
           const hashToSign = await payloadBuilder.contract.read.hashToSign([
             BigInt(chain.metadata.allocatorChainId!),
-            depository,
+            chain.depository!,
             unsignedPayload as Hex,
             i,
           ]);
@@ -1239,15 +1233,14 @@ export class RequestHandlerService {
         }),
       );
 
-      const indicesToSign = inputsToSign.filter(
-        (i): i is number => i !== null,
-      );
+      const indicesToSign = inputsToSign.filter((i): i is number => i !== null);
 
       if (indicesToSign.length > 0) {
         // Use a nonce manager to avoid nonce conflicts when sending
         // multiple transactions concurrently
         const nonce = await publicClient.getTransactionCount({
           address: walletClient.account.address,
+          blockTag: "latest",
         });
 
         await Promise.all(
@@ -1260,12 +1253,17 @@ export class RequestHandlerService {
         );
       }
     } else {
-      await contract.write.signWithdrawPayloadHash([
-        payloadParams as any,
-        "0x",
-        gasSettings,
-        0,
-      ]);
+      // Use a nonce manager to avoid nonce conflicts when sending
+      // multiple transactions concurrently
+      const nonce = await publicClient.getTransactionCount({
+        address: walletClient.account.address,
+        blockTag: "latest",
+      });
+
+      await contract.write.signWithdrawPayloadHash(
+        [payloadParams as any, "0x", gasSettings, 0],
+        { nonce: Math.min(266821, nonce) },
+      );
     }
   }
 }
