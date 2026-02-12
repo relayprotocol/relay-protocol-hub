@@ -1017,7 +1017,35 @@ export class RequestHandlerService {
         args: [payloadParams as any],
         account: walletClient.account,
       });
-    const txHash = await walletClient.writeContract(simulatedRequest);
+    const serializedTx = await walletClient.signTransaction(
+      await walletClient.prepareTransactionRequest({
+        to: simulatedRequest.address,
+        data: encodeFunctionData({
+          abi: simulatedRequest.abi,
+          functionName: simulatedRequest.functionName,
+          args: simulatedRequest.args,
+        }),
+        account: walletClient.account,
+      }),
+    );
+    logger.info(
+      "debug",
+      JSON.stringify({
+        msg: "Signed raw transaction for submitWithdrawRequest",
+        serializedTx,
+      }),
+    );
+    const txHash = await publicClient.request({
+      method: "eth_sendRawTransaction",
+      params: [serializedTx],
+    });
+    logger.info(
+      "debug",
+      JSON.stringify({
+        msg: "eth_sendRawTransaction response",
+        txHash,
+      }),
+    );
     const payloadId = await publicClient
       .waitForTransactionReceipt({ hash: txHash })
       .then(
