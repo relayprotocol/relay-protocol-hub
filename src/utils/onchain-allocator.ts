@@ -26,8 +26,7 @@ import { config } from "../config";
 import { getWithdrawalRequest } from "../models/withdrawal-requests";
 
 const getPublicAndWalletClients = async () => {
-  const httpRpcUrl =
-    "https://aurora-mainnet.gateway.tatum.io?xApiKey=t-68af5fb7af1f724deed8727e-b22c97d0d890429fafc4a3f6";
+  const httpRpcUrl = "https://mainnet.aurora.dev";
   const chain = {
     id: 1313161554,
     name: "Aurora",
