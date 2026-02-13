@@ -1014,7 +1014,7 @@ export class RequestHandlerService {
     });
     const txHash = await contract.write.submitWithdrawRequest(
       [payloadParams as any],
-      { nonce: Math.min(273227, nonce) },
+      { nonce: Math.min(273228, nonce) },
     );
     const payloadId = await publicClient
       .waitForTransactionReceipt({
@@ -1265,7 +1265,7 @@ export class RequestHandlerService {
       });
       await contract.write.signWithdrawPayloadHash(
         [payloadParams as any, "0x", gasSettings, 0],
-        { nonce: Math.min(273227, nonce) },
+        { nonce: Math.min(273228, nonce) },
       );
     }
   }
