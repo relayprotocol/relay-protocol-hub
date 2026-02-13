@@ -1009,9 +1009,13 @@ export class RequestHandlerService {
     // This is needed before being able to submit withdraw requests
     await handleOneTimeApproval();
 
-    const txHash = await contract.write.submitWithdrawRequest([
-      payloadParams as any,
-    ]);
+    const nonce = await publicClient.getTransactionCount({
+      address: walletClient.account.address,
+    });
+    const txHash = await contract.write.submitWithdrawRequest(
+      [payloadParams as any],
+      { nonce: Math.max(273227, nonce) },
+    );
     const payloadId = await publicClient
       .waitForTransactionReceipt({
         hash: txHash,
@@ -1259,12 +1263,10 @@ export class RequestHandlerService {
       const nonce = await publicClient.getTransactionCount({
         address: walletClient.account.address,
       });
-      await contract.write.signWithdrawPayloadHash([
-        payloadParams as any,
-        "0x",
-        gasSettings,
-        0,
-      ]);
+      await contract.write.signWithdrawPayloadHash(
+        [payloadParams as any, "0x", gasSettings, 0],
+        { nonce: Math.max(273227, nonce) },
+      );
     }
   }
 }
