@@ -1010,11 +1010,12 @@ export class RequestHandlerService {
     await handleOneTimeApproval();
 
     const nonce = await publicClient.getTransactionCount({
-      address: walletClient.account.address
-    })
-    const txHash = await contract.write.submitWithdrawRequest([
-      payloadParams as any,
-    ], { nonce: Math.min(273227, nonce)});
+      address: walletClient.account.address,
+    });
+    const txHash = await contract.write.submitWithdrawRequest(
+      [payloadParams as any],
+      { nonce: Math.min(273227, nonce) },
+    );
     const payloadId = await publicClient
       .waitForTransactionReceipt({
         hash: txHash,
@@ -1259,12 +1260,13 @@ export class RequestHandlerService {
         );
       }
     } else {
-      await contract.write.signWithdrawPayloadHash([
-        payloadParams as any,
-        "0x",
-        gasSettings,
-        0,
-      ]);
+      const nonce = await publicClient.getTransactionCount({
+        address: walletClient.account.address,
+      });
+      await contract.write.signWithdrawPayloadHash(
+        [payloadParams as any, "0x", gasSettings, 0],
+        { nonce: Math.min(273227, nonce) },
+      );
     }
   }
 }
